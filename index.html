@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>노란돼지 로그인</title>
+    <link rel="stylesheet" href="css/q.css">
+</head>
+<body>
+<div class="login-container">
+    <h3>노란돼지 로그인</h3>
+    <form id="loginForm">
+        <label for="email">아이디</label>
+        <input type="text" id="email" placeholder="아이디를 입력하세요" required>
+
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" placeholder="비밀번호를 입력하세요" required>
+        <button type="submit">로그인</button>
+    </form>
+    <div class="signup-link">
+        <p>아직 계정이 없으신가요?</p> <a href="sign_up.html" class="signup-button">회원가입</a>
+    </div>
+</div>
+
+<script type="module">
+    // Firebase 초기화 코드
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAMSxXR7bySxxtMmSkJGVs_wgvieaiASDY",
+        authDomain: "noran-9670b.firebaseapp.com",
+        projectId: "noran-9670b",
+        storageBucket: "noran-9670b.firebasestorage.app",
+        messagingSenderId: "646948244842",
+        appId: "1:646948244842:web:d10e09bb7e4bc621fb2913",
+        measurementId: "G-G460FN0YT2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const loginForm = document.getElementById('loginForm');
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value + "@gmail.com";
+        const password = document.getElementById('password').value;
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+
+            // 로그인 후 현재 사용자의 이름을 sessionStorage에 저장
+            const user = auth.currentUser;
+            if (user && user.displayName) {
+                sessionStorage.setItem('userName', user.displayName); // 이름 저장
+            }
+
+            // 사용자가 'admin'일 경우, admin_main.html로 리디렉션
+            if (user && user.displayName === 'admin' && email === 'admin@gmail.com') {
+                alert('관리자님, 안녕하세요!');
+                window.location.href = 'admin/admin_main.html'; // 관리자 페이지로 이동
+            } else {
+                alert(user.displayName + '님, 안녕하세요!');
+                window.location.href = 'main.html'; // 일반 사용자 페이지로 이동
+            }
+        } catch (error) {
+            alert('로그인 실패: ' + '아이디나 비밀번호를 확인해주세요!'/*error.message*/);
+        }
+    });
+</script>
+</body>
+</html>

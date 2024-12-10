@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>노란돼지 근무 시간표</title>
+    <!--    <link rel="stylesheet" href="css/q.css"> &lt;!&ndash; CSS 파일 연결 &ndash;&gt;-->
+    <link rel="stylesheet" href="style.css"> <!-- CSS 파일 연결 -->
+</head>
+<body>
+<div class="calendar-container">
+    <h2><span id="userName">UnKnown</span>님, 노란돼지 근무 시간표</h2>
+
+    <!-- 월/년 표시 및 버튼들 -->
+    <div class="calendar-header">
+        <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+        <span id="monthYear" class="month-year" ></span>
+        <button class="nav-btn" onclick="changeMonth(1)">▶</button>
+    </div>
+
+    <!-- 캘린더 표 -->
+    <div id="calendar"></div>
+
+    <a class="return-return" href="workTime.html">근무시간 작성</a>
+    <!-- 이전 페이지로 이동 -->
+    <a href="main.html" class="return-return">이전</a>
+</div>
+
+<!-- JavaScript 파일 연결 -->
+<script src="calendar.js"></script>
+
+<!-- 사용자 이름 설정 -->
+<script>
+    (function() {
+        const userName = sessionStorage.getItem('userName');
+        document.getElementById('userName').textContent = userName || 'UnKnown';
+    })();
+</script>
+</body>
+</html>

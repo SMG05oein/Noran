@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>근무시간 작성</title>
+    <link rel="stylesheet" href="css/q.css">
+</head>
+<body>
+<div class="worktime-container">
+    <h2>근무시간 작성</h2>
+
+    <form id="workTimeForm">
+        <label for="startTime">근무 시작 날짜와 시간</label>
+        <input type="datetime-local" id="startTime" required>
+
+        <label for="endTime">근무 종료 날짜와 시간</label>
+        <input type="datetime-local" id="endTime" required>
+
+        <button type="submit">근무시간 저장</button>
+    </form>
+    <div class="signup-link">
+        <p></p> <a href="main.html" class="signup-button">메인페이지로</a>
+    </div>
+    <div id="output" style="margin-top: 20px;"></div>
+</div>
+<script>
+    const workTimeForm = document.getElementById('workTimeForm');
+    const outputDiv = document.getElementById('output');
+
+    // sessionStorage에서 사용자 이름 가져오기
+    const userName = sessionStorage.getItem('userName');
+
+    if (!userName) {
+        alert('로그인이 필요합니다.');
+        window.location.href = 'index.html'; // 로그인 페이지로 리다이렉트
+    } else {
+        workTimeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+
+            if (!startTime || !endTime) {
+                outputDiv.innerHTML = '<p style="color: red;">모든 필드를 입력하세요.</p>';
+                return;
+            }
+
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+
+            if (start >= end) {
+                outputDiv.innerHTML = '<p style="color: red;">시작 시간이 종료 시간보다 이전이어야 합니다.</p>';
+                return;
+            }
+
+            const workDuration = Math.abs(end - start) / (1000 * 60 * 60); // 시간 단위로 변환
+            const workData = {
+                name: userName,
+                startTime,
+                endTime,
+                workHours: `${workDuration.toFixed(2)} 시간`,
+            };
+
+            try {
+                const response = await fetch('http://localhost:3000/recordWorkHours', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workData),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert("근무시간 저장 완료, 금일 근무시간: " + workData.workHours);
+                    window.location.href = 'main.html';
+                } else {
+                    outputDiv.innerHTML = `<p style="color: red;">오류: ${result.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Fetch API 오류:', error.message);
+                outputDiv.innerHTML = '<p style="color: red;">서버와 통신 중 오류가 발생했습니다.</p>';
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>노란돼지 메인 페이지</title>
+    <link rel="stylesheet" href="css/q.css">
+</head>
+<body>
+<div class="main-container">
+    <!-- 유저 이름을 화면에 출력 -->
+    <h2>안녕하세요, <span id="userName"></span>님!</h2>
+
+    <button onclick="window.location.href='workTime.html'">근무시간 작성</button>
+    <p>
+        <button onclick="window.location.href='viewWorkHours.html'">근무 시간표 보기</button>
+</div>
+<script>
+    // sessionStorage에서 'userName' 값 가져오기
+    const userName = sessionStorage.getItem('userName');
+
+    // 'userName' 값이 있으면 화면에 표시
+    if (userName) {
+        document.getElementById('userName').textContent = userName;
+    } else {
+        document.getElementById('userName').textContent = 'UnKnown';
+    }
+</script>
+</body>
+</html>
+
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="ko">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>근무 시간표</title>-->
+<!--    <link rel="stylesheet" href="css/q.css">-->
+<!--</head>-->
+<!--<body>-->
+<!--<div class="calendar-container">-->
+<!--    <h2>근무 시간표</h2>-->
+
+<!--    &lt;!&ndash; 날짜별 캘린더 &ndash;&gt;-->
+<!--    <div id="calendar"></div>-->
+
+<!--    &lt;!&ndash; 근무 시간 표시 &ndash;&gt;-->
+<!--    <div id="workHours"></div>-->
+<!--</div>-->
+
+<!--<script src="https://apis.google.com/js/api.js"></script>-->
+<!--<script>-->
+<!--    // sessionStorage에서 'userName' 값을 가져옵니다.-->
+<!--    const userName = sessionStorage.getItem('userName');-->
+
+<!--    // Google Sheets API 설정 (구글 시트에서 데이터 가져오기)-->
+<!--    const SHEET_ID = '1mQFhQA3YokfaG0_kj4HleNC08s4pa6ZJ1QYR1Cb9FQo'; // 스프레드시트 ID-->
+<!--    const API_KEY = 'AIzaSyDs1-EVfYhh-6Jyt9rphYpyJrHa_v1sMgU'; // Google API Key-->
+<!--    const CLIENT_ID = '58321302244-gdi01iqjjgpc99ct8au0n71vekpscfj4.apps.googleusercontent.com'; // Google Client ID-->
+
+<!--    let workData = []; // 일한 데이터 저장-->
+
+<!--    // 구글 시트 API 로드-->
+<!--    function loadGoogleAPI() {-->
+<!--        gapi.load('client:auth2', initGoogleAPI);-->
+<!--    }-->
+
+<!--    // Google API 클라이언트 초기화-->
+<!--    function initGoogleAPI() {-->
+<!--        gapi.client.init({-->
+<!--            apiKey: API_KEY,-->
+<!--            clientId: CLIENT_ID,-->
+<!--            scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',-->
+<!--        }).then(() => {-->
+<!--            getWorkDataFromSheet();-->
+<!--        });-->
+<!--    }-->
+
+<!--    // Google Sheets에서 근무 시간 데이터를 가져오는 함수-->
+<!--    function getWorkDataFromSheet() {-->
+<!--        const range = 'Sheet1!A2:D';  // A2부터 D열까지 데이터를 가져옵니다.-->
+<!--        gapi.client.sheets.spreadsheets.values.get({-->
+<!--            spreadsheetId: SHEET_ID,-->
+<!--            range: range,-->
+<!--        }).then((response) => {-->
+<!--            const rows = response.result.values;-->
+<!--            if (rows) {-->
+<!--                // 사용자 이름에 해당하는 근무 시간만 필터링-->
+<!--                workData = rows.filter(row => row[0] === userName);-->
+<!--                renderCalendar();-->
+<!--            } else {-->
+<!--                console.log('데이터가 없습니다.');-->
+<!--            }-->
+<!--        }).catch((error) => {-->
+<!--            console.error('Google Sheets API 오류:', error);-->
+<!--        });-->
+<!--    }-->
+
+<!--    // 캘린더를 그리는 함수-->
+<!--    function renderCalendar() {-->
+<!--        const calendarContainer = document.getElementById('calendar');-->
+<!--        const workHoursContainer = document.getElementById('workHours');-->
+<!--        const today = new Date();-->
+<!--        const currentMonth = today.getMonth(); // 현재 월-->
+<!--        const currentYear = today.getFullYear(); // 현재 년도-->
+
+<!--        // 월별 첫 번째 날을 찾기-->
+<!--        const firstDay = new Date(currentYear, currentMonth, 1);-->
+<!--        const lastDay = new Date(currentYear, currentMonth + 1, 0);-->
+
+<!--        // 요일에 맞춰 빈 칸 추가-->
+<!--        let day = 1;-->
+<!--        let calendarHTML = '<table><thead><tr>';-->
+
+<!--        // 요일 표시 (일~토)-->
+<!--        for (let i = 0; i < 7; i++) {-->
+<!--            calendarHTML += `<th>${['일', '월', '화', '수', '목', '금', '토'][i]}</th>`;-->
+<!--        }-->
+<!--        calendarHTML += '</tr></thead><tbody><tr>';-->
+
+<!--        // 첫 번째 날 전까지 빈 칸 채우기-->
+<!--        for (let i = 0; i < firstDay.getDay(); i++) {-->
+<!--            calendarHTML += '<td></td>';-->
+<!--        }-->
+
+<!--        // 날짜 표시-->
+<!--        for (let i = firstDay.getDay(); day <= lastDay.getDate(); i++) {-->
+<!--            let workHours = 0;-->
+<!--            let isWorked = false;-->
+
+<!--            // 해당 날짜에 일한 데이터가 있는지 확인-->
+<!--            for (const work of workData) {-->
+<!--                const workDate = new Date(work[1]);-->
+<!--                if (workDate.getDate() === day && workDate.getMonth() === currentMonth) {-->
+<!--                    workHours = work[3]; // 일한 시간-->
+<!--                    isWorked = true;-->
+<!--                    break;-->
+<!--                }-->
+<!--            }-->
+
+<!--            // 해당 날짜에 일한 경우 (파란색으로 표시)-->
+<!--            if (isWorked) {-->
+<!--                calendarHTML += `<td style="background-color: blue; color: white;">${day}<br>${workHours}시간</td>`;-->
+<!--            } else {-->
+<!--                calendarHTML += `<td>${day}</td>`;-->
+<!--            }-->
+
+<!--            // 주말은 새로운 줄로 넘기기-->
+<!--            if (i === 6) {-->
+<!--                calendarHTML += '</tr><tr>';-->
+<!--                i = -1;-->
+<!--            }-->
+
+<!--            day++;-->
+<!--        }-->
+
+<!--        // 캘린더 끝-->
+<!--        calendarHTML += '</tr></tbody></table>';-->
+<!--        calendarContainer.innerHTML = calendarHTML;-->
+<!--    }-->
+
+<!--    // Google API를 로드하고 초기화-->
+<!--    window.onload = loadGoogleAPI;-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->

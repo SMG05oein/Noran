@@ -15,6 +15,7 @@ import AdminMain from './pages/AdminMain';
 import AdminUsers from './pages/AdminUsers';
 import AdminRecords from './pages/AdminRecords';
 import AdminWorkPlaces from './pages/AdminWorkPlaces';
+import NotFound from './pages/NotFound';
 import AdminWeeklyAssign from './pages/AdminWeeklyAssign';
 import RecordEdit from './pages/RecordEdit';
 import RequestEdit from './pages/RequestEdit';
@@ -123,6 +124,7 @@ function App() {
       <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />
       <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
       <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

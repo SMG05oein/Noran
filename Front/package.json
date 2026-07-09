@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node -e \"require('fs').writeFileSync('public/_redirects', '# 1. API Proxy\\n/api/* ' + (process.env.VITE_API_URL || 'http://localhost:8080') + '/api/:splat 200\\n# 2. SPA Fallback\\n/* /index.html 200')\" && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -1,0 +1,49 @@
+.custom-gnb {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.gnb-brand {
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease;
+}
+
+.gnb-brand:hover {
+  transform: translateY(-1px);
+}
+
+.gnb-link {
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.gnb-link:hover {
+  color: #d35400 !important;
+  background-color: rgba(255, 226, 89, 0.2);
+}
+
+.gnb-logout {
+  background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%) !important;
+  color: white !important;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 4px 10px rgba(243, 156, 18, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gnb-logout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(243, 156, 18, 0.3);
+  color: white !important;
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
+}
+
+.navbar-toggler {
+  color: #d35400;
+}
+
+.navbar-toggler:focus {
+  box-shadow: none !important;
+}

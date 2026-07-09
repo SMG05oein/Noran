@@ -1,0 +1,71 @@
+.admin-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+  padding-bottom: 2rem;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-warning-subtle {
+  background-color: rgba(255, 193, 7, 0.2);
+}
+
+.custom-table {
+  background-color: transparent;
+}
+
+.custom-table th {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.custom-table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 1rem 0.5rem;
+  white-space: nowrap;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .admin-container {
+    padding-top: 1rem;
+  }
+  
+  .admin-badge {
+    align-self: flex-start;
+    font-size: 0.9rem !important;
+  }
+
+  .glass-card {
+    padding: 1.5rem !important;
+  }
+
+  .custom-table td, .custom-table th {
+    font-size: 0.9rem;
+  }
+  
+  /* Make buttons stacked on very small screens */
+  @media (max-width: 576px) {
+    .table-responsive .btn {
+      display: block;
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+    .table-responsive .btn.me-2 {
+      margin-right: 0 !important;
+    }
+  }
+}

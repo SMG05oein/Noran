@@ -31,7 +31,7 @@ const formatTimeValue = (timeStr) => {
 
 const AdminWeeklyAssign = () => {
   const { user } = useAuthStore();
-  const defaultBranch = (user?.branch && user.branch.includes('약산돼지')) ? '약산돼지' : '노란돼지';
+  const defaultBranch = (user?.branch && user.branch.includes('약산돼지')) ? '약산돼지' : '노란돼지1';
   const [selectedBranch, setSelectedBranch] = useState(defaultBranch);
   const [branches, setBranches] = useState([{ name: '노란돼지', value: '노란돼지' }, { name: '약산돼지', value: '약산돼지' }]);
   

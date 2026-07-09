@@ -23,9 +23,12 @@ import MyPage from './pages/MyPage';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  if (user?.isAdmin === 1) {
+    return <Navigate to="/admin" replace />;
   }
   return (
     <div className="app-layout">

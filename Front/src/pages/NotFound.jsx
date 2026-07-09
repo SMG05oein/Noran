@@ -1,9 +1,19 @@
 import React from 'react';
 import { Container, Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/useAuthStore';
 
 const NotFound = () => {
   const navigate = useNavigate();
+  const user = useAuthStore(state => state.user);
+
+  const handleGoHome = () => {
+    if (user && user.isAdmin === 1) {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
     <div className="d-flex align-items-center justify-content-center min-vh-100 bg-light">
@@ -31,7 +41,7 @@ const NotFound = () => {
                 variant="warning" 
                 size="lg" 
                 className="fw-bold px-4 rounded-pill text-dark"
-                onClick={() => navigate('/')}
+                onClick={handleGoHome}
               >
                 메인으로 가기
               </Button>

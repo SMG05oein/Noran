@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import fs from 'fs'
 
 export default defineConfig({
   plugins: [
@@ -26,6 +27,20 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }),
+    {
+      name: 'generate-redirects',
+      closeBundle() {
+        // 환경 변수에서 API URL을 가져옵니다.
+        const apiUrl = process.env.VITE_API_URL || 'http://localhost:8080';
+        const content = `# 1. API 프록시 우회 (Mixed Content 해결)\n/api/* ${apiUrl}/api/:splat  200\n\n# 2. React Router 새로고침 시 404 에러 방지 (SPA 필수 설정)\n/* /index.html  200`;
+        try {
+          fs.writeFileSync('dist/_redirects', content);
+          console.log('✅ _redirects 파일이 성공적으로 생성되었습니다. (API:', apiUrl, ')');
+        } catch (e) {
+          console.error('_redirects 파일 생성 중 오류:', e);
+        }
+      }
+    }
   ]
 })

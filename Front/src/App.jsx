@@ -20,6 +20,9 @@ import AdminWeeklyAssign from './pages/AdminWeeklyAssign';
 import RecordEdit from './pages/RecordEdit';
 import RequestEdit from './pages/RequestEdit';
 import MyPage from './pages/MyPage';
+import DevLogin from './pages/DevLogin';
+import DevMain from './pages/DevMain';
+import DevRoute from './components/DevRoute';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -127,6 +130,13 @@ function App() {
       <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />
       <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
       <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
+
+      {/* 개발자 전용 라우트 */}
+      <Route path="/dev/login" element={<DevLogin />} />
+      <Route element={<DevRoute />}>
+        <Route path="/dev/dashboard" element={<DevMain />} />
+      </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -40,7 +40,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
         // 로그인 및 회원가입 관련 경로는 JWT 필터를 거치지 않도록 설정
-        if (path.startsWith("/api/user/login") || path.startsWith("/api/user/signup") || path.startsWith("/api/user/refresh")) {
+        if (path.startsWith("/api/user/login") || path.startsWith("/api/user/signup") || path.startsWith("/api/user/refresh") || path.startsWith("/api/dev/auth/login")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -64,10 +64,17 @@ public class JwtFilter extends OncePerRequestFilter {
                 }
 
                 // 4. UserDetails 로드 (인증된 사용자 객체 생성용)
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+                UserDetails userDetails;
+                if ("ROLE_DEVELOPER".equals(role)) {
+                    userDetails = org.springframework.security.core.userdetails.User.withUsername(email)
+                            .password("")
+                            .authorities(authorities)
+                            .build();
+                } else {
+                    userDetails = customUserDetailsService.loadUserByUsername(email);
+                }
 
                 // 5. 토큰에서 추출한 실시간 권한(authorities)을 사용하여 인증 객체 생성
-                // 기존의 userDetails.getAuthorities() 대신 토큰에서 꺼낸 authorities를 넣는 것이 핵심입니다!
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, authorities
                 );

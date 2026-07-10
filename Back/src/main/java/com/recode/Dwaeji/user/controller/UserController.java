@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
+import jakarta.validation.Valid;
 
 @Tag(name="회원 인증", description = "회원 인증 관련 API 명세서입니다.")
 @RestController
@@ -26,7 +27,7 @@ public class UserController {
 
     @Operation(summary = "로그인", description = "아이디와 비밀번호로 로그인합니다. 성공 시 액세스 토큰을 반환하고, 리프레시 토큰은 HttpOnly 쿠키로 발급합니다.")
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
+    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto) {
         LoginResponseDto loginResponse = userService.login(loginRequestDto);
         
         // HttpOnly 쿠키 생성 (리프레시 토큰)
@@ -45,7 +46,7 @@ public class UserController {
 
     @Operation(summary = "회원가입", description = "새로운 유저를 등록합니다.")
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignupRequestDto signupRequestDto) {
+    public ResponseEntity<String> signup(@Valid @RequestBody SignupRequestDto signupRequestDto) {
         userService.signup(signupRequestDto);
         return ResponseEntity.ok("회원가입이 완료되었습니다.");
     }

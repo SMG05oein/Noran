@@ -11,18 +11,17 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 실시간 유효성 상태
+  // 실시간 유효성 상태 (아이디 정규식 필터링 제거)
   const [userIdError, setUserIdError] = useState('');
 
   const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
   const handleUserIdChange = (e) => {
-    const raw = e.target.value;
-    const filtered = raw.replace(/[^A-Za-z0-9]/g, '');
-    setUserId(filtered);
-    if (raw !== filtered) {
-      setUserIdError('아이디는 영문자와 숫자만 입력할 수 있습니다.');
+    const val = e.target.value;
+    setUserId(val);
+    if (val && !/^[A-Za-z0-9]+$/.test(val)) {
+      setUserIdError('영문자와 숫자만 입력할 수 있습니다.');
     } else {
       setUserIdError('');
     }

@@ -39,13 +39,12 @@ const Signup = () => {
     loadWorkPlaces();
   }, []);
 
-  // 아이디 — 영문+숫자만
+  // 아이디 입력 (정규식 필터링 없이 경고 메시지만 표시)
   const handleUserIdChange = (e) => {
-    const raw = e.target.value;
-    const filtered = raw.replace(/[^A-Za-z0-9]/g, '');
-    setUserId(filtered);
-    if (raw !== filtered) {
-      setUserIdError('아이디는 영문자와 숫자만 입력할 수 있습니다.');
+    const val = e.target.value;
+    setUserId(val);
+    if (val && !/^[A-Za-z0-9]+$/.test(val)) {
+      setUserIdError('영문자와 숫자만 입력할 수 있습니다.');
     } else {
       setUserIdError('');
     }
@@ -167,17 +166,13 @@ const Signup = () => {
                     value={userId}
                     onChange={handleUserIdChange}
                     required
-                    placeholder="사용할 아이디 (영문, 숫자만)"
+                    placeholder="사용할 아이디"
                     className={`custom-input ${userIdError ? 'is-invalid' : ''}`}
                   />
-                  {userIdError ? (
+                  {userIdError && (
                     <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
                       ⚠️ {userIdError}
                     </div>
-                  ) : (
-                    <Form.Text className="text-muted" style={{ fontSize: '0.82rem' }}>
-                      영문자와 숫자만 입력 가능합니다.
-                    </Form.Text>
                   )}
                 </Form.Group>
 

@@ -6,7 +6,8 @@ export const fetchWorkRecords = async (params = {}) => {
     const response = await globalApiClient.get('/api/work-record', {
       params: { size: 10, ...params }
     });
-    return { success: true, data: response.data };
+    const data = response.data?.content !== undefined ? response.data.content : response.data;
+    return { success: true, data: data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 기록을 불러오는데 실패했습니다.';
     return { success: false, error: errMsg };

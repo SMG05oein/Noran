@@ -61,18 +61,24 @@ public class User {
     private String userTempPw; // 임시 비번 (암호화 안 함)
 
     @Convert(converter = com.recode.Dwaeji.common.converter.CryptoConverter.class)
-    @Column(name = "user_resident_number", length = 255)
-    private String userResidentNumber;
-
-    @Convert(converter = com.recode.Dwaeji.common.converter.CryptoConverter.class)
     @Column(name = "user_account_number", length = 255)
     private String userAccountNumber;
+
+    @Column(name = "user_account_name", length = 50)
+    private String userAccountName;
 
     @Column(name = "user_bank", length = 50)
     private String userBank;
 
     @Column(name = "user_hourly_wage")
     private Integer userHourlyWage;
+
+    @Builder.Default
+    @Column(name = "bank_consent_agreed", nullable = false, columnDefinition = "TINYINT(1)")
+    private Boolean bankConsentAgreed = false;
+
+    @Column(name = "bank_consent_date")
+    private LocalDateTime bankConsentDate;
 
     @CreatedDate
     @Column(name = "user_created_at", nullable = false, updatable = false)

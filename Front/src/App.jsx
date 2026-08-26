@@ -15,6 +15,7 @@ import AdminMain from './pages/AdminMain';
 import AdminUsers from './pages/AdminUsers';
 import AdminRecords from './pages/AdminRecords';
 import AdminWorkPlaces from './pages/AdminWorkPlaces';
+import AdminUserTypes from './pages/AdminUserTypes';
 import NotFound from './pages/NotFound';
 import AdminWeeklyAssign from './pages/AdminWeeklyAssign';
 import RecordEdit from './pages/RecordEdit';
@@ -130,6 +131,8 @@ function App() {
       <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />
       <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
       <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
+      <Route path="/admin/user-types" element={<AdminRoute><AdminUserTypes /></AdminRoute>} />
+      <Route path="/admin/mypage" element={<AdminRoute><MyPage /></AdminRoute>} />
 
       {/* 개발자 전용 라우트 */}
       <Route path="/dev/login" element={<DevLogin />} />

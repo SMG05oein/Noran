@@ -264,8 +264,8 @@ public class UserServiceImpl implements UserService {
     }
 
     private String maskAccountNumber(String account) {
-        if (account == null || account.length() < 6) return account;
-        return account.substring(0, 6) + "*".repeat(Math.max(0, account.length() - 6));
+        if (account == null || account.trim().isEmpty()) return null;
+        return "기재";
     }
 
     @Override
@@ -287,7 +287,7 @@ public class UserServiceImpl implements UserService {
                 .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
                 .userIsActive(user.getUserIsActive())
                 .isAdmin(isAdmin)
-                .userResidentNumber(maskResidentNumber(user.getUserResidentNumber()))
+                .userAccountName(user.getUserAccountName())
                 .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
                 .userBank(user.getUserBank())
                 .userHourlyWage(user.getUserHourlyWage())
@@ -324,7 +324,7 @@ public class UserServiceImpl implements UserService {
                 .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
                 .userIsActive(user.getUserIsActive())
                 .isAdmin(adminFlag)
-                .userResidentNumber(maskResidentNumber(user.getUserResidentNumber()))
+                .userAccountName(user.getUserAccountName())
                 .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
                 .userBank(user.getUserBank())
                 .userHourlyWage(user.getUserHourlyWage())
@@ -339,6 +339,7 @@ public class UserServiceImpl implements UserService {
 
         return com.recode.Dwaeji.user.dto.AccountDetailsDto.builder()
                 .userBank(user.getUserBank())
+                .userAccountName(user.getUserAccountName())
                 .userAccountNumber(user.getUserAccountNumber()) // 원문 반환
                 .build();
     }
@@ -358,7 +359,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
         return com.recode.Dwaeji.user.dto.SensitiveInfoDto.builder()
-                .userResidentNumber(targetUser.getUserResidentNumber())
+                .userAccountName(targetUser.getUserAccountName())
                 .userAccountNumber(targetUser.getUserAccountNumber())
                 .userBank(targetUser.getUserBank())
                 .userHourlyWage(targetUser.getUserHourlyWage())
@@ -379,8 +380,9 @@ public class UserServiceImpl implements UserService {
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        if (dto.getUserResidentNumber() != null) {
-            targetUser.setUserResidentNumber(dto.getUserResidentNumber());
+
+        if (dto.getUserAccountName() != null) {
+            targetUser.setUserAccountName(dto.getUserAccountName());
         }
         if (dto.getUserAccountNumber() != null) {
             targetUser.setUserAccountNumber(dto.getUserAccountNumber());
@@ -429,7 +431,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, boolean showInactive) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -438,19 +440,33 @@ public class UserServiceImpl implements UserService {
         }
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
-                page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "userName"));
+                page, size, org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.asc("userName"),
+                        org.springframework.data.domain.Sort.Order.asc("userIdx")));
 
         org.springframework.data.domain.Page<User> users;
         boolean hasName = userName != null && !userName.trim().isEmpty();
 
-        if (workPlaceIdx != null && hasName) {
-            users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdxAndUserNameContaining(0, workPlaceIdx, userName, pageable);
-        } else if (workPlaceIdx != null) {
-            users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdx(0, workPlaceIdx, pageable);
-        } else if (hasName) {
-            users = userRepository.findByUserType_UtIsAdminAndUserNameContaining(0, userName, pageable);
+        if (showInactive) {
+            if (workPlaceIdx != null && hasName) {
+                users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdxAndUserNameContaining(0, workPlaceIdx, userName, pageable);
+            } else if (workPlaceIdx != null) {
+                users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdx(0, workPlaceIdx, pageable);
+            } else if (hasName) {
+                users = userRepository.findByUserType_UtIsAdminAndUserNameContaining(0, userName, pageable);
+            } else {
+                users = userRepository.findByUserType_UtIsAdmin(0, pageable);
+            }
         } else {
-            users = userRepository.findByUserType_UtIsAdmin(0, pageable);
+            if (workPlaceIdx != null && hasName) {
+                users = userRepository.findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdxAndUserNameContaining(0, 1, workPlaceIdx, userName, pageable);
+            } else if (workPlaceIdx != null) {
+                users = userRepository.findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdx(0, 1, workPlaceIdx, pageable);
+            } else if (hasName) {
+                users = userRepository.findByUserType_UtIsAdminAndUserIsActiveAndUserNameContaining(0, 1, userName, pageable);
+            } else {
+                users = userRepository.findByUserType_UtIsAdminAndUserIsActive(0, 1, pageable);
+            }
         }
 
         return users.map(user -> {
@@ -467,8 +483,8 @@ public class UserServiceImpl implements UserService {
                     .userIsActive(user.getUserIsActive())
                     .isAdmin(adminFlag)
                     .userHourlyWage(user.getUserHourlyWage())
-                    .userResidentNumber(user.getUserResidentNumber() != null && user.getUserResidentNumber().length() >= 7 ? user.getUserResidentNumber().substring(0, 7) + "******" : (user.getUserResidentNumber() != null ? "입력됨" : null))
-                    .userAccountNumber(user.getUserAccountNumber() != null && user.getUserAccountNumber().length() >= 4 ? user.getUserAccountNumber().substring(0, user.getUserAccountNumber().length() - 4) + "****" : (user.getUserAccountNumber() != null ? "입력됨" : null))
+                    .userAccountName(user.getUserAccountName())
+                    .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
                     .userBank(user.getUserBank())
                     .build();
         });
@@ -476,7 +492,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, boolean showInactive) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -485,9 +501,16 @@ public class UserServiceImpl implements UserService {
         }
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
-                page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "userName"));
+                page, size, org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.asc("userName"),
+                        org.springframework.data.domain.Sort.Order.asc("userIdx")));
 
-        org.springframework.data.domain.Page<User> users = userRepository.findByUserType_UtIsAdmin(1, pageable);
+        org.springframework.data.domain.Page<User> users;
+        if (showInactive) {
+            users = userRepository.findByUserType_UtIsAdmin(1, pageable);
+        } else {
+            users = userRepository.findByUserType_UtIsAdminAndUserIsActive(1, 1, pageable);
+        }
         return users.map(user -> {
             Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1) ? 1 : null;
             return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
@@ -502,8 +525,8 @@ public class UserServiceImpl implements UserService {
                     .userIsActive(user.getUserIsActive())
                     .isAdmin(adminFlag)
                     .userHourlyWage(user.getUserHourlyWage())
-                    .userResidentNumber(user.getUserResidentNumber() != null && user.getUserResidentNumber().length() >= 7 ? user.getUserResidentNumber().substring(0, 7) + "******" : (user.getUserResidentNumber() != null ? "입력됨" : null))
-                    .userAccountNumber(user.getUserAccountNumber() != null && user.getUserAccountNumber().length() >= 4 ? user.getUserAccountNumber().substring(0, user.getUserAccountNumber().length() - 4) + "****" : (user.getUserAccountNumber() != null ? "입력됨" : null))
+                    .userAccountName(user.getUserAccountName())
+                    .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
                     .userBank(user.getUserBank())
                     .build();
         });
@@ -522,6 +545,15 @@ public class UserServiceImpl implements UserService {
         if (dto.getUserAccountNumber() != null && !dto.getUserAccountNumber().isEmpty()) {
             user.setUserAccountNumber(dto.getUserAccountNumber());
         }
+        if (dto.getUserAccountName() != null && !dto.getUserAccountName().isEmpty()) {
+            user.setUserAccountName(dto.getUserAccountName());
+        }
+        
+        if (Boolean.TRUE.equals(dto.getBankConsentAgreed())) {
+            user.setBankConsentAgreed(true);
+            user.setBankConsentDate(java.time.LocalDateTime.now());
+        }
+        
         userRepository.save(user);
     }
 
@@ -576,5 +608,13 @@ public class UserServiceImpl implements UserService {
         user.setUserIsTempPw(0);
         user.setUserTempPw(null);
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<com.recode.Dwaeji.user.dto.UserTypeDto> getAllUserTypes() {
+        return userTypeRepository.findAll().stream()
+                .map(com.recode.Dwaeji.user.dto.UserTypeDto::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
     }
 }

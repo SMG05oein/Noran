@@ -36,6 +36,8 @@ const AdminGNB = () => {
             <Nav.Link as={Link} to="/admin/records" className="gnb-link text-white px-3 py-2 rounded-pill">기록 관리</Nav.Link>
             <Nav.Link as={Link} to="/admin/employees" className="gnb-link text-white px-3 py-2 rounded-pill">직원 관리</Nav.Link>
             <Nav.Link as={Link} to="/admin/workplaces" className="gnb-link text-white px-3 py-2 rounded-pill">지점 관리</Nav.Link>
+            <Nav.Link as={Link} to="/admin/user-types" className="gnb-link text-white px-3 py-2 rounded-pill">직급 관리</Nav.Link>
+            <Nav.Link as={Link} to="/admin/mypage" className="gnb-link text-white px-3 py-2 rounded-pill">마이페이지</Nav.Link>
             <Nav.Link onClick={handleLogout} className="gnb-link gnb-logout text-white px-4 py-2 rounded-pill">
               로그아웃
             </Nav.Link>

@@ -157,7 +157,8 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                                 .build();
                     }
                 })
-                .sorted(Comparator.comparing(WorkApplyWorkResponseDto::getUserName))
+                .sorted(Comparator.comparing(WorkApplyWorkResponseDto::getUserName, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(WorkApplyWorkResponseDto::getUserIdx))
                 .collect(Collectors.toList());
     }
 

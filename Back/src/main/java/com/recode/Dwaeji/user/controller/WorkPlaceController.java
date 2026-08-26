@@ -13,7 +13,7 @@ import com.recode.Dwaeji.user.dto.WorkPlaceRequestDto;
 
 import java.util.List;
 
-@Tag(name = "WorkPlace API", description = "근무지 관련 API")
+@Tag(name = "근무지 API", description = "근무지 CRUD API")
 @RestController
 @RequestMapping("/api/work-place")
 @RequiredArgsConstructor

@@ -13,5 +13,6 @@ import lombok.Setter;
 @Builder
 public class AccountDetailsDto {
     private String userBank;
+    private String userAccountName;
     private String userAccountNumber; // 원문
 }

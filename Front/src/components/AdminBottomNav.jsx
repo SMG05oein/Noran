@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaChartBar, FaCheckSquare, FaUsers, FaCog, FaHistory, FaBuilding } from 'react-icons/fa';
+import { FaChartBar, FaCheckSquare, FaUsers, FaCog, FaHistory, FaBuilding, FaUserTag, FaUserCircle } from 'react-icons/fa';
 import './BottomNav.css';
 
 const AdminBottomNav = () => {
@@ -22,6 +22,14 @@ const AdminBottomNav = () => {
       <NavLink to="/admin/workplaces" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
         <FaBuilding className="icon" />
         <span>지점관리</span>
+      </NavLink>
+      <NavLink to="/admin/user-types" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        <FaUserTag className="icon" />
+        <span>직급관리</span>
+      </NavLink>
+      <NavLink to="/admin/mypage" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        <FaUserCircle className="icon" />
+        <span>마이페이지</span>
       </NavLink>
     </div>
   );

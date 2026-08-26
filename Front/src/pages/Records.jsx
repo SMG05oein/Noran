@@ -28,7 +28,7 @@ const Records = () => {
   const loadRecords = async () => {
     const res = await fetchWorkRecords();
     if (res.success) {
-      setRecords(res.data);
+      setRecords(res.data.content || res.data || []);
     }
   };
 

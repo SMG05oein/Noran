@@ -3,6 +3,7 @@ import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Mod
 import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel } from '../api/workApi';
 import { fetchWorkPlaces } from '../api/authApi';
 import { format } from 'date-fns';
+import PaginationBar from '../components/PaginationBar';
 import './AdminMain.css';
 
 const AdminRecords = () => {
@@ -15,6 +16,7 @@ const AdminRecords = () => {
   // Pagination & Sorting states
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
   const [sortBy, setSortBy] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,7 +76,10 @@ const AdminRecords = () => {
   };
 
   useEffect(() => { loadBranches(); }, []);
-  useEffect(() => { loadData(); }, [page, sortBy, sortDir, searchTerm, selectedBranch, selectedMonth]);
+  useEffect(() => { 
+    loadData(); 
+    setPageInput((page + 1).toString());
+  }, [page, sortBy, sortDir, searchTerm, selectedBranch, selectedMonth]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -301,19 +306,13 @@ const AdminRecords = () => {
                   </Table>
                 </div>
               )}
-              <div className="d-flex justify-content-center mt-4">
-                <ButtonGroup size="sm">
-                  <Button variant="outline-primary" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                    이전
-                  </Button>
-                  <Button variant="primary" disabled>
-                    {page + 1} / {totalPages}
-                  </Button>
-                  <Button variant="outline-primary" disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>
-                    다음
-                  </Button>
-                </ButtonGroup>
-              </div>
+              <PaginationBar 
+                page={page} 
+                totalPages={totalPages} 
+                pageInput={pageInput} 
+                setPage={setPage} 
+                setPageInput={setPageInput} 
+              />
             </Card.Body>
           </Card>
         )}

@@ -1,5 +1,7 @@
 package com.recode.Dwaeji.user.dto;
 
+import lombok.Builder;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class LoginResponseDto {
     private String accessToken;
     

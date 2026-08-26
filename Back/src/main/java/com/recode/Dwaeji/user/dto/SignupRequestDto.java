@@ -1,5 +1,7 @@
 package com.recode.Dwaeji.user.dto;
 
+import lombok.Builder;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +17,7 @@ import jakarta.validation.constraints.NotNull;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class SignupRequestDto {
 
     @NotBlank(message = "아이디를 입력해주세요.")

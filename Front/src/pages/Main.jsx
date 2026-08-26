@@ -13,7 +13,7 @@ const Main = () => {
   useEffect(() => {
     const loadData = async () => {
       const recRes = await fetchWorkRecords();
-      if (recRes.success) setWorkRecords(recRes.data);
+      if (recRes.success) setWorkRecords(recRes.data.content || recRes.data || []);
       
       const reqRes = await fetchWorkRequests();
       if (reqRes.success) setWorkRequests(reqRes.data);

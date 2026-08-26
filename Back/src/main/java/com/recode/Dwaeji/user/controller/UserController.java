@@ -140,6 +140,13 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "직급(UserType) 목록 조회", description = "전체 직급(UserType) 목록을 조회합니다.")
+    @GetMapping("/user-types")
+    public ResponseEntity<java.util.List<com.recode.Dwaeji.user.dto.UserTypeDto>> getAllUserTypes() {
+        return ResponseEntity.ok(userService.getAllUserTypes());
+    }
+
+
     @Operation(summary = "일반 직원 검색", description = "관리자 전용. 이름, 소속 지점으로 알바생(직원)을 검색하고 10명 단위로 페이징하여 조회합니다.")
     @GetMapping("/admin/workers")
     public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> searchWorkers(
@@ -147,9 +154,10 @@ public class UserController {
             @RequestParam(required = false) String userName,
             @RequestParam(required = false) Long workPlaceIdx,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "false") boolean showInactive) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.searchWorkers(userDetails.getUsername(), userName, workPlaceIdx, page, size));
+        return ResponseEntity.ok(userService.searchWorkers(userDetails.getUsername(), userName, workPlaceIdx, page, size, showInactive));
     }
 
     @Operation(summary = "관리자 목록 조회", description = "관리자 전용. 관리자 계정만 10명 단위로 페이징하여 조회합니다.")
@@ -157,9 +165,10 @@ public class UserController {
     public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> getManagers(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "false") boolean showInactive) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.getManagers(userDetails.getUsername(), page, size));
+        return ResponseEntity.ok(userService.getManagers(userDetails.getUsername(), page, size, showInactive));
     }
 
     @Operation(summary = "임시 비밀번호 설정", description = "관리자 전용. 특정 유저의 임시 비밀번호를 설정합니다.")

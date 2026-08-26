@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Badge, Modal, Form, Alert } from 'react-bootstrap';
-import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchWorkPlaces } from '../api/authApi';
+import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchWorkPlaces, fetchUserTypes } from '../api/authApi';
+import PaginationBar from '../components/PaginationBar';
 import './AdminMain.css';
 
 const AdminUsers = () => {
-  const [selectedRole, setSelectedRole] = useState('직원');
-  const [selectedBranch, setSelectedBranch] = useState('전체');
+  const [selectedRole, setSelectedRole] = useState('알바생');
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [searchName, setSearchName] = useState('');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 페이징 상태
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageInput, setPageInput] = useState('1');
 
   // 기본 정보 수정 모달
   const [editUser, setEditUser] = useState(null);
@@ -33,74 +40,80 @@ const AdminUsers = () => {
   const [sensitiveData, setSensitiveData] = useState(null); // 원문 (getSensitiveInfo 호출 후)
   const [sensitiveLoading, setSensitiveLoading] = useState(false);
   const [editSensitive, setEditSensitive] = useState(false);
-  const [sensitiveResidentNo, setSensitiveResidentNo] = useState('');
+  const [sensitiveAccountName, setSensitiveAccountName] = useState('');
   const [sensitiveAccountNo, setSensitiveAccountNo] = useState('');
   const [sensitiveBank, setSensitiveBank] = useState('');
   const [sensitiveWage, setSensitiveWage] = useState('');
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   const [sensitiveMsg, setSensitiveMsg] = useState('');
 
-  const [branches, setBranches] = useState(['전체']);
+  const [branches, setBranches] = useState([{ wpIdx: '', wpName: '전체' }]);
+  const [userTypes, setUserTypes] = useState([]);
 
   const loadUsers = async () => {
     setLoading(true);
-
     try {
-      if (selectedRole === '직원') {
-        const res = await fetchAdminWorkers({ size: 10, userName: searchName || undefined });
-        if (res.success && res.data?.content) {
-          setUsers(res.data.content);
-        } else {
-          setUsers([]);
-        }
+      const params = { size: 10, page, showInactive };
+      if (selectedBranch) {
+        params.workPlaceIdx = Number(selectedBranch);
+      }
+      if (searchName) {
+        params.userName = searchName;
+      }
+
+      let res;
+      if (selectedRole === '알바생') {
+        res = await fetchAdminWorkers(params);
       } else {
-        const res = await fetchAdminManagers({ size: 10 });
-        if (res.success && res.data?.content) {
-          setUsers(res.data.content);
-        } else {
-          setUsers([]);
-        }
+        res = await fetchAdminManagers(params);
+      }
+
+      if (res.success && res.data?.content !== undefined) {
+        setUsers(res.data.content);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalElements(res.data.totalElements || 0);
+      } else if (res.success && Array.isArray(res.data)) {
+        setUsers(res.data);
+        setTotalPages(1);
+        setTotalElements(res.data.length);
+      } else {
+        setUsers([]);
+        setTotalPages(1);
+        setTotalElements(0);
       }
     } catch (e) {
       console.error(e);
       setUsers([]);
     }
-
     setLoading(false);
   };
 
   const loadBranches = async () => {
     const branchRes = await fetchWorkPlaces();
     if (branchRes.success) {
-      setBranches(['전체', ...branchRes.data.map(b => b.wpName)]);
+      setBranches([{ wpIdx: '', wpName: '전체' }, ...branchRes.data]);
     }
   };
 
   useEffect(() => {
     loadBranches();
+    const loadUserTypes = async () => {
+      const res = await fetchUserTypes();
+      if (res.success) setUserTypes(res.data);
+    };
+    loadUserTypes();
   }, []);
 
   useEffect(() => {
     loadUsers();
-  }, [selectedRole]);
+  }, [selectedRole, page, selectedBranch, showInactive]);
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setPage(0);
+    setPageInput('1');
     loadUsers();
   };
-
-  const { adminUsers, workerUsers } = useMemo(() => {
-    const filtered = users.filter(u => {
-      const branchOk = selectedBranch === '전체' || (u.workPlaceName && u.workPlaceName.includes(selectedBranch));
-      const activeOk = showInactive ? true : u.userIsActive === 1;
-      return branchOk && activeOk;
-    });
-
-    return {
-      adminUsers: selectedRole === '관리자' ? filtered : [],
-      workerUsers: selectedRole === '직원' ? filtered : []
-    };
-  }, [users, selectedBranch, showInactive, selectedRole]);
 
   const openEditModal = (u) => {
     setEditUser(u);
@@ -180,7 +193,7 @@ const AdminUsers = () => {
     setEditSensitive(false);
     setSensitiveMsg('');
     // 수정 폼 초기값도 마스킹 기준
-    setSensitiveResidentNo('');
+    setSensitiveAccountName(u.userAccountName || '');
     setSensitiveAccountNo(u.userAccountNumber || '');
     setSensitiveBank(u.userBank || '');
     setSensitiveWage(u.userHourlyWage ? String(u.userHourlyWage) : '');
@@ -194,7 +207,7 @@ const AdminUsers = () => {
     setSensitiveLoading(false);
     if (res.success) {
       setSensitiveData(res.data);
-      setSensitiveResidentNo(res.data.userResidentNumber || '');
+      setSensitiveAccountName(res.data.userAccountName || '');
       setSensitiveAccountNo(res.data.userAccountNumber || '');
       setSensitiveBank(res.data.userBank || '');
       setSensitiveWage(res.data.userHourlyWage ? String(res.data.userHourlyWage) : '');
@@ -207,7 +220,7 @@ const AdminUsers = () => {
     setSensitiveSaving(true);
     setSensitiveMsg('');
     const res = await updateSensitiveInfo(sensitiveUser.userIdx, {
-      userResidentNumber: sensitiveResidentNo,
+      userAccountName: sensitiveAccountName,
       userAccountNumber: sensitiveAccountNo,
       userBank: sensitiveBank,
       userHourlyWage: sensitiveWage ? Number(sensitiveWage) : null,
@@ -218,6 +231,15 @@ const AdminUsers = () => {
       setEditSensitive(false);
       loadUsers();
     }
+  };
+
+  const renderSensitiveValue = (val) => {
+    if (!val) {
+      return <Badge bg="danger" className="fw-bold px-3 py-1 rounded-pill shadow-sm" style={{ fontSize: '1rem' }}>미기재</Badge>;
+    } else if (val === "기재") {
+      return <Badge bg="success" className="fw-bold px-3 py-1 rounded-pill shadow-sm" style={{ fontSize: '1rem' }}>기재</Badge>;
+    }
+    return <span className="text-dark fw-bold">{val}</span>;
   };
 
   return (
@@ -231,33 +253,45 @@ const AdminUsers = () => {
               id="show-inactive-switch"
               label="퇴사자 포함"
               checked={showInactive}
-              onChange={e => setShowInactive(e.target.checked)}
+              onChange={e => {
+                setShowInactive(e.target.checked);
+                setPage(0);
+                setPageInput('1');
+              }}
               className="fw-bold me-3"
             />
             <ButtonGroup className="me-2 shadow-sm">
               <ToggleButton
                 id="role-worker"
                 type="radio"
-                variant={selectedRole === '직원' ? "primary" : "outline-primary"}
+                variant={selectedRole === '알바생' ? "primary" : "outline-primary"}
                 name="roleRadio"
-                value="직원"
-                checked={selectedRole === '직원'}
-                onChange={e => setSelectedRole(e.currentTarget.value)}
+                value="알바생"
+                checked={selectedRole === '알바생'}
+                onChange={e => {
+                  setSelectedRole(e.currentTarget.value);
+                  setPage(0);
+                  setPageInput('1');
+                }}
                 className="px-3 fw-bold"
               >
-                직원
+                알바생
               </ToggleButton>
               <ToggleButton
                 id="role-admin"
                 type="radio"
-                variant={selectedRole === '관리자' ? "danger" : "outline-danger"}
+                variant={selectedRole === '직원' ? "danger" : "outline-danger"}
                 name="roleRadio"
-                value="관리자"
-                checked={selectedRole === '관리자'}
-                onChange={e => setSelectedRole(e.currentTarget.value)}
+                value="직원"
+                checked={selectedRole === '직원'}
+                onChange={e => {
+                  setSelectedRole(e.currentTarget.value);
+                  setPage(0);
+                  setPageInput('1');
+                }}
                 className="px-3 fw-bold"
               >
-                관리자
+                직원
               </ToggleButton>
             </ButtonGroup>
             <ButtonGroup className="shadow-sm">
@@ -266,14 +300,18 @@ const AdminUsers = () => {
                   key={idx}
                   id={`user-branch-${idx}`}
                   type="radio"
-                  variant={selectedBranch === b ? "primary" : "outline-primary"}
+                  variant={selectedBranch === (b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : '') ? "primary" : "outline-primary"}
                   name="userBranchRadio"
-                  value={b}
-                  checked={selectedBranch === b}
-                  onChange={e => setSelectedBranch(e.currentTarget.value)}
+                  value={b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : ''}
+                  checked={selectedBranch === (b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : '')}
+                  onChange={e => {
+                    setSelectedBranch(e.currentTarget.value);
+                    setPage(0);
+                    setPageInput('1');
+                  }}
                   className="px-3 fw-bold"
                 >
-                  {b}
+                  {b.wpName}
                 </ToggleButton>
               ))}
             </ButtonGroup>
@@ -288,9 +326,9 @@ const AdminUsers = () => {
               value={searchName}
               onChange={e => setSearchName(e.target.value)}
               className="me-2"
-              disabled={selectedRole === '관리자'}
+              disabled={selectedRole === '직원'}
             />
-            <Button type="submit" variant="primary" className="fw-bold text-nowrap" disabled={selectedRole === '관리자'}>
+            <Button type="submit" variant="primary" className="fw-bold text-nowrap" disabled={selectedRole === '직원'}>
               검색
             </Button>
           </Form>
@@ -300,7 +338,7 @@ const AdminUsers = () => {
           <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
         ) : (
           <>
-            {selectedRole === '관리자' && (
+            {selectedRole === '직원' && (
               <Card className="border-0 shadow-sm rounded-4 mb-4">
                 <Card.Header className="bg-white border-0 pt-4 pb-2 px-4">
                   <h5 className="fw-bold mb-0 text-danger">관리자 목록</h5>
@@ -310,6 +348,7 @@ const AdminUsers = () => {
                     <Table hover className="align-middle mb-0 text-center">
                       <thead className="table-light">
                         <tr>
+                          <th>No</th>
                           <th>이름</th>
                           <th>아이디</th>
                           <th>소속</th>
@@ -321,12 +360,13 @@ const AdminUsers = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {adminUsers.map(u => (
+                        {users.map((u, idx) => (
                           <tr key={u.userIdx} className={u.userIsActive !== 1 ? 'table-secondary text-muted' : ''}>
+                            <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
                             <td className="fw-bold">{u.userName}</td>
                             <td className="text-muted small">{u.userId}</td>
                             <td>{u.workPlaceName || '-'}</td>
-                            <td><Badge bg="danger">관리자</Badge></td>
+                            <td><Badge bg="danger">{u.userTypeName || '관리자'}</Badge></td>
                             <td className="small">{u.userHourlyWage ? `${u.userHourlyWage.toLocaleString()}원` : '-'}</td>
                             <td className="small">{u.userPhone || '-'}</td>
                             <td>
@@ -345,9 +385,9 @@ const AdminUsers = () => {
                             </td>
                           </tr>
                         ))}
-                        {adminUsers.length === 0 && (
+                        {users.length === 0 && (
                           <tr>
-                            <td colSpan={8} className="text-center py-5 text-muted">해당하는 관리자가 없습니다.</td>
+                            <td colSpan={9} className="text-center py-5 text-muted">해당하는 관리자가 없습니다.</td>
                           </tr>
                         )}
                       </tbody>
@@ -357,16 +397,17 @@ const AdminUsers = () => {
               </Card>
             )}
 
-            {selectedRole === '직원' && (
+            {selectedRole === '알바생' && (
               <Card className="border-0 shadow-sm rounded-4">
                 <Card.Header className="bg-white border-0 pt-4 pb-2 px-4">
-                  <h5 className="fw-bold mb-0 text-primary">직원 목록</h5>
+                  <h5 className="fw-bold mb-0 text-primary">알바생 목록</h5>
                 </Card.Header>
                 <Card.Body className="p-4 pt-0">
                   <div className="table-responsive">
                     <Table hover className="align-middle mb-0 text-center">
                       <thead className="table-light">
                         <tr>
+                          <th>No</th>
                           <th>이름</th>
                           <th>아이디</th>
                           <th>소속</th>
@@ -378,8 +419,9 @@ const AdminUsers = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {workerUsers.map(u => (
+                        {users.map((u, idx) => (
                           <tr key={u.userIdx} className={u.userIsActive !== 1 ? 'table-secondary text-muted' : ''}>
+                            <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
                             <td className="fw-bold">{u.userName}</td>
                             <td className="text-muted small">{u.userId}</td>
                             <td>{u.workPlaceName || '-'}</td>
@@ -402,9 +444,9 @@ const AdminUsers = () => {
                             </td>
                           </tr>
                         ))}
-                        {workerUsers.length === 0 && (
+                        {users.length === 0 && (
                           <tr>
-                            <td colSpan={8} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
+                            <td colSpan={9} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
                           </tr>
                         )}
                       </tbody>
@@ -414,6 +456,16 @@ const AdminUsers = () => {
               </Card>
             )}
           </>
+        )}
+
+        {!loading && (
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            pageInput={pageInput}
+            setPage={setPage}
+            setPageInput={setPageInput}
+          />
         )}
       </Container>
 
@@ -448,11 +500,9 @@ const AdminUsers = () => {
             <Form.Label className="fw-bold text-muted small">직급 변경 (관리자 전용, 비워두면 유지)</Form.Label>
             <Form.Select value={editFkUtIdx} onChange={e => setEditFkUtIdx(e.target.value)}>
               <option value="">-- 변경 안 함 --</option>
-              <option value="5">알바생 (기본)</option>
-              <option value="4">파트타임</option>
-              <option value="3">정규직</option>
-              <option value="2">부점장</option>
-              <option value="1">점장/관리자</option>
+              {userTypes.map(ut => (
+                <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>
+              ))}
             </Form.Select>
           </Form.Group>
         </Modal.Body>
@@ -474,48 +524,54 @@ const AdminUsers = () => {
             <Alert variant={sensitiveMsg.includes('저장') || sensitiveMsg.includes('!') ? 'success' : 'danger'} className="py-2">{sensitiveMsg}</Alert>
           )}
           {sensitiveLoading ? (
-            <div className="text-center py-3"><Spinner animation="border" /></div>
+            <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
           ) : editSensitive ? (
-            <>
+            <div className="bg-light p-4 rounded-4 shadow-sm border border-white">
               <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">주민등록번호</Form.Label>
-                <Form.Control value={sensitiveResidentNo} onChange={e => setSensitiveResidentNo(e.target.value)} placeholder="XXXXXX-XXXXXXX" />
+                <Form.Label className="fw-bold text-muted small">🏦 은행명</Form.Label>
+                <Form.Control className="border-0 shadow-sm" value={sensitiveBank} onChange={e => setSensitiveBank(e.target.value)} placeholder="예: 카카오뱅크" />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">은행</Form.Label>
-                <Form.Control value={sensitiveBank} onChange={e => setSensitiveBank(e.target.value)} placeholder="예: 카카오뱅크" />
+                <Form.Label className="fw-bold text-muted small">👤 예금주명</Form.Label>
+                <Form.Control className="border-0 shadow-sm" value={sensitiveAccountName} onChange={e => setSensitiveAccountName(e.target.value)} placeholder="예금주 명" />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
-                <Form.Control value={sensitiveAccountNo} onChange={e => setSensitiveAccountNo(e.target.value)} placeholder="계좌번호 (숫자만)" />
+                <Form.Label className="fw-bold text-muted small">🔢 계좌번호 (숫자만)</Form.Label>
+                <Form.Control className="border-0 shadow-sm" value={sensitiveAccountNo} onChange={e => setSensitiveAccountNo(e.target.value)} placeholder="계좌번호 (숫자만)" />
               </Form.Group>
               <Form.Group>
-                <Form.Label className="fw-bold text-muted small">시급 (원)</Form.Label>
-                <Form.Control type="number" value={sensitiveWage} onChange={e => setSensitiveWage(e.target.value)} placeholder="예: 10030" />
+                <Form.Label className="fw-bold text-muted small">💰 시급 (원)</Form.Label>
+                <Form.Control className="border-0 shadow-sm" type="number" value={sensitiveWage} onChange={e => setSensitiveWage(e.target.value)} placeholder="예: 10030" />
               </Form.Group>
-            </>
+            </div>
           ) : (
-            <div className="small">
-              <div className="mb-2 py-2 border-bottom d-flex justify-content-between">
-                <span className="text-muted">주민등록번호</span>
-                <strong>{sensitiveData ? (sensitiveData.userResidentNumber || '미기재') : (sensitiveUser?.userResidentNumber || '미기재')}</strong>
+            <div className="bg-light p-4 rounded-4 shadow-sm border border-white">
+              <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div className="text-muted fw-bold small">🏦 은행명</div>
+                <div className="fs-5">
+                  {renderSensitiveValue(sensitiveData ? sensitiveData.userBank : sensitiveUser?.userBank)}
+                </div>
               </div>
-              <div className="mb-2 py-2 border-bottom d-flex justify-content-between">
-                <span className="text-muted">은행</span>
-                <strong>{sensitiveData ? (sensitiveData.userBank || '미기재') : (sensitiveUser?.userBank || '미기재')}</strong>
+              <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div className="text-muted fw-bold small">👤 예금주명</div>
+                <div className="fs-5">
+                  {renderSensitiveValue(sensitiveData ? sensitiveData.userAccountName : sensitiveUser?.userAccountName)}
+                </div>
               </div>
-              <div className="mb-2 py-2 border-bottom d-flex justify-content-between">
-                <span className="text-muted">계좌번호</span>
-                <strong>{sensitiveData ? (sensitiveData.userAccountNumber || '미기재') : (sensitiveUser?.userAccountNumber || '미기재')}</strong>
+              <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div className="text-muted fw-bold small">🔢 계좌번호</div>
+                <div className="fs-5">
+                  {renderSensitiveValue(sensitiveData ? sensitiveData.userAccountNumber : sensitiveUser?.userAccountNumber)}
+                </div>
               </div>
-              <div className="py-2 d-flex justify-content-between align-items-center">
-                <span className="text-muted">시급</span>
-                <div className="d-flex align-items-center gap-2">
-                  <strong>
-                    {sensitiveData
-                      ? (sensitiveData.userHourlyWage ? `${sensitiveData.userHourlyWage.toLocaleString()}원` : '미기재')
-                      : (sensitiveUser?.userHourlyWage ? `${sensitiveUser.userHourlyWage.toLocaleString()}원` : '미기재')}
-                  </strong>
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="text-muted fw-bold small">💰 시급</div>
+                <div className="fs-5">
+                  {renderSensitiveValue(
+                    sensitiveData
+                      ? (sensitiveData.userHourlyWage ? `${sensitiveData.userHourlyWage.toLocaleString()}원` : null)
+                      : (sensitiveUser?.userHourlyWage ? `${sensitiveUser.userHourlyWage.toLocaleString()}원` : null)
+                  )}
                 </div>
               </div>
             </div>

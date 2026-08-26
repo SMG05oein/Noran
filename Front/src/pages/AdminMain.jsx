@@ -39,7 +39,7 @@ const AdminMain = () => {
       fetchWorkRecords(),
       fetchWorkPlaces()
     ]);
-    if (recRes.success) setWorkRecords(recRes.data || []);
+    if (recRes.success) setWorkRecords(recRes.data.content || recRes.data || []);
     if (branchRes.success) {
       setBranches(branchRes.data.map(b => ({ name: b.wpName, value: b.wpName, wpIdx: b.wpIdx })));
       // If selectedBranch is not in the list, set to first

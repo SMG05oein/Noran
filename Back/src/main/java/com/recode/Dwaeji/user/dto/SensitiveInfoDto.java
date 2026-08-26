@@ -12,8 +12,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class SensitiveInfoDto {
-    private String userResidentNumber; // 원문
+
     private String userAccountNumber; // 원문
+    private String userAccountName; // 예금주
     private String userBank;
     private Integer userHourlyWage;
 }

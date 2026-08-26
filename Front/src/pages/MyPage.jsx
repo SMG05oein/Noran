@@ -19,7 +19,9 @@ const MyPage = () => {
   const [userPhone, setUserPhone] = useState('');
   const [fkWorkPlaceIdx, setFkWorkPlaceIdx] = useState(1);
   const [userBank, setUserBank] = useState('');
+  const [userAccountName, setUserAccountName] = useState('');
   const [userAccountNumber, setUserAccountNumber] = useState('');
+  const [bankConsentAgreed, setBankConsentAgreed] = useState(false);
 
   // 비밀번호 변경 팝업 상태
   const [showPwModal, setShowPwModal] = useState(false);
@@ -59,6 +61,7 @@ const MyPage = () => {
       setUserEmail(res.data.userEmail || '');
       setUserPhone(res.data.userPhone || '');
       setUserBank(res.data.userBank || '');
+      setUserAccountName(res.data.userAccountName || '');
       setUserAccountNumber(res.data.userAccountNumber || '');
       
       // 내 지점 이름과 일치하는 wpIdx 찾기
@@ -113,15 +116,19 @@ const MyPage = () => {
   const handleUpdateBankInfo = async () => {
     setError('');
     setSuccess('');
-    if (!userBank || !userAccountNumber) {
-      return setError('은행명과 계좌번호를 모두 입력해주세요.');
+    if (!userBank || !userAccountName || !userAccountNumber) {
+      return setError('은행명, 예금주, 계좌번호를 모두 입력해주세요.');
+    }
+    if (!bankConsentAgreed) {
+      return setError('개인정보 수집 및 이용에 동의하셔야 합니다.');
     }
     setBankSaving(true);
-    const res = await updateMyBankInfo({ userBank, userAccountNumber });
+    const res = await updateMyBankInfo({ userBank, userAccountName, userAccountNumber, bankConsentAgreed });
     setBankSaving(false);
     if (res.success) {
       setSuccess('은행 정보가 성공적으로 수정되었습니다.');
       setAccountDetails(null);
+      setBankConsentAgreed(false);
       loadMyInfo();
     } else {
       setError(res.error || '은행 정보 수정에 실패했습니다.');
@@ -154,8 +161,9 @@ const MyPage = () => {
     if (res.success) {
       setAccountDetails(res.data);
       // 원문 조회 시 실제 입력 폼 값도 원문으로 교체
-      setUserAccountNumber(res.data.userAccountNumber);
+      setUserAccountNumber(res.data.userAccountNumber || '');
       if (res.data.userBank) setUserBank(res.data.userBank);
+      if (res.data.userAccountName) setUserAccountName(res.data.userAccountName);
     }
   };
 
@@ -249,6 +257,16 @@ const MyPage = () => {
               disabled={userInfo?.userAccountNumber && !accountDetails}
             />
           </Form.Group>
+          <Form.Group className="mb-2">
+            <Form.Label className="fw-semibold small mb-1">예금주</Form.Label>
+            <Form.Control 
+              type="text" 
+              value={userAccountName} 
+              onChange={e => setUserAccountName(e.target.value)} 
+              placeholder="예금주 명"
+              disabled={userInfo?.userAccountNumber && !accountDetails}
+            />
+          </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-semibold small mb-1">계좌번호 (숫자만)</Form.Label>
             <div className="d-flex gap-2">
@@ -267,11 +285,37 @@ const MyPage = () => {
             </div>
           </Form.Group>
 
+          {/* 정보 수정/입력 모드일 때만 동의서 노출 */}
+          {(!userInfo?.userAccountNumber || accountDetails) && (
+            <div className="bg-light p-3 rounded-3 mb-3 border">
+              <div className="fw-bold text-dark small mb-2">📌 [개인정보 수집 및 이용 동의]</div>
+              <ul className="text-muted small ps-3 mb-3">
+                <li><strong className="text-dark">수집 목적</strong>: 급여 지급 및 정산</li>
+                <li><strong className="text-dark">수집 항목</strong>: 은행명, 예금주, 계좌번호</li>
+                <li>
+                  <strong className="text-dark">보유 및 이용 기간</strong>: 근로 계약(또는 서비스 이용) 종료 시까지 이용하며, 종료 후에는 다음의 관계 법령에 따라 보존합니다.
+                  <ul className="text-muted mt-1 mb-1 ps-3" style={{ listStyleType: 'circle' }}>
+                    <li>소득세법/법인세법에 따른 급여 지급 및 원천징수 증빙 기록: 5년</li>
+                    <li>근로기준법에 따른 근로계약 및 임금대장 관련 기록: 3년</li>
+                  </ul>
+                  <span className="small text-secondary">(※ 보존 기간이 상이한 경우 가장 긴 기간인 5년을 기준으로 보관 후 지체 없이 파기합니다.)</span>
+                </li>
+              </ul>
+              <Form.Check 
+                type="checkbox"
+                id="bankConsent"
+                label={<span className="fw-bold small text-primary">[필수] 위 개인정보 수집 및 이용에 동의합니다.</span>}
+                checked={bankConsentAgreed}
+                onChange={e => setBankConsentAgreed(e.target.checked)}
+              />
+            </div>
+          )}
+
           <Button 
             variant="success" 
             className="w-100 fw-bold py-2" 
             onClick={handleUpdateBankInfo} 
-            disabled={bankSaving || (userInfo?.userAccountNumber && !accountDetails)}
+            disabled={bankSaving || (userInfo?.userAccountNumber && !accountDetails) || (!userInfo?.userAccountNumber || accountDetails) && !bankConsentAgreed}
           >
             {bankSaving ? <Spinner as="span" animation="border" size="sm" /> : '은행 정보 저장'}
           </Button>

@@ -24,10 +24,11 @@ public interface UserService {
     void updateSensitiveInfo(String requesterId, Long targetUserIdx, com.recode.Dwaeji.user.dto.SensitiveInfoDto dto);
     TokenRefreshResponseDto refreshAccessToken(String refreshToken);
 
-    org.springframework.data.domain.Page<UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size);
-    org.springframework.data.domain.Page<UserInfoDto> getManagers(String requesterId, int page, int size);
+    org.springframework.data.domain.Page<UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, boolean showInactive);
+    org.springframework.data.domain.Page<UserInfoDto> getManagers(String requesterId, int page, int size, boolean showInactive);
 
     void setTempPassword(String requesterId, Long targetUserIdx, String tempPw);
     void changePassword(String requesterId, com.recode.Dwaeji.user.dto.ChangePasswordDto dto);
     void updateMyBankInfo(String requesterId, com.recode.Dwaeji.user.dto.BankInfoUpdateDto dto);
+    java.util.List<com.recode.Dwaeji.user.dto.UserTypeDto> getAllUserTypes();
 }

@@ -18,4 +18,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndUserNameContaining(Integer isAdmin, String name, org.springframework.data.domain.Pageable pageable);
     org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndWorkPlace_WpIdx(Integer isAdmin, Long wpIdx, org.springframework.data.domain.Pageable pageable);
     org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndWorkPlace_WpIdxAndUserNameContaining(Integer isAdmin, Long wpIdx, String name, org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndUserIsActive(Integer isAdmin, Integer isActive, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndUserIsActiveAndUserNameContaining(Integer isAdmin, Integer isActive, String name, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdx(Integer isAdmin, Integer isActive, Long wpIdx, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<User> findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdxAndUserNameContaining(Integer isAdmin, Integer isActive, Long wpIdx, String name, org.springframework.data.domain.Pageable pageable);
 }

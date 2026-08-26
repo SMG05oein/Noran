@@ -4,6 +4,9 @@ import useDevAuthStore from '../store/useDevAuthStore';
 import { fetchSystemInfo, changeDevPassword } from '../api/devAuthApi';
 import { Container, Row, Col, Card, Button, Spinner, Modal, Form, Alert, Badge, Tabs, Tab, Table } from 'react-bootstrap';
 import DatabaseManager from '../components/DatabaseManager';
+import DevLogViewer from '../components/DevLogViewer';
+import ApiAnalyticsViewer from '../components/ApiAnalyticsViewer';
+import AnnouncementManager from '../components/AnnouncementManager';
 
 const DevMain = () => {
   const devUser = useDevAuthStore((state) => state.devUser);
@@ -59,12 +62,12 @@ const DevMain = () => {
     <div style={{ backgroundColor: '#1e1e2d', minHeight: '100vh', color: '#fff', padding: '2rem 0' }}>
       <Container>
         <div className="d-flex justify-content-between align-items-center mb-5 border-bottom border-secondary pb-3">
-          <h2 className="fw-bold" style={{ color: '#00d2ff' }}>Developer Dashboard</h2>
+          <h2 className="fw-bold" style={{ color: '#00d2ff' }}>개발자 대시보드</h2>
           <div>
-            <span className="me-3 fw-semibold">Welcome, {devUser?.devName}</span>
-            {devUser?.isTempPw === 1 && <Badge bg="danger" className="me-3">임시 비밀번호 사용중</Badge>}
+            <span className="me-3 fw-semibold">환영합니다, {devUser?.devName} 님</span>
+            {devUser?.isTempPw === 1 && <Badge bg="danger" className="me-3">임시 비밀번호 사용 중</Badge>}
             <Button variant="outline-info" className="me-2" onClick={() => setShowPwModal(true)}>비밀번호 변경</Button>
-            <Button variant="outline-light" onClick={handleLogout}>Logout</Button>
+            <Button variant="outline-light" onClick={handleLogout}>로그아웃</Button>
           </div>
         </div>
 
@@ -75,38 +78,38 @@ const DevMain = () => {
         ) : sysInfo ? (
           <>
           <Tabs defaultActiveKey="system" className="mb-4" data-bs-theme="dark">
-            <Tab eventKey="system" title="System & Traffic">
+            <Tab eventKey="system" title="시스템 및 트래픽">
               <Row className="g-4">
                 <Col md={4}>
                   <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
                     <Card.Body>
-                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">JVM Memory</Card.Title>
-                      <p className="mb-2"><strong>Total:</strong> {sysInfo.memory.total_mb} MB</p>
-                      <p className="mb-2"><strong>Used:</strong> {sysInfo.memory.used_mb} MB</p>
-                      <p className="mb-2"><strong>Free:</strong> {sysInfo.memory.free_mb} MB</p>
-                      <p className="mb-0"><strong>Max:</strong> {sysInfo.memory.max_mb} MB</p>
+                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">JVM 메모리 현황</Card.Title>
+                      <p className="mb-2"><strong>총 메모리 (Total):</strong> {sysInfo.memory.total_mb} MB</p>
+                      <p className="mb-2"><strong>사용 중 (Used):</strong> {sysInfo.memory.used_mb} MB</p>
+                      <p className="mb-2"><strong>여유 메모리 (Free):</strong> {sysInfo.memory.free_mb} MB</p>
+                      <p className="mb-0"><strong>최대 할당 (Max):</strong> {sysInfo.memory.max_mb} MB</p>
                     </Card.Body>
                   </Card>
                 </Col>
                 <Col md={4}>
                   <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
                     <Card.Body>
-                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">System OS</Card.Title>
-                      <p className="mb-2"><strong>OS Name:</strong> {sysInfo.os.name}</p>
-                      <p className="mb-2"><strong>Architecture:</strong> {sysInfo.os.arch}</p>
-                      <p className="mb-2"><strong>Version:</strong> {sysInfo.os.version}</p>
-                      <p className="mb-0"><strong>Processors:</strong> {sysInfo.os.processors}</p>
+                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">시스템 OS 정보</Card.Title>
+                      <p className="mb-2"><strong>OS 이름:</strong> {sysInfo.os.name}</p>
+                      <p className="mb-2"><strong>아키텍처:</strong> {sysInfo.os.arch}</p>
+                      <p className="mb-2"><strong>버전:</strong> {sysInfo.os.version}</p>
+                      <p className="mb-0"><strong>프로세서 수:</strong> {sysInfo.os.processors} 코어</p>
                     </Card.Body>
                   </Card>
                 </Col>
                 <Col md={4}>
                   <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
                     <Card.Body>
-                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">Server Uptime</Card.Title>
-                      <p className="mb-2 fs-3 text-center mt-4">
-                        {Math.floor(sysInfo.uptime.uptime_seconds / 3600)}h{' '}
-                        {Math.floor((sysInfo.uptime.uptime_seconds % 3600) / 60)}m{' '}
-                        {sysInfo.uptime.uptime_seconds % 60}s
+                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">서버 가동 시간 (Uptime)</Card.Title>
+                      <p className="mb-2 fs-3 text-center mt-4 text-info fw-bold">
+                        {Math.floor(sysInfo.uptime.uptime_seconds / 3600)}시간{' '}
+                        {Math.floor((sysInfo.uptime.uptime_seconds % 3600) / 60)}분{' '}
+                        {sysInfo.uptime.uptime_seconds % 60}초
                       </p>
                     </Card.Body>
                   </Card>
@@ -118,34 +121,34 @@ const DevMain = () => {
                 <Col md={4}>
                   <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
                     <Card.Body>
-                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">Traffic Insights</Card.Title>
+                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">트래픽 응답 현황</Card.Title>
                       <div className="d-flex justify-content-between mb-2">
                         <span><Badge bg="success">성공 (2xx)</Badge></span>
-                        <span className="fw-bold">{sysInfo.traffic.success}</span>
+                        <span className="fw-bold">{sysInfo.traffic.success}건</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span><Badge bg="primary">리다이렉션 (3xx)</Badge></span>
-                        <span className="fw-bold">{sysInfo.traffic.redirection}</span>
+                        <span className="fw-bold">{sysInfo.traffic.redirection}건</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
-                        <span><Badge bg="warning" text="dark">찾지 못했습니다 (404)</Badge></span>
-                        <span className="fw-bold">{sysInfo.traffic.notFound}</span>
+                        <span><Badge bg="warning" text="dark">찾을 수 없음 (404)</Badge></span>
+                        <span className="fw-bold">{sysInfo.traffic.notFound}건</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
                         <span><Badge bg="danger">클라이언트 오류 (4xx)</Badge></span>
-                        <span className="fw-bold">{sysInfo.traffic.clientError}</span>
+                        <span className="fw-bold">{sysInfo.traffic.clientError}건</span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
-                        <span><Badge bg="danger">서버 오류 (5xx)</Badge></span>
-                        <span className="fw-bold">{sysInfo.traffic.serverError}</span>
+                        <span><Badge bg="danger">서버 내부 오류 (5xx)</Badge></span>
+                        <span className="fw-bold">{sysInfo.traffic.serverError}건</span>
                       </div>
                       <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2">
-                        <span><Badge bg="secondary">레이트 리미티드 (429)</Badge></span>
-                        <span className="fw-bold">{sysInfo.traffic.rateLimited}</span>
+                        <span><Badge bg="secondary">요청 제한 초과 (429)</Badge></span>
+                        <span className="fw-bold">{sysInfo.traffic.rateLimited}건</span>
                       </div>
                       <div className="d-flex justify-content-between fs-5 text-info">
                         <span className="fw-bold">총 요청 수</span>
-                        <span className="fw-bold">{sysInfo.traffic.total}</span>
+                        <span className="fw-bold">{sysInfo.traffic.total}건</span>
                       </div>
                     </Card.Body>
                   </Card>
@@ -155,18 +158,18 @@ const DevMain = () => {
                 <Col md={8}>
                   <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a' }}>
                     <Card.Header style={{ backgroundColor: '#2b2b40', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }} className="fw-bold">
-                      최근 오류 로그 (Max 50)
+                      최근 발생 오류 로그 (최대 50건)
                     </Card.Header>
                     <Card.Body style={{ overflowY: 'auto', maxHeight: '350px', padding: 0 }}>
                       {sysInfo.recent_errors?.length > 0 ? (
                         <Table responsive variant="dark" hover size="sm" className="mb-0" style={{ fontSize: '0.85rem' }}>
                           <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#1e1e2d' }}>
                             <tr>
-                              <th>No</th>
-                              <th>누가</th>
-                              <th>Code</th>
-                              <th>API Path</th>
-                              <th>Msg</th>
+                              <th>번호</th>
+                              <th>요청자</th>
+                              <th>코드</th>
+                              <th>API 경로</th>
+                              <th>메시지</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -182,7 +185,7 @@ const DevMain = () => {
                           </tbody>
                         </Table>
                       ) : (
-                        <div className="text-center text-secondary py-4">오류 로그가 없습니다.</div>
+                        <div className="text-center text-secondary py-4">발생한 오류 로그가 없습니다.</div>
                       )}
                     </Card.Body>
                   </Card>
@@ -190,8 +193,20 @@ const DevMain = () => {
               </Row>
             </Tab>
 
-            <Tab eventKey="database" title="Database Management">
+            <Tab eventKey="database" title="데이터베이스 관리">
               <DatabaseManager />
+            </Tab>
+
+            <Tab eventKey="logs" title="실시간 로그">
+              <DevLogViewer />
+            </Tab>
+
+            <Tab eventKey="analytics" title="API 호출 통계">
+              <ApiAnalyticsViewer />
+            </Tab>
+
+            <Tab eventKey="announcements" title="공지사항 및 점검 관리">
+              <AnnouncementManager />
             </Tab>
           </Tabs>
         </>

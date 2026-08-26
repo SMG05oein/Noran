@@ -14,22 +14,34 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
     private final SystemMonitorService systemMonitorService;
 
     @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        request.setAttribute("startTime", System.currentTimeMillis());
+        return true;
+    }
+
+    @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        // Record the traffic with the HTTP status code
+        long startTime = request.getAttribute("startTime") != null ? (long) request.getAttribute("startTime") : System.currentTimeMillis();
+        long duration = System.currentTimeMillis() - startTime;
+
+        // Record general traffic stats
         systemMonitorService.recordTraffic(response.getStatus());
-        
-        // If there's an unhandled exception that bubbles up here, record it (though GlobalExceptionHandler usually catches them first)
+
+        // Record detailed endpoint call metrics
+        systemMonitorService.recordEndpointCall(request.getRequestURI(), request.getMethod(), duration);
+
+        // If an unhandled exception occurred, log error
         if (ex != null) {
             String who = "로그인 전";
             if (request.getUserPrincipal() != null) {
                 who = request.getUserPrincipal().getName();
             }
             systemMonitorService.addErrorLog(
-                    ex.getMessage(), 
-                    ex.getClass().getSimpleName(), 
-                    request.getRequestURL().toString(), 
-                    request.getRequestURI(), 
-                    who, 
+                    ex.getMessage(),
+                    ex.getClass().getSimpleName(),
+                    request.getRequestURL().toString(),
+                    request.getRequestURI(),
+                    who,
                     response.getStatus()
             );
         }

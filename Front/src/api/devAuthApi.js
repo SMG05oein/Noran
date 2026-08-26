@@ -52,3 +52,76 @@ export const executeDbQuery = async (id, pw, sql) => {
     return { success: false, error: errMsg };
   }
 };
+
+// 1. 실시간 로그 파일 조회 API
+export const fetchDevLogs = async (lines = 200) => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/logs`, { params: { lines } });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '로그를 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 2. API 호출 통계 Top 10 API
+export const fetchApiAnalytics = async () => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/analytics/top-endpoints`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || 'API 통계 데이터를 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 3. 공지사항 및 점검 모드 관리 API
+export const fetchAnnouncements = async () => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/announcements`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '공지사항 목록을 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+export const createAnnouncement = async (title, content, isActive) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/announcements`, { title, content, isActive });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '공지사항 등록에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+export const toggleAnnouncement = async (id) => {
+  try {
+    const response = await devApiClient.put(`${addUrl}/announcements/${id}/toggle`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '공지사항 상태 변경에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+export const deleteAnnouncement = async (id) => {
+  try {
+    const response = await devApiClient.delete(`${addUrl}/announcements/${id}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '공지사항 삭제에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+export const toggleMaintenanceMode = async (enabled) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/announcements/maintenance`, { enabled });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '점검 모드 설정 변경에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};

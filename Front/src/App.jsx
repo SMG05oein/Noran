@@ -24,6 +24,7 @@ import MyPage from './pages/MyPage';
 import DevLogin from './pages/DevLogin';
 import DevMain from './pages/DevMain';
 import DevRoute from './components/DevRoute';
+import NoticeModal from './components/NoticeModal';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -103,45 +104,48 @@ function App() {
   }, [location.pathname, isAuthenticated]);
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Main />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminMain />
-          </AdminRoute>
-        }
-      />
-      <Route path="/records" element={<ProtectedRoute><Records /></ProtectedRoute>} />
-      <Route path="/records/edit/:id" element={<ProtectedRoute><RecordEdit /></ProtectedRoute>} />
-      <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-      <Route path="/requests/edit/:id" element={<ProtectedRoute><RequestEdit /></ProtectedRoute>} />
-      <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
-      <Route path="/admin/weekly-assign" element={<AdminRoute><AdminWeeklyAssign /></AdminRoute>} />
-      <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-      <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
-      <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
-      <Route path="/admin/user-types" element={<AdminRoute><AdminUserTypes /></AdminRoute>} />
-      <Route path="/admin/mypage" element={<AdminRoute><MyPage /></AdminRoute>} />
+    <>
+      <NoticeModal />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Main />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminMain />
+            </AdminRoute>
+          }
+        />
+        <Route path="/records" element={<ProtectedRoute><Records /></ProtectedRoute>} />
+        <Route path="/records/edit/:id" element={<ProtectedRoute><RecordEdit /></ProtectedRoute>} />
+        <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+        <Route path="/requests/edit/:id" element={<ProtectedRoute><RequestEdit /></ProtectedRoute>} />
+        <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+        <Route path="/admin/weekly-assign" element={<AdminRoute><AdminWeeklyAssign /></AdminRoute>} />
+        <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+        <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
+        <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
+        <Route path="/admin/user-types" element={<AdminRoute><AdminUserTypes /></AdminRoute>} />
+        <Route path="/admin/mypage" element={<AdminRoute><MyPage /></AdminRoute>} />
 
-      {/* 개발자 전용 라우트 */}
-      <Route path="/dev/login" element={<DevLogin />} />
-      <Route element={<DevRoute />}>
-        <Route path="/dev/dashboard" element={<DevMain />} />
-      </Route>
+        {/* 개발자 전용 라우트 */}
+        <Route path="/dev/login" element={<DevLogin />} />
+        <Route element={<DevRoute />}>
+          <Route path="/dev/dashboard" element={<DevMain />} />
+        </Route>
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }
 

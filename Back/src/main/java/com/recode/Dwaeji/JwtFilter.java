@@ -39,8 +39,11 @@ public class JwtFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        // 로그인 및 회원가입 관련 경로는 JWT 필터를 거치지 않도록 설정
-        if (path.startsWith("/api/user/login") || path.startsWith("/api/user/signup") || path.startsWith("/api/user/refresh") || path.startsWith("/api/dev/auth/login")) {
+        // 로그인, 회원가입, 공개 공지사항/점검모드 및 Swagger 경로는 JWT 필터를 거치지 않도록 설정
+        if (path.startsWith("/api/user/login") || path.startsWith("/api/user/signup") 
+                || path.startsWith("/api/user/refresh") || path.startsWith("/api/dev/auth/login")
+                || path.startsWith("/api/dev/announcements/public") || path.startsWith("/api/dev/announcements/maintenance-status")
+                || path.startsWith("/swagger") || path.startsWith("/v3/api-docs") || path.startsWith("/swagger-ui")) {
             filterChain.doFilter(request, response);
             return;
         }

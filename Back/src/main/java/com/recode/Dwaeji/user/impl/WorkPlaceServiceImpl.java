@@ -35,12 +35,7 @@ public class WorkPlaceServiceImpl implements WorkPlaceService {
     @Transactional(readOnly = true)
     public List<WorkPlaceDto> getAllWorkPlaces() {
         return workPlaceRepository.findAll().stream()
-                .map(wp -> WorkPlaceDto.builder()
-                        .wpIdx(wp.getWpIdx())
-                        .wpName(wp.getWpName())
-                        .wpAddress(wp.getWpAddress())
-                        .wpAddressDetails(wp.getWpAddressDetails())
-                        .build())
+                .map(WorkPlaceDto::fromEntity)
                 .collect(Collectors.toList());
     }
 
@@ -49,12 +44,7 @@ public class WorkPlaceServiceImpl implements WorkPlaceService {
     public WorkPlaceDto getWorkPlaceById(Long wpIdx) {
         WorkPlace wp = workPlaceRepository.findById(wpIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "근무지를 찾을 수 없습니다."));
-        return WorkPlaceDto.builder()
-                .wpIdx(wp.getWpIdx())
-                .wpName(wp.getWpName())
-                .wpAddress(wp.getWpAddress())
-                .wpAddressDetails(wp.getWpAddressDetails())
-                .build();
+        return WorkPlaceDto.fromEntity(wp);
     }
 
     @Override

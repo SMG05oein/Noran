@@ -1,25 +1,18 @@
 package com.recode.Dwaeji.work_record.dto;
 
-import lombok.Builder;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
-
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import lombok.Setter;
 
-import lombok.Getter;
-
-import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class WorkRecordRequestDto {
     private LocalDate wrDate;
     

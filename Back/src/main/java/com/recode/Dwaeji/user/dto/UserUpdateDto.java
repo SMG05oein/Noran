@@ -1,7 +1,5 @@
 package com.recode.Dwaeji.user.dto;
 
-import lombok.Builder;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +11,6 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class UserUpdateDto {
     private String userName;
     private String userEmail;

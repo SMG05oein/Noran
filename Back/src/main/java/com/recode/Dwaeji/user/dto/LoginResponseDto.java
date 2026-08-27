@@ -1,12 +1,11 @@
 package com.recode.Dwaeji.user.dto;
 
-import lombok.Builder;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Getter
 @Setter

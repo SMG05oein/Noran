@@ -198,20 +198,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 })
                 .orElse("신청없음"); // 신청서 자체가 없음
 
-        return WorkRecordResponseDto.builder()
-                .wrIdx(record.getWrIdx())
-                .userIdx(record.getUser().getUserIdx())
-                .userName(record.getUser().getUserName())
-                .workPlaceName(record.getUser().getWorkPlace() != null ? record.getUser().getWorkPlace().getWpName() : null)
-                .wrDate(record.getWrDate())
-                .wrStartTime(record.getWrStartTime())
-                .wrEndTime(record.getWrEndTime())
-                .wrRestTime(record.getWrRestTime())
-                .wrRemarks(record.getWrRemarks())
-                .wrCreatedAt(record.getWrCreatedAt())
-                .wrUpdatedAt(record.getWrUpdatedAt())
-                .applyStatus(applyStatus)
-                .build();
+        return WorkRecordResponseDto.fromEntity(record, applyStatus);
     }
 
     @Override

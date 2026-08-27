@@ -150,11 +150,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                     if (apply != null) {
                         return mapToDto(apply);
                     } else {
-                        return WorkApplyWorkResponseDto.builder()
-                                .userIdx(user.getUserIdx())
-                                .userName(user.getUserName())
-                                .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
-                                .build();
+                        return WorkApplyWorkResponseDto.emptyForUser(user);
                     }
                 })
                 .sorted(Comparator.comparing(WorkApplyWorkResponseDto::getUserName, Comparator.nullsLast(Comparator.naturalOrder()))
@@ -259,12 +255,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                         startTime = startTime.substring(0, 5);
                     }
 
-                    return com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto.builder()
-                            .userIdx(apply.getUser().getUserIdx())
-                            .userName(apply.getUser().getUserName())
-                            .workPlaceName(apply.getUser().getWorkPlace() != null ? apply.getUser().getWorkPlace().getWpName() : null)
-                            .startTime(startTime)
-                            .build();
+                    return com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto.from(apply.getUser(), startTime);
                 })
                 .sorted(Comparator.comparing(com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto::getStartTime, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
@@ -348,29 +339,6 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
     }
 
     private WorkApplyWorkResponseDto mapToDto(WorkApplyWork apply) {
-        return WorkApplyWorkResponseDto.builder()
-                .wawIdx(apply.getWawIdx())
-                .userIdx(apply.getUser().getUserIdx())
-                .userName(apply.getUser().getUserName())
-                .workPlaceName(apply.getUser().getWorkPlace() != null ? apply.getUser().getWorkPlace().getWpName() : null)
-                .wawDate(apply.getWawDate())
-                .wawIsMon(apply.getWawIsMon())
-                .wawIsTue(apply.getWawIsTue())
-                .wawIsWed(apply.getWawIsWed())
-                .wawIsThu(apply.getWawIsThu())
-                .wawIsFri(apply.getWawIsFri())
-                .wawIsSat(apply.getWawIsSat())
-                .wawIsSun(apply.getWawIsSun())
-                .wawMonStartTime(apply.getWawMonStartTime())
-                .wawTueStartTime(apply.getWawTueStartTime())
-                .wawWedStartTime(apply.getWawWedStartTime())
-                .wawThuStartTime(apply.getWawThuStartTime())
-                .wawFriStartTime(apply.getWawFriStartTime())
-                .wawSatStartTime(apply.getWawSatStartTime())
-                .wawSunStartTime(apply.getWawSunStartTime())
-                .wawRemarks(apply.getWawRemarks())
-                .wawCreatedAt(apply.getWawCreatedAt())
-                .wawUpdatedAt(apply.getWawUpdatedAt())
-                .build();
+        return WorkApplyWorkResponseDto.fromEntity(apply);
     }
 }

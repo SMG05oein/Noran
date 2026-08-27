@@ -1,20 +1,16 @@
 package com.recode.Dwaeji.work_apply_work.dto;
 
-import lombok.Builder;
-
+import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
+import com.recode.Dwaeji.work_apply_work.database.WorkApplyWork;
 import lombok.AllArgsConstructor;
-
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import lombok.Setter;
 
-import lombok.Getter;
-
-import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 
 @Getter
 @Setter
@@ -46,4 +42,41 @@ public class WorkApplyWorkResponseDto {
     private String wawRemarks;
     private LocalDateTime wawCreatedAt;
     private LocalDateTime wawUpdatedAt;
+
+    public static WorkApplyWorkResponseDto fromEntity(WorkApplyWork entity) {
+        if (entity == null) return null;
+        return WorkApplyWorkResponseDto.builder()
+                .wawIdx(entity.getWawIdx())
+                .userIdx(entity.getUser() != null ? entity.getUser().getUserIdx() : null)
+                .userName(entity.getUser() != null ? entity.getUser().getUserName() : null)
+                .workPlaceName(entity.getUser() != null && entity.getUser().getWorkPlace() != null ? entity.getUser().getWorkPlace().getWpName() : null)
+                .wawDate(entity.getWawDate())
+                .wawIsMon(entity.getWawIsMon())
+                .wawIsTue(entity.getWawIsTue())
+                .wawIsWed(entity.getWawIsWed())
+                .wawIsThu(entity.getWawIsThu())
+                .wawIsFri(entity.getWawIsFri())
+                .wawIsSat(entity.getWawIsSat())
+                .wawIsSun(entity.getWawIsSun())
+                .wawMonStartTime(entity.getWawMonStartTime())
+                .wawTueStartTime(entity.getWawTueStartTime())
+                .wawWedStartTime(entity.getWawWedStartTime())
+                .wawThuStartTime(entity.getWawThuStartTime())
+                .wawFriStartTime(entity.getWawFriStartTime())
+                .wawSatStartTime(entity.getWawSatStartTime())
+                .wawSunStartTime(entity.getWawSunStartTime())
+                .wawRemarks(entity.getWawRemarks())
+                .wawCreatedAt(entity.getWawCreatedAt())
+                .wawUpdatedAt(entity.getWawUpdatedAt())
+                .build();
+    }
+
+    public static WorkApplyWorkResponseDto emptyForUser(User user) {
+        if (user == null) return null;
+        return WorkApplyWorkResponseDto.builder()
+                .userIdx(user.getUserIdx())
+                .userName(user.getUserName())
+                .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
+                .build();
+    }
 }

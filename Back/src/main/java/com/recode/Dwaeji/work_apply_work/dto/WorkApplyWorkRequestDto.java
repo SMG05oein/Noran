@@ -1,25 +1,18 @@
 package com.recode.Dwaeji.work_apply_work.dto;
 
-import lombok.Builder;
-
+import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 import lombok.AllArgsConstructor;
-
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import lombok.Setter;
 
-import lombok.Getter;
-
-import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class WorkApplyWorkRequestDto {
     private LocalDate wawDate;
     private ApplyStatus wawIsMon;

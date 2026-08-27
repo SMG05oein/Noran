@@ -1,23 +1,20 @@
 package com.recode.Dwaeji.user.dto;
 
-import lombok.Builder;
-
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
-
-import lombok.NoArgsConstructor;
-
-import lombok.Setter;
-
 import lombok.Getter;
-
-import lombok.*;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ChangePasswordDto {
-    private String currentPw;  // 현재 비번 (임시 비번 상태면 임시 비번 입력)
-    private String newPw;      // 새 비번
+
+    @NotBlank(message = "현재 비밀번호를 입력해주세요.")
+    private String currentPw;
+
+    @NotBlank(message = "새 비밀번호를 입력해주세요.")
+    private String newPw;
 }

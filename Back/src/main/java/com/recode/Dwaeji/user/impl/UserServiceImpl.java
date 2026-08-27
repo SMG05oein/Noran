@@ -274,24 +274,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        Integer isAdmin = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1) ? 1 : null;
-
-        return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
-                .userIdx(user.getUserIdx())
-                .userId(user.getUserId())
-                .userName(user.getUserName())
-                .userEmail(user.getUserEmail())
-                .userBirth(user.getUserBirth())
-                .userPhone(user.getUserPhone())
-                .userTypeName(user.getUserType() != null ? user.getUserType().getUtName() : null)
-                .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
-                .userIsActive(user.getUserIsActive())
-                .isAdmin(isAdmin)
-                .userAccountName(user.getUserAccountName())
-                .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
-                .userBank(user.getUserBank())
-                .userHourlyWage(user.getUserHourlyWage())
-                .build();
+        return com.recode.Dwaeji.user.dto.UserInfoDto.fromEntity(user);
     }
 
     @Override
@@ -311,24 +294,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 사용자가 존재하지 않습니다."));
 
-        Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1) ? 1 : null;
-
-        return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
-                .userIdx(user.getUserIdx())
-                .userId(user.getUserId())
-                .userName(user.getUserName())
-                .userEmail(user.getUserEmail())
-                .userBirth(user.getUserBirth())
-                .userPhone(user.getUserPhone())
-                .userTypeName(user.getUserType() != null ? user.getUserType().getUtName() : null)
-                .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
-                .userIsActive(user.getUserIsActive())
-                .isAdmin(adminFlag)
-                .userAccountName(user.getUserAccountName())
-                .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
-                .userBank(user.getUserBank())
-                .userHourlyWage(user.getUserHourlyWage())
-                .build();
+        return com.recode.Dwaeji.user.dto.UserInfoDto.fromEntity(user);
     }
 
     @Override
@@ -337,11 +303,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        return com.recode.Dwaeji.user.dto.AccountDetailsDto.builder()
-                .userBank(user.getUserBank())
-                .userAccountName(user.getUserAccountName())
-                .userAccountNumber(user.getUserAccountNumber()) // 원문 반환
-                .build();
+        return com.recode.Dwaeji.user.dto.AccountDetailsDto.fromEntity(user);
     }
 
     @Override
@@ -358,12 +320,7 @@ public class UserServiceImpl implements UserService {
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        return com.recode.Dwaeji.user.dto.SensitiveInfoDto.builder()
-                .userAccountName(targetUser.getUserAccountName())
-                .userAccountNumber(targetUser.getUserAccountNumber())
-                .userBank(targetUser.getUserBank())
-                .userHourlyWage(targetUser.getUserHourlyWage())
-                .build();
+        return com.recode.Dwaeji.user.dto.SensitiveInfoDto.fromEntity(targetUser);
     }
 
     @Override
@@ -469,25 +426,7 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        return users.map(user -> {
-            Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1) ? 1 : null;
-            return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
-                    .userIdx(user.getUserIdx())
-                    .userId(user.getUserId())
-                    .userName(user.getUserName())
-                    .userEmail(user.getUserEmail())
-                    .userBirth(user.getUserBirth())
-                    .userPhone(user.getUserPhone())
-                    .userTypeName(user.getUserType() != null ? user.getUserType().getUtName() : null)
-                    .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
-                    .userIsActive(user.getUserIsActive())
-                    .isAdmin(adminFlag)
-                    .userHourlyWage(user.getUserHourlyWage())
-                    .userAccountName(user.getUserAccountName())
-                    .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
-                    .userBank(user.getUserBank())
-                    .build();
-        });
+        return users.map(com.recode.Dwaeji.user.dto.UserInfoDto::fromEntity);
     }
 
     @Override
@@ -511,25 +450,7 @@ public class UserServiceImpl implements UserService {
         } else {
             users = userRepository.findByUserType_UtIsAdminAndUserIsActive(1, 1, pageable);
         }
-        return users.map(user -> {
-            Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1) ? 1 : null;
-            return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
-                    .userIdx(user.getUserIdx())
-                    .userId(user.getUserId())
-                    .userName(user.getUserName())
-                    .userEmail(user.getUserEmail())
-                    .userBirth(user.getUserBirth())
-                    .userPhone(user.getUserPhone())
-                    .userTypeName(user.getUserType() != null ? user.getUserType().getUtName() : null)
-                    .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
-                    .userIsActive(user.getUserIsActive())
-                    .isAdmin(adminFlag)
-                    .userHourlyWage(user.getUserHourlyWage())
-                    .userAccountName(user.getUserAccountName())
-                    .userAccountNumber(maskAccountNumber(user.getUserAccountNumber()))
-                    .userBank(user.getUserBank())
-                    .build();
-        });
+        return users.map(com.recode.Dwaeji.user.dto.UserInfoDto::fromEntity);
     }
 
 

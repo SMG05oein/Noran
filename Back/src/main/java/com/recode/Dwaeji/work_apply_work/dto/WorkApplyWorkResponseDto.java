@@ -1,5 +1,6 @@
 package com.recode.Dwaeji.work_apply_work.dto;
 
+import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyWork;
 import lombok.AllArgsConstructor;

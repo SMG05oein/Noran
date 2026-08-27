@@ -21,6 +21,12 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        String uri = request.getRequestURI();
+        // 개발자 전용 대시보드 API(/api/dev/*)는 트래픽 통계 및 모니터링에서 제외
+        if (uri != null && uri.startsWith("/api/dev/")) {
+            return;
+        }
+
         long startTime = request.getAttribute("startTime") != null ? (long) request.getAttribute("startTime") : System.currentTimeMillis();
         long duration = System.currentTimeMillis() - startTime;
 
@@ -28,7 +34,7 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
         systemMonitorService.recordTraffic(response.getStatus());
 
         // Record detailed endpoint call metrics
-        systemMonitorService.recordEndpointCall(request.getRequestURI(), request.getMethod(), duration);
+        systemMonitorService.recordEndpointCall(uri, request.getMethod(), duration);
 
         // If an unhandled exception occurred, log error
         if (ex != null) {

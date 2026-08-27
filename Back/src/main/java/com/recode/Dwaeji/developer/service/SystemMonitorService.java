@@ -70,7 +70,7 @@ public class SystemMonitorService {
     }
 
     public void recordEndpointCall(String path, String method, long responseTimeMs) {
-        if (path == null || method == null) {
+        if (path == null || method == null || path.startsWith("/api/dev/")) {
             return;
         }
         String key = method.toUpperCase() + " " + path;

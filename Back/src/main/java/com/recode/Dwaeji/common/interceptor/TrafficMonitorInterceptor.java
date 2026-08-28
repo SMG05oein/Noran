@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.HandlerMapping;
 
 @Component
 @RequiredArgsConstructor
@@ -33,8 +34,11 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
         // Record general traffic stats
         systemMonitorService.recordTraffic(response.getStatus());
 
+        String pattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        String endpointPath = pattern != null ? pattern : uri;
+
         // Record detailed endpoint call metrics
-        systemMonitorService.recordEndpointCall(uri, request.getMethod(), duration);
+        systemMonitorService.recordEndpointCall(endpointPath, request.getMethod(), duration);
 
         // If an unhandled exception occurred, log error
         if (ex != null) {
@@ -42,13 +46,29 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
             if (request.getUserPrincipal() != null) {
                 who = request.getUserPrincipal().getName();
             }
+            
+            String referer = request.getHeader("Referer");
+            if (referer == null || referer.isEmpty()) {
+                referer = request.getHeader("Origin");
+            }
+            if (referer == null || referer.isEmpty()) {
+                referer = "알 수 없음";
+            }
+            
+            String clientIp = request.getHeader("X-Forwarded-For");
+            if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+                clientIp = request.getRemoteAddr();
+            }
+
             systemMonitorService.addErrorLog(
                     ex.getMessage(),
                     ex.getClass().getSimpleName(),
                     request.getRequestURL().toString(),
                     request.getRequestURI(),
                     who,
-                    response.getStatus()
+                    response.getStatus(),
+                    referer,
+                    clientIp
             );
         }
     }

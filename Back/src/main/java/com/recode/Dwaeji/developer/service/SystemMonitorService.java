@@ -98,7 +98,7 @@ public class SystemMonitorService {
                 .collect(Collectors.toList());
     }
 
-    public void addErrorLog(String errorMessage, String exceptionType, String requestUrl, String apiPath, String who, int httpCode) {
+    public void addErrorLog(String errorMessage, String exceptionType, String requestUrl, String apiPath, String who, int httpCode, String referer, String clientIp) {
         Map<String, Object> errorLog = new ConcurrentHashMap<>();
         errorLog.put("no", errorNoGenerator.getAndIncrement());
         errorLog.put("timestamp", LocalDateTime.now().format(formatter));
@@ -108,6 +108,8 @@ public class SystemMonitorService {
         errorLog.put("requestUrl", requestUrl != null ? requestUrl : "Unknown");
         errorLog.put("apiPath", apiPath != null ? apiPath : "Unknown");
         errorLog.put("who", who != null ? who : "로그인 전");
+        errorLog.put("referer", referer != null ? referer : "알 수 없음");
+        errorLog.put("clientIp", clientIp != null ? clientIp : "Unknown");
 
         recentErrors.addFirst(errorLog);
         if (recentErrors.size() > MAX_ERRORS) {

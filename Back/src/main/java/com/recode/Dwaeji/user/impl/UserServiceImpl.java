@@ -59,6 +59,11 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        // 비활성화(논리적 삭제) 계정 체크
+        if (user.getUserIsActive() == null || user.getUserIsActive() == 0) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정(또는 퇴사자)입니다. 관리자에게 문의하세요.");
+        }
+
         // 토큰 생성
         // UserType과 WorkPlace 정보를 엔티티 연관관계를 통해 가져옴
         String role = user.getUserType() != null ? user.getUserType().getUtName() : "알바생";
@@ -371,6 +376,9 @@ public class UserServiceImpl implements UserService {
 
             // 3. User 정보 조회 및 권한/근무지 획득
             User user = storedToken.getUser();
+            if (user.getUserIsActive() == null || user.getUserIsActive() == 0) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정(또는 퇴사자)입니다.");
+            }
             String role = user.getUserType() != null ? user.getUserType().getUtName() : "알바생";
             String authType = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "노란돼지";
 

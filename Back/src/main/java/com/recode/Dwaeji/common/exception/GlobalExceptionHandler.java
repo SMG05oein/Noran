@@ -19,6 +19,22 @@ public class GlobalExceptionHandler {
 
     private final SystemMonitorService systemMonitorService;
 
+    private String getClientIp(HttpServletRequest request) {
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+            clientIp = request.getRemoteAddr();
+        }
+        return clientIp;
+    }
+
+    private String getReferer(HttpServletRequest request) {
+        String referer = request.getHeader("Referer");
+        if (referer == null || referer.isEmpty()) {
+            referer = request.getHeader("Origin");
+        }
+        return referer != null ? referer : "알 수 없음";
+    }
+
     private String getAuthIdentifier() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
@@ -39,7 +55,9 @@ public class GlobalExceptionHandler {
                 request.getRequestURL().toString(), 
                 request.getRequestURI(), 
                 getAuthIdentifier(), 
-                ex.getStatusCode().value()
+                ex.getStatusCode().value(),
+                getReferer(request),
+                getClientIp(request)
         );
 
         return ResponseEntity
@@ -56,7 +74,9 @@ public class GlobalExceptionHandler {
                 request.getRequestURL().toString(), 
                 request.getRequestURI(), 
                 getAuthIdentifier(), 
-                HttpStatus.BAD_REQUEST.value()
+                HttpStatus.BAD_REQUEST.value(),
+                getReferer(request),
+                getClientIp(request)
         );
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
@@ -81,7 +101,9 @@ public class GlobalExceptionHandler {
                 request.getRequestURL().toString(), 
                 request.getRequestURI(), 
                 getAuthIdentifier(), 
-                HttpStatus.BAD_REQUEST.value()
+                HttpStatus.BAD_REQUEST.value(),
+                getReferer(request),
+                getClientIp(request)
         );
 
         return ResponseEntity
@@ -102,7 +124,9 @@ public class GlobalExceptionHandler {
                 request.getRequestURL().toString(), 
                 request.getRequestURI(), 
                 getAuthIdentifier(), 
-                HttpStatus.INTERNAL_SERVER_ERROR.value()
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                getReferer(request),
+                getClientIp(request)
         );
         
         return ResponseEntity

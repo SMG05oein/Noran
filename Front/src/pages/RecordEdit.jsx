@@ -3,7 +3,7 @@ import { Container, Form, Button, Spinner } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWorkRecordById, updateWorkRecord } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
-import { FaChevronLeft, FaSave } from 'react-icons/fa';
+import { RiArrowLeftSLine, RiSave3Line } from 'react-icons/ri';
 
 const RecordEdit = () => {
   const { id } = useParams();
@@ -104,7 +104,7 @@ const RecordEdit = () => {
     <Container className="py-4 py-md-5" style={{ maxWidth: '600px' }}>
       <div className="d-flex align-items-center mb-4">
         <Button variant="link" className="text-dark p-0 me-3" onClick={() => navigate(-1)}>
-          <FaChevronLeft size={24} />
+          <RiArrowLeftSLine size={24} />
         </Button>
         <h2 className="fw-bold text-dark mb-0">근무 기록 수정</h2>
       </div>
@@ -209,7 +209,7 @@ const RecordEdit = () => {
           </Form.Group>
 
           <Button variant="primary" type="submit" className="w-100 p-3 rounded-3 fw-bold fs-5 shadow-sm d-flex align-items-center justify-content-center gap-2">
-            <FaSave />
+            <RiSave3Line />
             수정 완료
           </Button>
         </Form>

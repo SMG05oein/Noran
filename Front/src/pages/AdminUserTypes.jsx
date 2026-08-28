@@ -188,7 +188,7 @@ const AdminUserTypes = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>닫기</Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving} style={{ backgroundColor: '#d35400', border: 'none' }}>
+          <Button variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
           </Button>
         </Modal.Footer>

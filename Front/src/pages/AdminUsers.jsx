@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Badge, Modal, Form, Alert } from 'react-bootstrap';
-import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchWorkPlaces, fetchUserTypes } from '../api/authApi';
+import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchUserTypes, fetchWorkPlaces } from '../api/authApi';
 import PaginationBar from '../components/PaginationBar';
+import BranchFilter from '../components/BranchFilter';
 import './AdminMain.css';
 
 const AdminUsers = () => {
@@ -47,7 +48,7 @@ const AdminUsers = () => {
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   const [sensitiveMsg, setSensitiveMsg] = useState('');
 
-  const [branches, setBranches] = useState([{ wpIdx: '', wpName: '전체' }]);
+  const [branches, setBranches] = useState([]);
   const [userTypes, setUserTypes] = useState([]);
 
   const loadUsers = async () => {
@@ -88,20 +89,15 @@ const AdminUsers = () => {
     setLoading(false);
   };
 
-  const loadBranches = async () => {
-    const branchRes = await fetchWorkPlaces();
-    if (branchRes.success) {
-      setBranches([{ wpIdx: '', wpName: '전체' }, ...branchRes.data]);
-    }
-  };
-
   useEffect(() => {
-    loadBranches();
-    const loadUserTypes = async () => {
-      const res = await fetchUserTypes();
-      if (res.success) setUserTypes(res.data);
+    const loadData = async () => {
+      const typeRes = await fetchUserTypes();
+      if (typeRes.success) setUserTypes(typeRes.data);
+      
+      const branchRes = await fetchWorkPlaces();
+      if (branchRes.success) setBranches([{ wpIdx: '', wpName: '전체' }, ...branchRes.data]);
     };
-    loadUserTypes();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -120,7 +116,8 @@ const AdminUsers = () => {
     setEditUserName(u.userName || '');
     setEditEmail(u.userEmail || '');
     setEditPhone(u.userPhone || '');
-    setEditBranch(u.workPlaceName?.includes('영등포') ? 2 : 1);
+    const matchedBranch = branches.find(b => b.wpName === u.workPlaceName);
+    setEditBranch(matchedBranch ? matchedBranch.wpIdx : (branches.length > 1 ? branches[1].wpIdx : 1));
     setEditFkUtIdx('');
     setEditError('');
     setEditSuccess('');
@@ -219,15 +216,21 @@ const AdminUsers = () => {
   const handleSensitiveSave = async () => {
     setSensitiveSaving(true);
     setSensitiveMsg('');
-    const res = await updateSensitiveInfo(sensitiveUser.userIdx, {
+    
+    const payload = {
       userAccountName: sensitiveAccountName,
       userAccountNumber: sensitiveAccountNo,
       userBank: sensitiveBank,
       userHourlyWage: sensitiveWage ? Number(sensitiveWage) : null,
-    });
+    };
+
+    const res = await updateSensitiveInfo(sensitiveUser.userIdx, payload);
     setSensitiveSaving(false);
     setSensitiveMsg(res.success ? '저장되었습니다!' : (res.error || '저장 실패'));
+    
     if (res.success) {
+      // 수정된 데이터로 원문 보기 상태 업데이트 (수정 전 데이터가 뜨는 버그 해결)
+      setSensitiveData(payload);
       setEditSensitive(false);
       loadUsers();
     }
@@ -280,7 +283,7 @@ const AdminUsers = () => {
               <ToggleButton
                 id="role-admin"
                 type="radio"
-                variant={selectedRole === '직원' ? "danger" : "outline-danger"}
+                variant={selectedRole === '직원' ? "primary" : "outline-primary"}
                 name="roleRadio"
                 value="직원"
                 checked={selectedRole === '직원'}
@@ -294,27 +297,14 @@ const AdminUsers = () => {
                 직원
               </ToggleButton>
             </ButtonGroup>
-            <ButtonGroup className="shadow-sm">
-              {branches.map((b, idx) => (
-                <ToggleButton
-                  key={idx}
-                  id={`user-branch-${idx}`}
-                  type="radio"
-                  variant={selectedBranch === (b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : '') ? "primary" : "outline-primary"}
-                  name="userBranchRadio"
-                  value={b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : ''}
-                  checked={selectedBranch === (b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : '')}
-                  onChange={e => {
-                    setSelectedBranch(e.currentTarget.value);
-                    setPage(0);
-                    setPageInput('1');
-                  }}
-                  className="px-3 fw-bold"
-                >
-                  {b.wpName}
-                </ToggleButton>
-              ))}
-            </ButtonGroup>
+            <BranchFilter 
+              selectedBranch={selectedBranch} 
+              onChange={(val) => {
+                setSelectedBranch(val);
+                setPage(0);
+                setPageInput('1');
+              }} 
+            />
           </div>
         </div>
 
@@ -491,10 +481,11 @@ const AdminUsers = () => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
-            <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))}>
-              <option value={1}>노란돼지 (사당)</option>
-              <option value={2}>약산돼지 (영등포)</option>
-            </Form.Select>
+              <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))}>
+                {branches.filter(b => b.wpIdx !== '').map(b => (
+                  <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
+                ))}
+              </Form.Select>
           </Form.Group>
           <Form.Group>
             <Form.Label className="fw-bold text-muted small">직급 변경 (관리자 전용, 비워두면 유지)</Form.Label>
@@ -508,7 +499,7 @@ const AdminUsers = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setEditUser(null)}>닫기</Button>
-          <Button variant="primary" onClick={handleEditSave} disabled={editSaving} style={{ backgroundColor: '#d35400', border: 'none' }}>
+          <Button variant="primary" onClick={handleEditSave} disabled={editSaving}>
             {editSaving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
           </Button>
         </Modal.Footer>
@@ -582,7 +573,7 @@ const AdminUsers = () => {
             editSensitive ? (
               <>
                 <Button variant="secondary" onClick={() => setEditSensitive(false)}>취소</Button>
-                <Button variant="primary" onClick={handleSensitiveSave} disabled={sensitiveSaving} style={{ backgroundColor: '#d35400', border: 'none' }}>
+                <Button variant="primary" onClick={handleSensitiveSave} disabled={sensitiveSaving}>
                   {sensitiveSaving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
                 </Button>
               </>
@@ -591,13 +582,9 @@ const AdminUsers = () => {
                 {!sensitiveData && (
                   <Button variant="outline-danger" onClick={handleRevealSensitive}>원문 조회</Button>
                 )}
-                <Button variant="outline-primary" onClick={() => {
-                  if (!sensitiveData) {
-                    setSensitiveMsg('먼저 원문 조회를 해야 수정할 수 있습니다.');
-                  } else {
-                    setEditSensitive(true);
-                  }
-                }}>수정</Button>
+                {sensitiveData && (
+                  <Button variant="outline-primary" onClick={() => setEditSensitive(true)}>수정</Button>
+                )}
                 <Button variant="secondary" onClick={() => setSensitiveUser(null)}>닫기</Button>
               </>
             )

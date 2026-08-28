@@ -1,14 +1,15 @@
+/* Warm Theme AdminMain.css */
 .admin-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+  background-color: var(--color-bg-cream);
   padding-bottom: 2rem;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--color-surface);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--border-radius-lg);
 }
 
 .icon-wrapper {
@@ -18,7 +19,11 @@
 }
 
 .bg-warning-subtle {
-  background-color: rgba(255, 193, 7, 0.2);
+  background-color: rgba(255, 107, 107, 0.1) !important;
+}
+
+.text-warning {
+  color: var(--color-primary) !important;
 }
 
 .custom-table {
@@ -26,14 +31,14 @@
 }
 
 .custom-table th {
-  border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 2px solid rgba(255, 107, 107, 0.1);
   font-weight: 600;
-  color: #555;
+  color: var(--color-text-main);
   white-space: nowrap;
 }
 
 .custom-table td {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
   padding: 1rem 0.5rem;
   white-space: nowrap;
 }

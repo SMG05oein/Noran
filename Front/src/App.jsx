@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from './store/useAuthStore';
+import useThemeStore from './store/useThemeStore';
 import { fetchMyInfo, refreshAccessToken } from './api/authApi';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -69,6 +70,12 @@ function App() {
   const { isAuthenticated, user, login, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme } = useThemeStore();
+
+  // HTML의 data-bs-theme 속성을 테마 상태와 동기화
+  useEffect(() => {
+    document.documentElement.setAttribute('data-bs-theme', theme);
+  }, [theme]);
 
   // 페이지 이동 시마다 내 정보(토큰 유효성) 검증 및 정보 갱신
   useEffect(() => {

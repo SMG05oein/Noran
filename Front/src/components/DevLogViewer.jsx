@@ -48,8 +48,8 @@ const DevLogViewer = () => {
   };
 
   return (
-    <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-      <Card.Header className="d-flex justify-content-between align-items-center" style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}>
+    <Card className="shadow-sm border-0 rounded-4">
+      <Card.Header className="d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-2">
           <span className="fw-bold">실시간 서버 로그 뷰어</span>
           {logsData?.available && <Badge bg="success">실시간 작동 중</Badge>}
@@ -67,7 +67,7 @@ const DevLogViewer = () => {
             size="sm"
             value={lines}
             onChange={(e) => setLines(Number(e.target.value))}
-            style={{ width: '110px', backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a' }}
+            style={{ width: '110px' }}
           >
             <option value={50}>50 줄</option>
             <option value={100}>100 줄</option>

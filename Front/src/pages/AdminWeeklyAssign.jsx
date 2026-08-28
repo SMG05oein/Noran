@@ -4,7 +4,7 @@ import { fetchWorkRequests, updateWorkRequest, createWorkRequest } from '../api/
 import { fetchWorkPlaces } from '../api/authApi';
 import { parseISO, addDays, format, startOfWeek, endOfWeek, subWeeks, addWeeks, getWeekOfMonth } from 'date-fns';
 import useAuthStore from '../store/useAuthStore';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { RiArrowLeftSLine, RiArrowRightSLine } from 'react-icons/ri';
 import './AdminMain.css';
 
 const DAY_KEYS = [
@@ -138,12 +138,12 @@ const AdminWeeklyAssign = () => {
           <div>
             <h2 className="fw-bold text-dark mb-2">주간 배정 관리</h2>
             <div className="d-flex align-items-center gap-3">
-              <Button variant="link" onClick={handlePrevWeek} className="p-0 text-dark fs-5" disabled={loading}><FaChevronLeft /></Button>
+              <Button variant="link" onClick={handlePrevWeek} className="p-0 text-dark fs-5" disabled={loading}><RiArrowLeftSLine /></Button>
               <h5 className="fw-bold mb-0">
                 {format(currentWeekStart, 'M')}월 {getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차
                 <span className="text-muted ms-2 fs-6">({format(currentWeekStart, 'MM/dd')} ~ {format(currentWeekEnd, 'MM/dd')})</span>
               </h5>
-              <Button variant="link" onClick={handleNextWeek} className="p-0 text-dark fs-5" disabled={loading}><FaChevronRight /></Button>
+              <Button variant="link" onClick={handleNextWeek} className="p-0 text-dark fs-5" disabled={loading}><RiArrowRightSLine /></Button>
             </div>
           </div>
           

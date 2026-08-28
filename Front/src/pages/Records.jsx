@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Card, Badge, Form, Row, Col, Button, Modal } from 'react-bootstrap';
 import { format, subMonths } from 'date-fns';
-import { FaClock, FaCalendarCheck, FaPlus } from 'react-icons/fa';
+import { RiTimeLine, RiCalendarCheckLine, RiAddLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { fetchWorkRecords, createWorkRecord } from '../api/workApi';
@@ -113,10 +113,10 @@ const Records = () => {
         <Button 
           variant="primary" 
           className="rounded-circle shadow-sm d-flex justify-content-center align-items-center"
-          style={{ width: '45px', height: '45px', backgroundColor: '#d35400', border: 'none' }}
+          style={{ width: '45px', height: '45px' }}
           onClick={() => setShowModal(true)}
         >
-          <FaPlus />
+          <RiAddLine />
         </Button>
       </div>
 
@@ -124,8 +124,7 @@ const Records = () => {
         <Form.Select 
           value={selectedMonth} 
           onChange={(e) => setSelectedMonth(e.target.value)}
-          className="w-auto shadow-sm border-0 fw-bold text-primary"
-          style={{ borderRadius: '12px' }}
+          className="custom-month-select fw-bold"
         >
           {[...Array(6)].map((_, i) => {
             const d = subMonths(new Date(), i);
@@ -137,13 +136,13 @@ const Records = () => {
 
       <Row className="mb-4">
         <Col xs={6}>
-          <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100" style={{ background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)' }}>
+          <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100">
             <h6 className="text-muted fw-bold mb-2">이번 달 근무일</h6>
             <h3 className="fw-bold text-primary mb-0">{filteredRecords.length}일</h3>
           </Card>
         </Col>
         <Col xs={6}>
-          <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100" style={{ background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)' }}>
+          <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100">
             <h6 className="text-muted fw-bold mb-2">누적 근무시간</h6>
             <h3 className="fw-bold text-success mb-0">
               {filteredRecords.reduce((acc, r) => acc + calculateTotalHours(r.wrStartTime, r.wrEndTime), 0).toFixed(1)}H
@@ -155,7 +154,7 @@ const Records = () => {
       <div className="d-flex flex-column gap-3">
         {filteredRecords.length === 0 ? (
           <div className="text-center text-muted py-5">
-            <FaCalendarCheck size={40} className="mb-3 opacity-50" />
+            <RiCalendarCheckLine size={40} className="mb-3 opacity-50" />
             <p>해당 월의 근무 기록이 없습니다.</p>
           </div>
         ) : (
@@ -179,7 +178,7 @@ const Records = () => {
                     </div>
                     <div className="d-flex justify-content-between text-muted align-items-center" style={{ fontSize: '0.95rem' }}>
                       <div className="d-flex align-items-center gap-1">
-                        <FaClock /> {sh}:{sm} - {eh}:{em}
+                        <RiTimeLine /> {sh}:{sm} - {eh}:{em}
                       </div>
                       <div className="fw-bold text-dark">
                         {totalHours}시간
@@ -289,7 +288,7 @@ const Records = () => {
               <Form.Control type="text" value={remarks} onChange={e=>setRemarks(e.target.value)} />
             </Form.Group>
 
-            <Button disabled={loading} variant="primary" type="submit" className="w-100 fw-bold" style={{ backgroundColor: '#d35400', border: 'none' }}>
+            <Button disabled={loading} variant="primary" type="submit" className="w-100 fw-bold">
               기록 저장
             </Button>
           </Form>

@@ -13,7 +13,7 @@ import {
   setYear,
   setMonth
 } from 'date-fns';
-import { FaChevronLeft, FaChevronRight, FaCheckCircle, FaCalendarCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { RiArrowLeftSLine, RiArrowRightSLine, RiCheckboxCircleLine, RiCalendarCheckLine, RiErrorWarningLine } from 'react-icons/ri';
 import { Dropdown } from 'react-bootstrap';
 import Holidays from 'date-holidays';
 import useAuthStore from '../store/useAuthStore';
@@ -40,7 +40,7 @@ const WorkCalendar = ({ mockRecords }) => {
       <div className="header row flex-middle">
         <div className="col col-start" onClick={prevMonth}>
           <div className="icon">
-            <FaChevronLeft />
+            <RiArrowLeftSLine />
           </div>
         </div>
         <div className="col col-center d-flex justify-content-center align-items-center flex-nowrap">
@@ -77,7 +77,7 @@ const WorkCalendar = ({ mockRecords }) => {
         </div>
         <div className="col col-end" onClick={nextMonth}>
           <div className="icon">
-            <FaChevronRight />
+            <RiArrowRightSLine />
           </div>
         </div>
       </div>
@@ -141,9 +141,9 @@ const WorkCalendar = ({ mockRecords }) => {
             </span>
             {record && (
               <div className="status-marker">
-                {record.status === 'WORKED' && <FaCheckCircle className="text-success" title="근무 완료" />}
-                {record.status === 'APPROVED' && <FaCalendarCheck className="text-primary" title="근무 배정" />}
-                {record.status === 'MISSING' && <FaExclamationTriangle className="text-danger" title="미기재 (경고)" />}
+                {record.status === 'WORKED' && <RiCheckboxCircleLine className="text-success" title="근무 완료" />}
+                {record.status === 'APPROVED' && <RiCalendarCheckLine className="text-primary" title="근무 배정" />}
+                {record.status === 'MISSING' && <RiErrorWarningLine className="text-danger" title="미기재 (경고)" />}
               </div>
             )}
           </div>
@@ -163,7 +163,7 @@ const WorkCalendar = ({ mockRecords }) => {
   return (
     <div className="calendar glass-card rounded-4 p-4 shadow-sm h-100 d-flex flex-column">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-bold mb-0" style={{ color: '#d35400' }}>내 근무 캘린더</h4>
+        <h4 className="fw-bold mb-0 text-primary">내 근무 캘린더</h4>
         <div className="text-dark fw-bold fs-5">
           {user?.name} 님
         </div>
@@ -174,9 +174,9 @@ const WorkCalendar = ({ mockRecords }) => {
       
       {/* 범례(Legend) 하단 배치 */}
       <div className="legend d-flex justify-content-center gap-3 text-muted mt-4 pt-3 border-top" style={{ fontSize: '0.9rem' }}>
-        <span><FaCheckCircle className="text-success me-1"/>근무 완료</span>
-        <span><FaCalendarCheck className="text-primary me-1"/>배정</span>
-        <span><FaExclamationTriangle className="text-danger me-1"/>미기재</span>
+        <span><RiCheckboxCircleLine className="text-success me-1"/>근무 완료</span>
+        <span><RiCalendarCheckLine className="text-primary me-1"/>배정</span>
+        <span><RiErrorWarningLine className="text-danger me-1"/>미기재</span>
       </div>
     </div>
   );

@@ -1,53 +1,58 @@
+/* Warm Theme Main.css */
 .main-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+  background-color: var(--color-bg-cream);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--color-surface);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--border-radius-lg);
 }
 
 .avatar {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background-color: #f39c12;
-  color: white;
+  background-color: var(--color-secondary);
+  color: var(--color-text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
-  font-weight: bold;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(255, 211, 182, 0.4);
 }
 
 .attendance-btn {
   transition: all 0.2s ease;
-  font-weight: bold;
+  font-weight: 600;
   border: none;
+  border-radius: var(--border-radius-sm);
 }
 
 .attendance-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-in {
-  background-color: #f39c12;
+  background-color: var(--color-primary) !important;
+  color: white !important;
 }
 
 .btn-in:hover, .btn-in:active {
-  background-color: #d35400 !important;
+  background-color: var(--color-primary-hover) !important;
 }
 
 .btn-out {
-  background-color: #e74c3c;
+  background-color: #ff8a65 !important; /* Slightly distinct coral for out */
+  color: white !important;
 }
 
 .btn-out:hover, .btn-out:active {
-  background-color: #c0392b !important;
+  background-color: #ff7043 !important;
 }
 
 /* Mobile Responsiveness */

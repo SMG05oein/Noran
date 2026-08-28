@@ -186,24 +186,33 @@ const MyPage = () => {
 
   return (
     <Container className="py-5" style={{ maxWidth: '600px' }}>
-      <h2 className="fw-bold mb-4" style={{ color: '#d35400' }}>내 정보 관리 (마이페이지)</h2>
+      <h2 className="fw-bold mb-4 text-primary">내 정보 관리 (마이페이지)</h2>
 
       {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
       {success && <Alert variant="success" className="rounded-3">{success}</Alert>}
 
+      {/* 기본 정보 (수정 불가) */}
+      <Card className="border-0 shadow-sm rounded-4 mb-4">
+        <Card.Body className="p-4 pb-3">
+          <div className="fw-bold text-muted small mb-3">🔒 기본 정보 (수정 불가)</div>
+          <div className="p-3 rounded-3 border" style={{ backgroundColor: 'var(--color-input-bg)' }}>
+             <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div className="text-muted fw-bold small">아이디</div>
+                <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userId || '-'}</div>
+             </div>
+             <div className="d-flex align-items-center justify-content-between">
+                <div className="text-muted fw-bold small">직급</div>
+                <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userTypeName || '-'}</div>
+             </div>
+          </div>
+        </Card.Body>
+      </Card>
+
+      {/* 연락처 및 소속 정보 (수정 가능) */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-4">
+          <div className="fw-bold text-muted small mb-3">✏️ 연락처 및 소속 정보 수정</div>
           <Form onSubmit={handleUpdate}>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">아이디 (수정 불가)</Form.Label>
-              <Form.Control type="text" value={userInfo?.userId || ''} disabled className="bg-light" />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">직급 (수정 불가)</Form.Label>
-              <Form.Control type="text" value={userInfo?.userTypeName || ''} disabled className="bg-light" />
-            </Form.Group>
-
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">이름</Form.Label>
               <Form.Control type="text" value={userName} onChange={e => setUserName(e.target.value)} required />
@@ -231,7 +240,7 @@ const MyPage = () => {
             </Form.Group>
 
             <div className="d-flex gap-3">
-              <Button disabled={saving} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2" style={{ backgroundColor: '#d35400', border: 'none' }}>
+              <Button disabled={saving} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2">
                 {saving ? <Spinner as="span" animation="border" size="sm" /> : "정보 수정하기"}
               </Button>
               <Button variant="outline-secondary" className="fw-bold py-2 px-3" onClick={() => setShowPwModal(true)} type="button">
@@ -287,13 +296,13 @@ const MyPage = () => {
 
           {/* 정보 수정/입력 모드일 때만 동의서 노출 */}
           {(!userInfo?.userAccountNumber || accountDetails) && (
-            <div className="bg-light p-3 rounded-3 mb-3 border">
-              <div className="fw-bold text-dark small mb-2">📌 [개인정보 수집 및 이용 동의]</div>
+            <div className="p-3 rounded-3 mb-3 border" style={{ backgroundColor: 'var(--color-input-bg)' }}>
+              <div className="fw-bold small mb-2" style={{ color: 'var(--color-input-text)' }}>📌 [개인정보 수집 및 이용 동의]</div>
               <ul className="text-muted small ps-3 mb-3">
-                <li><strong className="text-dark">수집 목적</strong>: 급여 지급 및 정산</li>
-                <li><strong className="text-dark">수집 항목</strong>: 은행명, 예금주, 계좌번호</li>
+                <li><strong style={{ color: 'var(--color-input-text)' }}>수집 목적</strong>: 급여 지급 및 정산</li>
+                <li><strong style={{ color: 'var(--color-input-text)' }}>수집 항목</strong>: 은행명, 예금주, 계좌번호</li>
                 <li>
-                  <strong className="text-dark">보유 및 이용 기간</strong>: 근로 계약(또는 서비스 이용) 종료 시까지 이용하며, 종료 후에는 다음의 관계 법령에 따라 보존합니다.
+                  <strong style={{ color: 'var(--color-input-text)' }}>보유 및 이용 기간</strong>: 근로 계약(또는 서비스 이용) 종료 시까지 이용하며, 종료 후에는 다음의 관계 법령에 따라 보존합니다.
                   <ul className="text-muted mt-1 mb-1 ps-3" style={{ listStyleType: 'circle' }}>
                     <li>소득세법/법인세법에 따른 급여 지급 및 원천징수 증빙 기록: 5년</li>
                     <li>근로기준법에 따른 근로계약 및 임금대장 관련 기록: 3년</li>
@@ -345,7 +354,7 @@ const MyPage = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClosePwModal}>취소</Button>
-          <Button variant="primary" onClick={handleChangePassword} disabled={pwSaving} style={{ backgroundColor: '#d35400', border: 'none' }}>
+          <Button variant="primary" onClick={handleChangePassword} disabled={pwSaving}>
             {pwSaving ? <Spinner as="span" animation="border" size="sm" /> : "변경하기"}
           </Button>
         </Modal.Footer>

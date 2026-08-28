@@ -13,7 +13,7 @@ import {
   setYear,
   setMonth
 } from 'date-fns';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { RiArrowLeftSLine, RiArrowRightSLine } from 'react-icons/ri';
 import { Dropdown } from 'react-bootstrap';
 import Holidays from 'date-holidays';
 import { fetchCalendarCounts } from '../api/workApi';
@@ -46,7 +46,7 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
       <div className="header row flex-middle">
         <div className="col col-start" onClick={prevMonth}>
           <div className="icon">
-            <FaChevronLeft />
+            <RiArrowLeftSLine />
           </div>
         </div>
         <div className="col col-center d-flex justify-content-center align-items-center text-nowrap flex-nowrap">
@@ -77,7 +77,7 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
         </div>
         <div className="col col-end" onClick={nextMonth}>
           <div className="icon">
-            <FaChevronRight />
+            <RiArrowRightSLine />
           </div>
         </div>
       </div>

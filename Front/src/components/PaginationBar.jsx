@@ -19,7 +19,7 @@ const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) =
         &laquo; 이전
       </Button>
       
-      <div className="fw-bold fs-5 text-dark bg-light px-3 py-1 rounded-pill shadow-sm d-flex align-items-center">
+      <div className="fw-bold fs-5 px-3 py-1 rounded-pill shadow-sm d-flex align-items-center" style={{ backgroundColor: 'var(--color-surface)' }}>
         <Form.Control
           type="text"
           value={pageInput}
@@ -37,8 +37,15 @@ const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) =
               e.target.blur();
             }
           }}
-          className="text-center fw-bold text-primary fs-5 border-0 bg-transparent"
-          style={{ width: `${Math.max(String(totalPages).length, String(pageInput).length, 2)}ch`, padding: 0, boxShadow: 'none', outline: 'none' }}
+          className="text-center fw-bold text-primary fs-5 border-0"
+          style={{ 
+            backgroundColor: 'transparent',
+            color: 'var(--color-primary)',
+            width: `${Math.max(String(totalPages).length, String(pageInput).length, 2)}ch`, 
+            padding: 0, 
+            boxShadow: 'none', 
+            outline: 'none' 
+          }}
         />
         <span className="text-muted fs-5 mx-1">/</span> 
         <span className="text-primary fs-5">{totalPages}</span>

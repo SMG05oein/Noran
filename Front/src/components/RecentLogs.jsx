@@ -1,20 +1,20 @@
 import React from 'react';
 import { Card, ListGroup, Badge } from 'react-bootstrap';
 import { format } from 'date-fns';
-import { FaCheckCircle, FaClock, FaCalendarCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { RiCheckboxCircleLine, RiTimeLine, RiCalendarCheckLine, RiErrorWarningLine } from 'react-icons/ri';
 
 const RecentLogs = ({ mockRecords }) => {
   // 상태에 따른 배지와 아이콘 설정 헬퍼
   const getStatusInfo = (status) => {
     switch (status) {
       case 'WORKED':
-        return { text: '근무 완료', bg: 'success', icon: <FaCheckCircle className="me-1" /> };
+        return { text: '근무 완료', bg: 'success', icon: <RiCheckboxCircleLine className="me-1" /> };
       case 'REQUESTED':
-        return { text: '신청 대기', bg: 'secondary', icon: <FaClock className="me-1" /> };
+        return { text: '신청 대기', bg: 'secondary', icon: <RiTimeLine className="me-1" /> };
       case 'APPROVED':
-        return { text: '수락됨', bg: 'primary', icon: <FaCalendarCheck className="me-1" /> };
+        return { text: '수락됨', bg: 'primary', icon: <RiCalendarCheckLine className="me-1" /> };
       case 'MISSING':
-        return { text: '미기재', bg: 'danger', icon: <FaExclamationTriangle className="me-1" /> };
+        return { text: '미기재', bg: 'danger', icon: <RiErrorWarningLine className="me-1" /> };
       default:
         return { text: '알 수 없음', bg: 'light', icon: null };
     }
@@ -28,7 +28,7 @@ const RecentLogs = ({ mockRecords }) => {
   return (
     <Card className="glass-card shadow-sm border-0 rounded-4 h-100">
       <Card.Body className="p-4">
-        <h4 className="fw-bold mb-4" style={{ color: '#d35400' }}>최근 근무 / 신청 내역</h4>
+        <h4 className="fw-bold mb-4 text-primary">최근 근무 / 신청 내역</h4>
         <ListGroup variant="flush">
           {recent5.length > 0 ? (
             recent5.map((record, idx) => {

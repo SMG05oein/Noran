@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
+import useThemeStore from '../store/useThemeStore';
 import { devLogin } from '../api/devAuthApi';
 import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
 
@@ -9,6 +10,10 @@ const DevLogin = () => {
   const [devPw, setDevPw] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // 삭제됨: App.jsx와의 충돌 방지 위해 인라인 속성으로 대체
+  }, []);
 
   const login = useDevAuthStore((state) => state.devLogin);
   const navigate = useNavigate();
@@ -41,8 +46,8 @@ const DevLogin = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#1e1e2d', minHeight: '100vh', color: '#fff' }}>
-      <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+    <div className="auth-container" data-bs-theme="dark" style={{ backgroundColor: 'var(--color-bg-cream)' }}>
+      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', zIndex: 1 }}>
         <div className="w-100" style={{ maxWidth: "400px" }}>
           <Card className="shadow-lg border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
             <Card.Body className="p-5">

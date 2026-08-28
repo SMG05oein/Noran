@@ -3,6 +3,7 @@ import { Modal, Button, Form, Badge } from 'react-bootstrap';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import MaintenanceOverlay from './MaintenanceOverlay';
+import useDevAuthStore from '../store/useDevAuthStore';
 
 const NoticeModal = () => {
   const [notices, setNotices] = useState([]);
@@ -28,12 +29,20 @@ const NoticeModal = () => {
       const statusRes = await axios.get(`${API_BASE_URL}/api/dev/announcements/maintenance-status`);
       
       if (statusRes.data?.maintenanceMode) {
-        // 점검 모드가 ON인 경우 -> 로그인(/login) 포함 모든 유저 페이지에서 전체 화면 차단!
-        setIsMaintenance(true);
-        setShow(false);
-        setChecking(false);
-        return;
+        const isBypassed = sessionStorage.getItem('maintenance_bypassed') === 'true';
+        if (!isBypassed) {
+          // 점검 모드가 ON이고 현재 세션에서 우회(로그인)하지 않은 경우 차단
+          setIsMaintenance(true);
+          setShow(false);
+          setChecking(false);
+          return;
+        } else {
+          // 우회된 상태라면 유지 중인 차단막을 해제합니다.
+          setIsMaintenance(false);
+        }
       } else {
+        // 점검 모드가 OFF되면 우회 플래그 초기화 (다시 켜졌을 때 차단하기 위함)
+        sessionStorage.removeItem('maintenance_bypassed');
         setIsMaintenance(false);
       }
 

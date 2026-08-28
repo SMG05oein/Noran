@@ -3,24 +3,24 @@ import { Container, Form, Button, Spinner } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWorkRequestById, updateWorkRequest } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
-import { FaChevronLeft, FaSave } from 'react-icons/fa';
+import { RiArrowLeftSLine, RiSave3Line } from 'react-icons/ri';
 import { format, startOfWeek } from 'date-fns';
 
 const RequestEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  
+
   const [loading, setLoading] = useState(true);
   const [reqDate, setReqDate] = useState('');
   const [remarks, setRemarks] = useState('');
   const [createdAt, setCreatedAt] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
-  
+
   const [days, setDays] = useState({
     Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false
   });
-  
+
   const dayLabels = { Mon: '월', Tue: '화', Wed: '수', Thu: '목', Fri: '금', Sat: '토', Sun: '일' };
 
   useEffect(() => {
@@ -113,7 +113,7 @@ const RequestEdit = () => {
     <Container className="py-4 py-md-5" style={{ maxWidth: '600px' }}>
       <div className="d-flex align-items-center mb-4">
         <Button variant="link" className="text-dark p-0 me-3" onClick={() => navigate(-1)}>
-          <FaChevronLeft size={24} />
+          <RiArrowLeftSLine size={24} />
         </Button>
         <h2 className="fw-bold text-dark mb-0">근무 신청 수정</h2>
       </div>
@@ -122,24 +122,24 @@ const RequestEdit = () => {
         <Form onSubmit={handleSubmit}>
           <div className="mb-4 text-end text-muted small">
             <div>최초 신청: {
-              createdAt 
-                ? (Array.isArray(createdAt) 
-                    ? `${createdAt[0]}-${String(createdAt[1]).padStart(2, '0')}-${String(createdAt[2]).padStart(2, '0')} ${String(createdAt[3]||0).padStart(2, '0')}:${String(createdAt[4]||0).padStart(2, '0')}`
-                    : new Date(createdAt).toLocaleString('ko-KR'))
+              createdAt
+                ? (Array.isArray(createdAt)
+                  ? `${createdAt[0]}-${String(createdAt[1]).padStart(2, '0')}-${String(createdAt[2]).padStart(2, '0')} ${String(createdAt[3] || 0).padStart(2, '0')}:${String(createdAt[4] || 0).padStart(2, '0')}`
+                  : new Date(createdAt).toLocaleString('ko-KR'))
                 : '-'
             }</div>
             {updatedAt && updatedAt !== createdAt && (
               <div>최근 수정: {
-                Array.isArray(updatedAt) 
-                  ? `${updatedAt[0]}-${String(updatedAt[1]).padStart(2, '0')}-${String(updatedAt[2]).padStart(2, '0')} ${String(updatedAt[3]||0).padStart(2, '0')}:${String(updatedAt[4]||0).padStart(2, '0')}`
+                Array.isArray(updatedAt)
+                  ? `${updatedAt[0]}-${String(updatedAt[1]).padStart(2, '0')}-${String(updatedAt[2]).padStart(2, '0')} ${String(updatedAt[3] || 0).padStart(2, '0')}:${String(updatedAt[4] || 0).padStart(2, '0')}`
                   : new Date(updatedAt).toLocaleString('ko-KR')
               }</div>
             )}
           </div>
           <Form.Group className="mb-4">
             <Form.Label className="fw-bold text-muted small">신청 기준 주차 (월요일)</Form.Label>
-            <Form.Control 
-              type="date" 
+            <Form.Control
+              type="date"
               value={reqDate}
               className="border-0 p-3 rounded-3 fw-bold text-muted"
               style={{ backgroundColor: '#e9ecef', cursor: 'not-allowed' }}
@@ -152,11 +152,11 @@ const RequestEdit = () => {
             <Form.Label className="fw-bold text-muted small d-block">신청 요일 선택</Form.Label>
             <div className="d-flex flex-nowrap overflow-auto pb-2 gap-2" style={{ WebkitOverflowScrolling: 'touch' }}>
               {Object.keys(days).map(day => (
-                <Button 
+                <Button
                   key={day}
                   variant={days[day] ? 'primary' : 'light'}
                   className={`rounded-circle fw-bold shadow-sm flex-shrink-0 ${days[day] ? '' : 'text-muted border'}`}
-                  style={{ width: '38px', height: '38px', fontSize: '0.85rem', padding: '0', backgroundColor: days[day] ? '#d35400' : '', borderColor: days[day] ? '#d35400' : '' }}
+                  style={{ width: '38px', height: '38px', fontSize: '0.85rem', padding: '0', backgroundColor: days[day] ? 'var(--color-primary)' : '', borderColor: days[day] ? 'var(--color-primary)' : '' }}
                   onClick={() => handleDayToggle(day)}
                 >
                   {dayLabels[day]}
@@ -172,7 +172,7 @@ const RequestEdit = () => {
 
           <Form.Group className="mb-4">
             <Form.Label className="fw-bold text-muted small">비고 (선택)</Form.Label>
-            <Form.Control 
+            <Form.Control
               as="textarea"
               rows={3}
               value={remarks}
@@ -183,7 +183,7 @@ const RequestEdit = () => {
           </Form.Group>
 
           <Button variant="primary" type="submit" className="w-100 p-3 rounded-3 fw-bold fs-5 shadow-sm d-flex align-items-center justify-content-center gap-2">
-            <FaSave />
+            <RiSave3Line />
             수정 완료
           </Button>
         </Form>

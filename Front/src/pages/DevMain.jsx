@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
+import useThemeStore from '../store/useThemeStore';
 import { fetchSystemInfo, changeDevPassword } from '../api/devAuthApi';
 import { Container, Row, Col, Card, Button, Spinner, Modal, Form, Alert, Badge, Tabs, Tab, Table } from 'react-bootstrap';
 import DatabaseManager from '../components/DatabaseManager';
@@ -59,7 +60,7 @@ const DevMain = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#1e1e2d', minHeight: '100vh', color: '#fff', padding: '2rem 0' }}>
+    <div className="dev-container min-vh-100" data-bs-theme="dark" style={{ padding: '2rem 0', backgroundColor: 'var(--color-bg-cream)' }}>
       <Container>
         <div className="d-flex justify-content-between align-items-center mb-5 border-bottom border-secondary pb-3">
           <h2 className="fw-bold" style={{ color: '#00d2ff' }}>개발자 대시보드</h2>
@@ -103,9 +104,9 @@ const DevMain = () => {
                   </Card>
                 </Col>
                 <Col md={4}>
-                  <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
+                  <Card className="shadow-sm border-0 h-100 rounded-4">
                     <Card.Body>
-                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">서버 가동 시간 (Uptime)</Card.Title>
+                      <Card.Title className="fw-bold mb-4 text-primary">서버 가동 시간 (Uptime)</Card.Title>
                       <p className="mb-2 fs-3 text-center mt-4 text-info fw-bold">
                         {Math.floor(sysInfo.uptime.uptime_seconds / 3600)}시간{' '}
                         {Math.floor((sysInfo.uptime.uptime_seconds % 3600) / 60)}분{' '}
@@ -119,9 +120,9 @@ const DevMain = () => {
               <Row className="mt-4 g-4">
                 {/* 트래픽 모니터링 */}
                 <Col md={4}>
-                  <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
+                  <Card className="shadow-sm border-0 h-100 rounded-4">
                     <Card.Body>
-                      <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">트래픽 응답 현황</Card.Title>
+                      <Card.Title className="fw-bold mb-4 text-primary">트래픽 응답 현황</Card.Title>
                       <div className="d-flex justify-content-between mb-2">
                         <span><Badge bg="success">성공 (2xx)</Badge></span>
                         <span className="fw-bold">{sysInfo.traffic.success}건</span>
@@ -146,7 +147,7 @@ const DevMain = () => {
                         <span><Badge bg="secondary">요청 제한 초과 (429)</Badge></span>
                         <span className="fw-bold">{sysInfo.traffic.rateLimited}건</span>
                       </div>
-                      <div className="d-flex justify-content-between fs-5 text-info">
+                      <div className="d-flex justify-content-between fs-5 text-primary">
                         <span className="fw-bold">총 요청 수</span>
                         <span className="fw-bold">{sysInfo.traffic.total}건</span>
                       </div>
@@ -156,16 +157,19 @@ const DevMain = () => {
                 
                 {/* 최근 오류 로그 */}
                 <Col md={8}>
-                  <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a' }}>
-                    <Card.Header style={{ backgroundColor: '#2b2b40', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }} className="fw-bold">
+                  <Card className="shadow-sm border-0 h-100 rounded-4">
+                    <Card.Header className="fw-bold text-primary">
                       최근 발생 오류 로그 (최대 50건)
                     </Card.Header>
-                    <Card.Body style={{ overflowY: 'auto', maxHeight: '350px', padding: 0 }}>
+                    <Card.Body style={{ overflow: 'auto', maxHeight: '350px', padding: 0 }}>
                       {sysInfo.recent_errors?.length > 0 ? (
-                        <Table responsive variant="dark" hover size="sm" className="mb-0" style={{ fontSize: '0.85rem' }}>
-                          <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#1e1e2d' }}>
-                            <tr>
+                        <Table striped hover size="sm" className="mb-0 text-center align-middle" style={{ fontSize: '0.85rem' }}>
+                          <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#2b2b40' }}>
+                            <tr style={{ whiteSpace: 'nowrap' }}>
                               <th>번호</th>
+                              <th>발생 시각</th>
+                              <th>요청 출처(IP)</th>
+                              <th>요청 페이지(Referer)</th>
                               <th>요청자</th>
                               <th>코드</th>
                               <th>API 경로</th>
@@ -174,12 +178,15 @@ const DevMain = () => {
                           </thead>
                           <tbody>
                             {sysInfo.recent_errors.map((err, idx) => (
-                              <tr key={idx}>
+                              <tr key={idx} style={{ whiteSpace: 'nowrap' }}>
                                 <td>{err.no}</td>
+                                <td style={{ color: '#adb5bd' }}>{err.timestamp}</td>
+                                <td style={{ color: '#a8c7fa' }}>{err.clientIp}</td>
+                                <td style={{ color: '#e2b3ff' }}>{err.referer || '-'}</td>
                                 <td><Badge bg={err.who === '로그인 전' ? 'secondary' : 'info'}>{err.who}</Badge></td>
                                 <td><span className="text-warning">{err.httpCode}</span></td>
-                                <td><span className="text-info">{err.apiPath}</span></td>
-                                <td><span className="text-danger text-break">{err.message}</span></td>
+                                <td><span className="text-primary">{err.apiPath}</span></td>
+                                <td><span className="text-danger">{err.message}</span></td>
                               </tr>
                             ))}
                           </tbody>
@@ -217,10 +224,10 @@ const DevMain = () => {
 
       {/* 비밀번호 변경 모달 */}
       <Modal show={showPwModal} onHide={() => setShowPwModal(false)} centered>
-        <Modal.Header closeButton style={{ backgroundColor: '#2b2b40', color: '#fff', borderBottom: '1px solid #3f3f5a' }}>
+        <Modal.Header closeButton>
           <Modal.Title className="fw-bold">비밀번호 변경</Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ backgroundColor: '#1e1e2d', color: '#fff' }}>
+        <Modal.Body>
           {pwError && <Alert variant="danger">{pwError}</Alert>}
           <Form onSubmit={handlePasswordChange}>
             <Form.Group className="mb-3">
@@ -230,7 +237,6 @@ const DevMain = () => {
                 value={oldPw}
                 onChange={(e) => setOldPw(e.target.value)}
                 required
-                style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a' }}
               />
             </Form.Group>
             <Form.Group className="mb-4">
@@ -240,12 +246,11 @@ const DevMain = () => {
                 value={newPw}
                 onChange={(e) => setNewPw(e.target.value)}
                 required
-                style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a' }}
               />
             </Form.Group>
             <div className="d-flex justify-content-end">
               <Button variant="secondary" className="me-2" onClick={() => setShowPwModal(false)}>취소</Button>
-              <Button variant="info" type="submit" disabled={pwLoading}>
+              <Button variant="primary" type="submit" disabled={pwLoading}>
                 {pwLoading ? <Spinner animation="border" size="sm" /> : '변경하기'}
               </Button>
             </div>

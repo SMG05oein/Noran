@@ -1,34 +1,34 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaChartBar, FaCheckSquare, FaUsers, FaCog, FaHistory, FaBuilding, FaUserTag, FaUserCircle } from 'react-icons/fa';
+import { RiBarChartBoxLine, RiCheckboxLine, RiGroupLine, RiSettings4Line, RiHistoryLine, RiStore2Line, RiUserStarLine, RiUserSmileLine } from 'react-icons/ri';
 import './BottomNav.css';
 
 const AdminBottomNav = () => {
   return (
     <div className="bottom-nav admin-theme d-lg-none">
       <NavLink to="/admin" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
-        <FaChartBar className="icon" />
+        <RiBarChartBoxLine className="icon" />
         <span>대시보드</span>
       </NavLink>
 
       <NavLink to="/admin/records" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-        <FaHistory className="icon" />
+        <RiHistoryLine className="icon" />
         <span>기록관리</span>
       </NavLink>
       <NavLink to="/admin/employees" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-        <FaUsers className="icon" />
+        <RiGroupLine className="icon" />
         <span>직원관리</span>
       </NavLink>
       <NavLink to="/admin/workplaces" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-        <FaBuilding className="icon" />
+        <RiStore2Line className="icon" />
         <span>지점관리</span>
       </NavLink>
       <NavLink to="/admin/user-types" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-        <FaUserTag className="icon" />
+        <RiUserStarLine className="icon" />
         <span>직급관리</span>
       </NavLink>
       <NavLink to="/admin/mypage" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-        <FaUserCircle className="icon" />
+        <RiUserSmileLine className="icon" />
         <span>마이페이지</span>
       </NavLink>
     </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Badge } from 'react-bootstrap';
 import { format, startOfWeek, addDays } from 'date-fns';
-import { FaCalendarPlus, FaListUl, FaCheckCircle } from 'react-icons/fa';
+import { RiCalendarTodoLine, RiFileList3Line, RiCheckboxCircleLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { fetchWorkRequests, createWorkRequest } from '../api/workApi';
@@ -100,10 +100,10 @@ const Requests = () => {
     <Container className="py-4 py-md-5 mb-5">
       <h2 className="fw-bold text-dark mb-4">근무 신청</h2>
       
-      <Card className="border-0 shadow-sm rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%)' }}>
+      <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-4">
           <div className="d-flex align-items-center gap-2 mb-3 text-primary fw-bold fs-5">
-            <FaCalendarPlus /> 신규 근무 신청
+            <RiCalendarTodoLine /> 신규 근무 신청
           </div>
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
@@ -112,7 +112,7 @@ const Requests = () => {
                 type="date" 
                 value={reqDate} 
                 className="border-0 shadow-sm p-3 rounded-3 fw-bold text-muted"
-                style={{ backgroundColor: '#e9ecef', cursor: 'not-allowed' }}
+                style={{ backgroundColor: 'var(--color-input-bg)', cursor: 'not-allowed' }}
                 readOnly
               />
             </Form.Group>
@@ -123,9 +123,9 @@ const Requests = () => {
                 {Object.keys(days).map(day => (
                   <Button 
                     key={day}
-                    variant={days[day] ? 'primary' : 'light'}
-                    className={`rounded-circle fw-bold shadow-sm flex-shrink-0 ${days[day] ? '' : 'text-muted border'}`}
-                    style={{ width: '38px', height: '38px', fontSize: '0.85rem', padding: '0', backgroundColor: days[day] ? '#d35400' : '', borderColor: days[day] ? '#d35400' : '' }}
+                    variant={days[day] ? 'primary' : 'outline-secondary'}
+                    className={`rounded-circle fw-bold shadow-sm flex-shrink-0`}
+                    style={{ width: '38px', height: '38px', fontSize: '0.85rem', padding: '0', backgroundColor: days[day] ? 'var(--color-primary)' : '', borderColor: days[day] ? 'var(--color-primary)' : '' }}
                     onClick={() => handleDayToggle(day)}
                   >
                     {dayLabels[day]}
@@ -146,11 +146,12 @@ const Requests = () => {
                 placeholder="추가 요청사항을 입력하세요"
                 value={remarks} 
                 onChange={(e) => setRemarks(e.target.value)} 
-                className="border-0 shadow-sm bg-white p-3 rounded-3"
+                className="border-0 shadow-sm p-3 rounded-3"
+                style={{ backgroundColor: 'var(--color-input-bg)' }}
               />
             </Form.Group>
 
-            <Button disabled={loading} variant="primary" type="submit" className="w-100 py-3 rounded-3 fw-bold shadow-sm" style={{ backgroundColor: '#d35400', border: 'none' }}>
+            <Button disabled={loading} variant="primary" type="submit" className="w-100 py-3 rounded-3 fw-bold shadow-sm">
               {loading ? '신청 중...' : '근무 신청하기'}
             </Button>
           </Form>
@@ -158,7 +159,7 @@ const Requests = () => {
       </Card>
 
       <div className="d-flex align-items-center gap-2 mb-3 text-dark fw-bold fs-5 mt-5">
-        <FaListUl /> 내 신청 내역
+        <RiFileList3Line /> 내 신청 내역
       </div>
       
       <div className="d-flex flex-column gap-3">

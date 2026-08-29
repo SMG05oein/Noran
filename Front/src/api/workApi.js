@@ -49,7 +49,7 @@ export const updateWorkRecord = async (wrIdx, recordData) => {
 // 근무 신청 내역 조회
 export const fetchWorkRequests = async (wawDate = null, workPlaceIdx = null) => {
   try {
-    let url = `/api/work-apply-work?size=10`;
+    let url = `/api/work-apply-work?size=100`;
     if (wawDate) url += `&wawDate=${wawDate}`;
     if (workPlaceIdx) url += `&workPlaceIdx=${workPlaceIdx}`;
     const response = await globalApiClient.get(url);

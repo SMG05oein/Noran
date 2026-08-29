@@ -13,8 +13,8 @@ import {
   setYear,
   setMonth
 } from 'date-fns';
-import { RiArrowLeftSLine, RiArrowRightSLine } from 'react-icons/ri';
-import { Dropdown } from 'react-bootstrap';
+import { RiArrowLeftSLine, RiArrowRightSLine, RiCalendarEventLine, RiArrowDownSLine } from 'react-icons/ri';
+import { Dropdown, Badge } from 'react-bootstrap';
 import Holidays from 'date-holidays';
 import { fetchCalendarCounts } from '../api/workApi';
 import './WorkCalendar.css';
@@ -23,7 +23,7 @@ const hd = new Holidays('KR');
 
 const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selectedDate }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [calendarCounts, setCalendarCounts] = useState({}); // { "2026-07-01": 2, ... }
+  const [calendarCounts, setCalendarCounts] = useState({});
   
   useEffect(() => {
     const loadCounts = async () => {
@@ -43,18 +43,22 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
 
   const renderHeader = () => {
     return (
-      <div className="header row flex-middle">
-        <div className="col col-start" onClick={prevMonth}>
-          <div className="icon">
-            <RiArrowLeftSLine />
-          </div>
-        </div>
-        <div className="col col-center d-flex justify-content-center align-items-center text-nowrap flex-nowrap">
+      <div className="cal-header d-flex align-items-center justify-content-between mb-4">
+        <button 
+          type="button"
+          className="cal-nav-btn flex-shrink-0" 
+          onClick={prevMonth} 
+          title="이전 달"
+        >
+          <RiArrowLeftSLine size={22} />
+        </button>
+
+        <div className="d-flex align-items-center justify-content-center gap-1 gap-sm-2 flex-nowrap">
           <Dropdown className="d-inline-block">
-            <Dropdown.Toggle variant="link" className="text-dark fw-bold fs-4 text-decoration-none px-1 shadow-none text-nowrap">
+            <Dropdown.Toggle variant="link" className="cal-title-dropdown text-dark fw-bolder fs-4 text-decoration-none px-1 shadow-none text-nowrap">
               {currentMonth.getFullYear()}년
             </Dropdown.Toggle>
-            <Dropdown.Menu className="calendar-dropdown-menu" style={{ minWidth: '100px', maxHeight: '250px', overflowY: 'auto' }}>
+            <Dropdown.Menu className="calendar-dropdown-menu">
               {[...Array(10)].map((_, i) => {
                 const year = new Date().getFullYear() - 3 + i;
                 return <Dropdown.Item key={year} onClick={() => setCurrentMonth(setYear(currentMonth, year))}>{year}년</Dropdown.Item>;
@@ -63,126 +67,153 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
           </Dropdown>
 
           <Dropdown className="d-inline-block">
-            <Dropdown.Toggle variant="link" className="text-dark fw-bold fs-4 text-decoration-none px-1 shadow-none text-nowrap">
+            <Dropdown.Toggle variant="link" className="cal-title-dropdown text-dark fw-bolder fs-4 text-decoration-none px-1 shadow-none text-nowrap">
               {currentMonth.getMonth() + 1}월
             </Dropdown.Toggle>
-            <Dropdown.Menu className="calendar-dropdown-menu" style={{ minWidth: '100px', maxHeight: '250px', overflowY: 'auto' }}>
+            <Dropdown.Menu className="calendar-dropdown-menu">
               {[...Array(12)].map((_, i) => (
                 <Dropdown.Item key={i} onClick={() => setCurrentMonth(setMonth(currentMonth, i))}>{i + 1}월</Dropdown.Item>
               ))}
             </Dropdown.Menu>
           </Dropdown>
-          
-          <span className="fw-bold fs-4 ms-2 text-nowrap flex-shrink-0 text-truncate">- {selectedBranch}</span>
+
+          <button 
+            type="button"
+            className="cal-today-btn ms-1 d-flex align-items-center gap-1 text-nowrap"
+            onClick={() => {
+              const today = new Date();
+              setCurrentMonth(today);
+              if (onDateClick) onDateClick(today);
+            }}
+            title="오늘 날짜로 이동"
+          >
+            <RiCalendarEventLine size={15} /> 오늘
+          </button>
         </div>
-        <div className="col col-end" onClick={nextMonth}>
-          <div className="icon">
-            <RiArrowRightSLine />
-          </div>
-        </div>
+
+        <button 
+          type="button"
+          className="cal-nav-btn flex-shrink-0" 
+          onClick={nextMonth} 
+          title="다음 달"
+        >
+          <RiArrowRightSLine size={22} />
+        </button>
       </div>
     );
   };
 
   const renderDays = () => {
-    const days = [];
-    const date = ['월', '화', '수', '목', '금', '토', '일'];
+    const daysHeader = [
+      { name: '일', className: 'cal-day-sun' },
+      { name: '월', className: 'cal-day-work' },
+      { name: '화', className: 'cal-day-work' },
+      { name: '수', className: 'cal-day-work' },
+      { name: '목', className: 'cal-day-work' },
+      { name: '금', className: 'cal-day-work' },
+      { name: '토', className: 'cal-day-sat' },
+    ];
 
-    for (let i = 0; i < 7; i++) {
-      days.push(
-        <div className="col col-center fw-bold text-muted py-2" key={i}>
-          {date[i]}
-        </div>
-      );
-    }
-    return <div className="days row">{days}</div>;
+    return (
+      <div className="cal-days-row">
+        {daysHeader.map((d, i) => (
+          <div className={`cal-day-col ${d.className}`} key={i}>
+            {d.name}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderCells = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
     const rows = [];
     let days = [];
     let day = startDate;
-    let formattedDate = '';
 
     while (day <= endDate) {
       for (let i = 0; i < 7; i++) {
-        formattedDate = format(day, 'd');
+        const formattedDate = format(day, 'd');
         const cloneDay = day;
+        const isCurrentMonth = isSameMonth(day, monthStart);
         
         const formattedCloneDay = format(cloneDay, 'yyyy-MM-dd');
         const acceptCount = calendarCounts[formattedCloneDay] || 0;
         
-        // 날짜 색상 로직
         const isSun = day.getDay() === 0;
         const isSat = day.getDay() === 6;
         const isHol = hd.isHoliday(day);
         const isRed = isSun || isHol;
         const isBlue = isSat && !isHol;
 
-        const isSelected = selectedDate && isSameDay(day, selectedDate);
+        const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
         const isToday = isSameDay(day, new Date());
+
+        let numColorClass = 'cal-num-default';
+        if (!isCurrentMonth) {
+          numColorClass = 'cal-num-disabled';
+        } else if (isRed) {
+          numColorClass = 'cal-num-red';
+        } else if (isBlue) {
+          numColorClass = 'cal-num-blue';
+        }
 
         days.push(
           <div
-            className={`col cell ${
-              !isSameMonth(day, monthStart)
-                ? 'disabled-cell'
+            className={`cal-cell ${
+              !isCurrentMonth
+                ? 'cal-cell-disabled'
                 : isSelected
-                ? 'selected bg-light border-primary'
+                ? 'cal-cell-active'
+                : isToday
+                ? 'cal-cell-today'
                 : ''
             }`}
-            style={{ cursor: 'pointer', borderWidth: isSelected ? '2px' : '1px' }}
-            key={day}
+            key={day.toISOString()}
             onClick={() => {
-              if (isSameMonth(cloneDay, monthStart) && onDateClick) {
-                onDateClick(cloneDay);
+              const targetDate = new Date(cloneDay.getTime());
+              if (!isCurrentMonth) {
+                setCurrentMonth(targetDate);
               }
+              if (onDateClick) onDateClick(targetDate);
             }}
           >
-            <span className={`number ${
-              isToday 
-                ? 'bg-primary text-white rounded-circle d-inline-block text-center' 
-                : isRed 
-                  ? 'text-danger' 
-                  : isBlue 
-                    ? 'text-primary' 
-                    : ''
-              }`}
-              style={isToday ? { width: '24px', height: '24px', lineHeight: '24px' } : {}}
-            >
+            <span className={`cal-cell-number ${numColorClass}`}>
               {formattedDate}
             </span>
-            {acceptCount > 0 && (
-              <div className="status-marker mt-auto w-100 px-1 d-flex flex-column gap-1">
-                <div className="bg-success text-white text-center rounded-pill small fw-bold py-1" style={{ fontSize: '0.75rem' }}>
+            <div className="cal-status-box">
+              {acceptCount > 0 && (
+                <Badge bg="success" className="cal-admin-badge text-white text-center rounded-pill fw-bold">
                   <span className="d-none d-sm-inline">배정 {acceptCount}명</span>
-                  <span className="d-sm-none">{acceptCount}</span>
-                </div>
-              </div>
-            )}
+                  <span className="d-sm-none">{acceptCount}명</span>
+                </Badge>
+              )}
+            </div>
           </div>
         );
         day = addDays(day, 1);
       }
       rows.push(
-        <div className="row" key={day}>
+        <div className="cal-grid-row" key={day.toISOString()}>
           {days}
         </div>
       );
       days = [];
     }
-    return <div className="body">{rows}</div>;
+    return <div className="cal-grid-body">{rows}</div>;
   };
 
   return (
-    <div className="calendar glass-card rounded-4 p-4 shadow-sm h-100">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-bold mb-0 text-dark">지점별 근무 신청 현황</h4>
+    <div className="cal-wrapper-card h-100 d-flex flex-column">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h4 className="cal-main-title mb-0">지점별 근무 신청 현황</h4>
+        <div className="cal-user-greeting">
+          현재 조회: <span className="cal-user-name text-primary">{selectedBranch}</span>
+        </div>
       </div>
       {renderHeader()}
       {renderDays()}

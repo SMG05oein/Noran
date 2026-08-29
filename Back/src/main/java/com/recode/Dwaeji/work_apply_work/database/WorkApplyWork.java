@@ -1,6 +1,7 @@
 package com.recode.Dwaeji.work_apply_work.database;
 
 import com.recode.Dwaeji.user.database.User;
+import com.recode.Dwaeji.user.database.WorkPlace;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -34,31 +35,31 @@ public class WorkApplyWork {
     private LocalDate wawDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_mon", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_mon", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsMon;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_tue", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_tue", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsTue;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_wed", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_wed", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsWed;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_thu", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_thu", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsThu;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_fri", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_fri", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsFri;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_sat", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_sat", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsSat;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waw_is_sun", nullable = false, columnDefinition = "enum('미신청','반려','배정','신청')")
+    @Column(name = "waw_is_sun", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsSun;
 
     @Column(name = "waw_mon_start_time")
@@ -81,6 +82,34 @@ public class WorkApplyWork {
 
     @Column(name = "waw_sun_start_time")
     private LocalTime wawSunStartTime;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_mon_work_place_idx")
+    private WorkPlace wawMonWorkPlace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_tue_work_place_idx")
+    private WorkPlace wawTueWorkPlace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_wed_work_place_idx")
+    private WorkPlace wawWedWorkPlace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_thu_work_place_idx")
+    private WorkPlace wawThuWorkPlace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_fri_work_place_idx")
+    private WorkPlace wawFriWorkPlace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_sat_work_place_idx")
+    private WorkPlace wawSatWorkPlace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "waw_sun_work_place_idx")
+    private WorkPlace wawSunWorkPlace;
 
     @Column(name = "waw_remarks", columnDefinition = "TEXT")
     private String wawRemarks;

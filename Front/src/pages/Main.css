@@ -1,83 +1,184 @@
 /* Warm Theme Main.css */
+
+/* =========================================
+   공통 웜 테라코타 아웃라인 버튼
+   ========================================= */
+.req-outline-btn {
+  background: transparent !important;
+  border: 1.5px solid #C8957A !important;
+  color: #A85A47 !important;
+  transition: all 0.18s ease;
+}
+.req-outline-btn:hover,
+.req-outline-btn:focus,
+.req-outline-btn:active {
+  background: rgba(168, 90, 71, 0.08) !important;
+  border-color: #A85A47 !important;
+  color: #A85A47 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .req-outline-btn {
+  border-color: #9E5C47 !important;
+  color: #ffe9e9 !important;
+}
+[data-bs-theme="dark"] .req-outline-btn:hover,
+[data-bs-theme="dark"] .req-outline-btn:focus,
+[data-bs-theme="dark"] .req-outline-btn:active {
+  background: rgba(200, 149, 122, 0.12) !important;
+}
+
+/* =========================================
+   요일 선택 버튼 (Bootstrap 오버라이드)
+   ========================================= */
+.day-btn-off,
+.day-btn-off:hover,
+.day-btn-off:focus,
+.day-btn-off:active {
+  background: transparent !important;
+  border: 1.5px solid #C8B0A0 !important;
+  opacity: 0.6 !important;
+  transition: all 0.2s ease;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.day-btn-on,
+.day-btn-on:hover,
+.day-btn-on:focus,
+.day-btn-on:active {
+  border: 1.5px solid #A85A47 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  transition: all 0.2s ease;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .day-btn-off,
+[data-bs-theme="dark"] .day-btn-off:hover,
+[data-bs-theme="dark"] .day-btn-off:focus,
+[data-bs-theme="dark"] .day-btn-off:active {
+  border-color: #7A6A60 !important;
+  background: #2D231E !important;
+}
+
+[data-bs-theme="dark"] .day-btn-on,
+[data-bs-theme="dark"] .day-btn-on:hover,
+[data-bs-theme="dark"] .day-btn-on:focus,
+[data-bs-theme="dark"] .day-btn-on:active {
+  border-color: #9E5C47 !important;
+}
+
 .main-container {
-  min-height: 100vh;
+  min-height: calc(100vh - 70px);
   background-color: var(--color-bg-cream);
 }
 
-.glass-card {
+.worker-hero-card {
   background: var(--color-surface);
-  border: none;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
   box-shadow: var(--shadow-sm);
-  border-radius: var(--border-radius-lg);
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
-.avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background-color: var(--color-secondary);
-  color: var(--color-text-main);
+.worker-hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+
+.worker-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 700;
-  box-shadow: 0 4px 10px rgba(255, 211, 182, 0.4);
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.attendance-btn {
-  transition: all 0.2s ease;
-  font-weight: 600;
-  border: none;
-  border-radius: var(--border-radius-sm);
-}
-
-.attendance-btn:hover {
+.worker-stat-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
 
-.btn-in {
-  background-color: var(--color-primary) !important;
-  color: white !important;
+.stat-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.btn-in:hover, .btn-in:active {
-  background-color: var(--color-primary-hover) !important;
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--color-text-main);
 }
 
-.btn-out {
-  background-color: #ff8a65 !important; /* Slightly distinct coral for out */
-  color: white !important;
+.stat-unit {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-left: 2px;
+  color: var(--color-text-muted);
 }
 
-.btn-out:hover, .btn-out:active {
-  background-color: #ff7043 !important;
+.today-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.quick-action-btn {
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  padding: 0.65rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.2s ease;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
-  .avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-  }
-  
-  .attendance-btn {
-    width: 100%;
-    margin-bottom: 0.5rem;
-    padding: 0.75rem 1rem !important;
-    font-size: 1rem !important;
-  }
-  
-  .action-card .d-flex.gap-4 {
-    flex-direction: column;
-    gap: 0.5rem !important;
-    width: 100%;
+  .main-container .container {
+    padding-top: 1rem !important;
+    padding-bottom: 5rem !important;
   }
 
-  .main-container .container {
-    padding-top: 1.5rem !important;
-    padding-bottom: 1.5rem !important;
+  .stat-value {
+    font-size: 1.45rem;
+  }
+
+  .worker-hero-card {
+    padding: 1.25rem;
   }
 }

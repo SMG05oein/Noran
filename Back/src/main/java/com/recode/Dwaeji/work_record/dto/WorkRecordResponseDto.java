@@ -36,7 +36,7 @@ public class WorkRecordResponseDto {
     private String wrRemarks;
     private LocalDateTime wrCreatedAt;
     private LocalDateTime wrUpdatedAt;
-    private String applyStatus; // 해당 날짜의 근무 신청 상태 (신청 없음, 신청, 수락, 반려)
+    private String applyStatus; // 해당 날짜의 근무 신청 상태 (신청없음, 미신청, 미배정, 배정, 신청)
 
     public static WorkRecordResponseDto fromEntity(WorkRecord entity, String applyStatus) {
         if (entity == null) return null;

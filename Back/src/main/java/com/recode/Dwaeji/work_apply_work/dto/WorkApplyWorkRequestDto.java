@@ -31,6 +31,14 @@ public class WorkApplyWorkRequestDto {
     private LocalTime wawSatStartTime;
     private LocalTime wawSunStartTime;
 
+    private Long wawMonWorkPlaceIdx;
+    private Long wawTueWorkPlaceIdx;
+    private Long wawWedWorkPlaceIdx;
+    private Long wawThuWorkPlaceIdx;
+    private Long wawFriWorkPlaceIdx;
+    private Long wawSatWorkPlaceIdx;
+    private Long wawSunWorkPlaceIdx;
+
     private String wawRemarks;
     // 관리자가 특정 유저의 신청을 대리 작성/수정할 경우를 위해
     private Long userIdx; 

@@ -1,58 +1,101 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
 :root {
-  /* Warm Theme Colors (Calmer, muted terracotta/wood) */
-  --color-primary: #C06B52; /* 차분한 테라코타/적갈색 */
-  --color-primary-hover: #A35741;
-  --color-secondary: #E6D5C3; /* 부드러운 우드/베이지 */
-  --color-secondary-hover: #D1BFA9;
-  --color-bg-cream: #FAF8F5; /* 차분한 크림톤 배경 */
-  --color-surface: #FFFFFF; /* 카드 배경 */
-  --color-text-main: #423934; /* 짙은 웜 그레이/브라운 */
-  --color-text-muted: #8F847D;
-  
-  /* Shadows and Borders */
-  --shadow-sm: 0 2px 8px rgba(138, 92, 72, 0.08);
-  --shadow-md: 0 8px 24px rgba(138, 92, 72, 0.12);
-  --border-radius-lg: 1.25rem;
-  --border-radius-md: 0.8rem;
-  --border-radius-sm: 0.5rem;
+  /* Warm Korean BBQ Theme (고깃집/우드/테라코타 웜톤) */
+  --color-primary: #9F4E3B; /* 깊은 적갈색 */
+  --color-primary-hover: #7F3D2F;
+  --color-primary-rgb: 159, 78, 59;
+  --color-primary-light: rgba(159, 78, 59, 0.12);
+
+  --color-secondary: #E8D5BF; /* 따뜻한 베이지 / 우드 */
+  --color-secondary-hover: #D8C3AA;
+  --color-secondary-rgb: 232, 213, 191;
+
+  --color-bg-cream: #FAF7F2; /* 아주 연한 크림톤 배경 */
+  --color-surface: #FFFFFF; /* 카드 및 표면 배경 */
+  --color-surface-hover: #F8F4EE;
+
+  --color-text-main: #342823; /* 짙은 브라운 / 웜그레이 */
+  --color-text-muted: #81756E;
+  --color-text-light: #A59B94;
+
+  /* Status Colors */
+  --color-success: #5D8A68; /* 자연스러운 포레스트 그린 */
+  --color-success-bg: rgba(93, 138, 104, 0.12);
+  --color-warning: #C98A3D; /* 따뜻한 앰버 오렌지 */
+  --color-warning-bg: rgba(201, 138, 61, 0.12);
+  --color-danger: #B85C5C; /* 차분한 레드 */
+  --color-danger-bg: rgba(184, 92, 92, 0.12);
+  --color-info: #5B82A6;
+  --color-info-bg: rgba(91, 130, 166, 0.12);
+
+  /* Shadows */
+  --shadow-xs: 0 1px 4px rgba(80, 50, 35, 0.04);
+  --shadow-sm: 0 3px 12px rgba(80, 50, 35, 0.07);
+  --shadow-md: 0 8px 25px rgba(80, 50, 35, 0.11);
+  --shadow-lg: 0 16px 36px rgba(80, 50, 35, 0.15);
+
+  /* Radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 50rem;
 
   /* Form Inputs */
-  --color-input-bg: #FAFAFA;
+  --color-input-bg: #F5EFE6;
   --color-input-bg-focus: #FFFFFF;
-  --color-input-border: #E0E0E0;
-  --color-input-text: #423934;
+  --color-input-border: #E8DECE;
+  --color-input-border-focus: var(--color-primary);
+  --color-input-text: #342823;
 }
 
 [data-bs-theme="dark"] {
-  /* Dark Mode Palette (Warm Dark) */
-  --color-bg-cream: #121212; /* 짙은 검정/어두운 회색 바탕 */
-  --color-surface: #1E1E1E; /* 카드 배경 */
-  --color-text-main: #EAEAEA; /* 텍스트는 밝게 */
-  --color-text-muted: #A0A0A0;
-  
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.8);
-  
-  /* Primary 포인트 컬러(테라코타)는 다크 모드에서도 유지하되, 살짝 밝게 */
-  --color-primary: #D67A60; 
-  --color-primary-hover: #E88B71;
-  --color-secondary: #332B27; /* 어두운 브라운/우드톤 배경 */
-  --color-secondary-hover: #453B36;
-  
+  /* Warm Dark Mode Palette */
+  --color-bg-cream: #151313; /* 짙은 웜 블랙 */
+  --color-surface: #211D1B; /* 짙은 우드 브라운 카드 표면 */
+  --color-surface-hover: #2B2523;
+
+  --color-text-main: #F1E9E4; /* 부드러운 웜 화이트 */
+  --color-text-muted: #A89F99;
+  --color-text-light: #706863;
+
+  /* Shadows (Dark Mode) */
+  --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 3px 12px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 25px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.8);
+
+  /* Primary & Accent (Dark Mode) */
+  --color-primary: #D77A5F; 
+  --color-primary-hover: #E88E75;
+  --color-primary-rgb: 215, 122, 95;
+  --color-primary-light: rgba(215, 122, 95, 0.18);
+
+  --color-secondary: #49372F; 
+  --color-secondary-hover: #5C473C;
+  --color-secondary-rgb: 73, 55, 47;
+
+  /* Status Colors in Dark Mode */
+  --color-success: #6CA579;
+  --color-success-bg: rgba(108, 165, 121, 0.2);
+  --color-warning: #DE9E4B;
+  --color-warning-bg: rgba(222, 158, 75, 0.2);
+  --color-danger: #CF6E6E;
+  --color-danger-bg: rgba(207, 110, 110, 0.2);
+  --color-info: #709CC4;
+  --color-info-bg: rgba(112, 156, 196, 0.2);
+
   /* Form Inputs (Dark Mode) */
-  --color-input-bg: #2B2B40;
-  --color-input-bg-focus: #3F3F5A;
-  --color-input-border: #3F3F5A;
-  --color-input-text: #EAEAEA;
+  --color-input-bg: #2C2623;
+  --color-input-bg-focus: #37302C;
+  --color-input-border: #443B36;
+  --color-input-border-focus: var(--color-primary);
+  --color-input-text: #F1E9E4;
 }
 
-/* 
- * 🚨 글로벌 다크 모드 강제 보정 🚨
- * 컴포넌트들에 하드코딩된 라이트 모드용 클래스(bg-white, text-dark 등)가 
- * 다크 모드에서 눈부시게(흰색/검은색) 출력되는 것을 방지합니다.
- */
+/* 글로벌 다크 모드 부트스트랩 클래스 보정 */
 [data-bs-theme="dark"] .bg-white {
   background-color: var(--color-surface) !important;
 }
@@ -63,9 +106,9 @@
   color: var(--color-text-main) !important;
 }
 [data-bs-theme="dark"] .table-light {
-  --bs-table-bg: #2B2B40;
-  --bs-table-color: #EAEAEA;
-  --bs-table-border-color: #3F3F5A;
+  --bs-table-bg: #2C2623;
+  --bs-table-color: #F1E9E4;
+  --bs-table-border-color: #443B36;
   background-color: var(--bs-table-bg) !important;
   color: var(--bs-table-color) !important;
 }
@@ -83,19 +126,57 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-bg-cream);
   color: var(--color-text-main);
+  letter-spacing: -0.015em;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Base resets */
 h1, h2, h3, h4, h5, h6 {
   margin-top: 0;
   margin-bottom: 0.5rem;
+  color: var(--color-text-main);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 p {
   margin-top: 0;
   margin-bottom: 1rem;
+}
+
+/* 전역 스크롤바 / 드래그 바 완전 제거 (스크롤 기능은 정상 유지) */
+html,
+body,
+#root,
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 불필요한 텍스트 드래그/선택 방지 (입력창 제외) */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
 }

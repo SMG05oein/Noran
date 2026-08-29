@@ -140,25 +140,25 @@ const NoticeModal = () => {
       keyboard={false}
       style={{ zIndex: 1060 }}
     >
-      <Modal.Header closeButton style={{ backgroundColor: '#ffc107', color: '#000', borderBottom: 'none' }}>
+      <Modal.Header closeButton style={{ backgroundColor: 'var(--color-primary)', color: '#fff', borderBottom: 'none' }}>
         <Modal.Title className="fw-bold d-flex align-items-center gap-2" style={{ fontSize: '1.1rem' }}>
           <span>📢 공지사항</span>
           {notices.length > 1 && (
-            <Badge bg="dark" className="fs-6">
+            <Badge bg="light" className="text-dark fs-6">
               {currentIndex + 1} / {notices.length}
             </Badge>
           )}
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body style={{ backgroundColor: '#fff', color: '#212529', minHeight: '160px', padding: '1.5rem' }}>
-        <h5 className="fw-bold mb-3 text-warning-emphasis">{currentNotice.title}</h5>
+      <Modal.Body style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-main)', minHeight: '160px', padding: '1.5rem' }}>
+        <h5 className="fw-bold mb-3 text-primary">{currentNotice.title}</h5>
         <div
           style={{
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-all',
             fontSize: '0.95rem',
             lineHeight: '1.6',
-            color: '#495057'
+            color: 'var(--color-text-muted)'
           }}
         >
           {currentNotice.content}
@@ -171,7 +171,7 @@ const NoticeModal = () => {
       </Modal.Body>
       <Modal.Footer
         className="d-flex justify-content-between align-items-center"
-        style={{ backgroundColor: '#f8f9fa', borderTop: '1px solid #dee2e6' }}
+        style={{ backgroundColor: 'var(--color-surface-hover)', borderTop: '1px solid var(--color-border)' }}
       >
         <Form.Check
           type="checkbox"
@@ -188,7 +188,7 @@ const NoticeModal = () => {
               <Button
                 variant="outline-secondary"
                 size="sm"
-                className="fw-bold px-2"
+                className="fw-bold px-2 rounded-3"
                 onClick={handlePrev}
                 disabled={currentIndex === 0}
               >
@@ -197,7 +197,7 @@ const NoticeModal = () => {
               <Button
                 variant="outline-secondary"
                 size="sm"
-                className="fw-bold px-2"
+                className="fw-bold px-2 rounded-3"
                 onClick={handleNext}
                 disabled={currentIndex === notices.length - 1}
               >
@@ -205,7 +205,7 @@ const NoticeModal = () => {
               </Button>
             </>
           )}
-          <Button variant="warning" className="fw-bold px-4 rounded-pill" onClick={handleClose}>
+          <Button variant="primary" className="fw-bold px-4 rounded-pill shadow-xs" onClick={handleClose}>
             닫기
           </Button>
         </div>

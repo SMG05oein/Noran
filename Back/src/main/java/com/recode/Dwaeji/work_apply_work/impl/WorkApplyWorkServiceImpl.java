@@ -1,7 +1,10 @@
 package com.recode.Dwaeji.work_apply_work.impl;
 
 import com.recode.Dwaeji.user.database.User;
+import com.recode.Dwaeji.user.database.WorkPlace;
 import com.recode.Dwaeji.user.repository.UserRepository;
+import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
+import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyWork;
 import com.recode.Dwaeji.work_apply_work.dto.WorkApplyWorkRequestDto;
 import com.recode.Dwaeji.work_apply_work.dto.WorkApplyWorkResponseDto;
@@ -12,22 +15,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.DayOfWeek;
 import java.time.temporal.TemporalAdjusters;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Comparator;
-import java.util.Optional;
-import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +29,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
 
     private final WorkApplyWorkRepository workApplyWorkRepository;
     private final UserRepository userRepository;
+    private final WorkPlaceRepository workPlaceRepository;
 
     private User getRequester(String requesterId) {
         return userRepository.findByUserId(requesterId)
@@ -45,16 +40,113 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         return user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1;
     }
 
-    private void checkDeadline(java.time.LocalDate wawDate, User requester) {
+    private void checkDeadline(LocalDate wawDate, User requester) {
         if (isAdmin(requester)) return;
         
         // 프론트에서 어떤 요일을 보내든 강제로 해당 주의 '월요일'을 기준으로 마감일 계산
-        java.time.LocalDate monday = wawDate.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        LocalDate monday = wawDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         java.time.LocalDateTime deadline = monday.minusDays(1).atStartOfDay(); // 일요일 00:00:00
         
         if (java.time.LocalDateTime.now().isAfter(deadline)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 주차의 근무 신청/수정 마감 기한(일요일 00:00)이 지났습니다.");
         }
+    }
+
+    private boolean isAllUnapplied(WorkApplyWork apply) {
+        return apply.getWawIsMon() == ApplyStatus.미신청 &&
+               apply.getWawIsTue() == ApplyStatus.미신청 &&
+               apply.getWawIsWed() == ApplyStatus.미신청 &&
+               apply.getWawIsThu() == ApplyStatus.미신청 &&
+               apply.getWawIsFri() == ApplyStatus.미신청 &&
+               apply.getWawIsSat() == ApplyStatus.미신청 &&
+               apply.getWawIsSun() == ApplyStatus.미신청;
+    }
+
+    private boolean isAllUnapplied(WorkApplyWorkRequestDto dto) {
+        return (dto.getWawIsMon() == null || dto.getWawIsMon() == ApplyStatus.미신청) &&
+               (dto.getWawIsTue() == null || dto.getWawIsTue() == ApplyStatus.미신청) &&
+               (dto.getWawIsWed() == null || dto.getWawIsWed() == ApplyStatus.미신청) &&
+               (dto.getWawIsThu() == null || dto.getWawIsThu() == ApplyStatus.미신청) &&
+               (dto.getWawIsFri() == null || dto.getWawIsFri() == ApplyStatus.미신청) &&
+               (dto.getWawIsSat() == null || dto.getWawIsSat() == ApplyStatus.미신청) &&
+               (dto.getWawIsSun() == null || dto.getWawIsSun() == ApplyStatus.미신청);
+    }
+
+    private WorkPlace resolveWorkPlace(Long wpIdx, WorkPlace defaultWp) {
+        if (wpIdx != null) {
+            return workPlaceRepository.findById(wpIdx).orElse(defaultWp);
+        }
+        return defaultWp;
+    }
+
+    private WorkPlace getDayWorkPlace(WorkApplyWork apply, DayOfWeek dayOfWeek) {
+        WorkPlace wp = null;
+        switch (dayOfWeek) {
+            case MONDAY:    wp = apply.getWawMonWorkPlace(); break;
+            case TUESDAY:   wp = apply.getWawTueWorkPlace(); break;
+            case WEDNESDAY: wp = apply.getWawWedWorkPlace(); break;
+            case THURSDAY:  wp = apply.getWawThuWorkPlace(); break;
+            case FRIDAY:    wp = apply.getWawFriWorkPlace(); break;
+            case SATURDAY:  wp = apply.getWawSatWorkPlace(); break;
+            case SUNDAY:    wp = apply.getWawSunWorkPlace(); break;
+        }
+        return wp != null ? wp : (apply.getUser() != null ? apply.getUser().getWorkPlace() : null);
+    }
+
+    private ApplyStatus getDayStatus(WorkApplyWork apply, DayOfWeek dayOfWeek) {
+        switch (dayOfWeek) {
+            case MONDAY:    return apply.getWawIsMon();
+            case TUESDAY:   return apply.getWawIsTue();
+            case WEDNESDAY: return apply.getWawIsWed();
+            case THURSDAY:  return apply.getWawIsThu();
+            case FRIDAY:    return apply.getWawIsFri();
+            case SATURDAY:  return apply.getWawIsSat();
+            case SUNDAY:    return apply.getWawIsSun();
+            default:        return null;
+        }
+    }
+
+    private boolean isAssignedToWorkPlace(WorkApplyWork apply, Long workPlaceIdx) {
+        if (workPlaceIdx == null) return false;
+        for (DayOfWeek day : DayOfWeek.values()) {
+            ApplyStatus status = getDayStatus(apply, day);
+            if (status == ApplyStatus.배정) {
+                WorkPlace wp = getDayWorkPlace(apply, day);
+                if (wp != null && workPlaceIdx.equals(wp.getWpIdx())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private WorkApplyWorkResponseDto mapToDtoForWorkPlace(WorkApplyWork apply, Long targetWorkPlaceIdx) {
+        WorkApplyWorkResponseDto dto = mapToDto(apply);
+        if (targetWorkPlaceIdx == null) {
+            return dto;
+        }
+        if (dto.getWawIsMon() == ApplyStatus.배정 && dto.getWawMonWorkPlaceIdx() != null && !dto.getWawMonWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsMon(ApplyStatus.타지점근무);
+        }
+        if (dto.getWawIsTue() == ApplyStatus.배정 && dto.getWawTueWorkPlaceIdx() != null && !dto.getWawTueWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsTue(ApplyStatus.타지점근무);
+        }
+        if (dto.getWawIsWed() == ApplyStatus.배정 && dto.getWawWedWorkPlaceIdx() != null && !dto.getWawWedWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsWed(ApplyStatus.타지점근무);
+        }
+        if (dto.getWawIsThu() == ApplyStatus.배정 && dto.getWawThuWorkPlaceIdx() != null && !dto.getWawThuWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsThu(ApplyStatus.타지점근무);
+        }
+        if (dto.getWawIsFri() == ApplyStatus.배정 && dto.getWawFriWorkPlaceIdx() != null && !dto.getWawFriWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsFri(ApplyStatus.타지점근무);
+        }
+        if (dto.getWawIsSat() == ApplyStatus.배정 && dto.getWawSatWorkPlaceIdx() != null && !dto.getWawSatWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsSat(ApplyStatus.타지점근무);
+        }
+        if (dto.getWawIsSun() == ApplyStatus.배정 && dto.getWawSunWorkPlaceIdx() != null && !dto.getWawSunWorkPlaceIdx().equals(targetWorkPlaceIdx)) {
+            dto.setWawIsSun(ApplyStatus.타지점근무);
+        }
+        return dto;
     }
 
     @Override
@@ -70,23 +162,30 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
 
         checkDeadline(requestDto.getWawDate(), requester);
 
+        // 월~일 모두 미신청인 경우 DB에 불필요한 레코드를 생성하지 않음
+        if (isAllUnapplied(requestDto)) {
+            return;
+        }
+
         // DB에 저장할 때도 무조건 해당 주의 '월요일'로 통일해서 저장
-        java.time.LocalDate targetMonday = requestDto.getWawDate().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        LocalDate targetMonday = requestDto.getWawDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
         if (workApplyWorkRepository.existsByUser_UserIdxAndWawDate(targetUser.getUserIdx(), targetMonday)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 주차(날짜)에 이미 근무 신청 내역이 존재합니다.");
         }
 
+        WorkPlace defaultWp = targetUser.getWorkPlace();
+
         WorkApplyWork workApplyWork = WorkApplyWork.builder()
                 .user(targetUser)
                 .wawDate(targetMonday)
-                .wawIsMon(requestDto.getWawIsMon())
-                .wawIsTue(requestDto.getWawIsTue())
-                .wawIsWed(requestDto.getWawIsWed())
-                .wawIsThu(requestDto.getWawIsThu())
-                .wawIsFri(requestDto.getWawIsFri())
-                .wawIsSat(requestDto.getWawIsSat())
-                .wawIsSun(requestDto.getWawIsSun())
+                .wawIsMon(requestDto.getWawIsMon() != null ? requestDto.getWawIsMon() : ApplyStatus.미신청)
+                .wawIsTue(requestDto.getWawIsTue() != null ? requestDto.getWawIsTue() : ApplyStatus.미신청)
+                .wawIsWed(requestDto.getWawIsWed() != null ? requestDto.getWawIsWed() : ApplyStatus.미신청)
+                .wawIsThu(requestDto.getWawIsThu() != null ? requestDto.getWawIsThu() : ApplyStatus.미신청)
+                .wawIsFri(requestDto.getWawIsFri() != null ? requestDto.getWawIsFri() : ApplyStatus.미신청)
+                .wawIsSat(requestDto.getWawIsSat() != null ? requestDto.getWawIsSat() : ApplyStatus.미신청)
+                .wawIsSun(requestDto.getWawIsSun() != null ? requestDto.getWawIsSun() : ApplyStatus.미신청)
                 .wawMonStartTime(requestDto.getWawMonStartTime())
                 .wawTueStartTime(requestDto.getWawTueStartTime())
                 .wawWedStartTime(requestDto.getWawWedStartTime())
@@ -94,6 +193,13 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                 .wawFriStartTime(requestDto.getWawFriStartTime())
                 .wawSatStartTime(requestDto.getWawSatStartTime())
                 .wawSunStartTime(requestDto.getWawSunStartTime())
+                .wawMonWorkPlace(resolveWorkPlace(requestDto.getWawMonWorkPlaceIdx(), defaultWp))
+                .wawTueWorkPlace(resolveWorkPlace(requestDto.getWawTueWorkPlaceIdx(), defaultWp))
+                .wawWedWorkPlace(resolveWorkPlace(requestDto.getWawWedWorkPlaceIdx(), defaultWp))
+                .wawThuWorkPlace(resolveWorkPlace(requestDto.getWawThuWorkPlaceIdx(), defaultWp))
+                .wawFriWorkPlace(resolveWorkPlace(requestDto.getWawFriWorkPlaceIdx(), defaultWp))
+                .wawSatWorkPlace(resolveWorkPlace(requestDto.getWawSatWorkPlaceIdx(), defaultWp))
+                .wawSunWorkPlace(resolveWorkPlace(requestDto.getWawSunWorkPlaceIdx(), defaultWp))
                 .wawRemarks(requestDto.getWawRemarks())
                 .build();
 
@@ -124,20 +230,27 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         List<User> targetUsers;
         List<WorkApplyWork> applies;
 
+        if (wawDate != null) {
+            applies = workApplyWorkRepository.findByWawDate(wawDate);
+        } else {
+            applies = workApplyWorkRepository.findAll();
+        }
+
         if (workPlaceIdx != null) {
-            targetUsers = userRepository.findByWorkPlace_WpIdx(workPlaceIdx);
-            if (wawDate != null) {
-                applies = workApplyWorkRepository.findByUser_WorkPlace_WpIdxAndWawDate(workPlaceIdx, wawDate);
-            } else {
-                applies = workApplyWorkRepository.findAll();
+            List<User> homeUsers = userRepository.findByWorkPlace_WpIdx(workPlaceIdx);
+            Map<Long, User> userMap = new LinkedHashMap<>();
+            for (User u : homeUsers) {
+                userMap.put(u.getUserIdx(), u);
             }
+            // 해당 지점에 하루라도 교차 배정된 타 지점 유저들도 목록에 포함
+            for (WorkApplyWork apply : applies) {
+                if (isAssignedToWorkPlace(apply, workPlaceIdx)) {
+                    userMap.putIfAbsent(apply.getUser().getUserIdx(), apply.getUser());
+                }
+            }
+            targetUsers = new ArrayList<>(userMap.values());
         } else {
             targetUsers = userRepository.findAll();
-            if (wawDate != null) {
-                applies = workApplyWorkRepository.findByWawDate(wawDate);
-            } else {
-                applies = workApplyWorkRepository.findAll();
-            }
         }
 
         Map<Long, WorkApplyWork> applyMap = applies.stream()
@@ -148,9 +261,9 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                 .map(user -> {
                     WorkApplyWork apply = applyMap.get(user.getUserIdx());
                     if (apply != null) {
-                        return mapToDto(apply);
+                        return mapToDtoForWorkPlace(apply, workPlaceIdx);
                     } else {
-                        return WorkApplyWorkResponseDto.emptyForUser(user);
+                        return WorkApplyWorkResponseDto.emptyForUser(user, wawDate);
                     }
                 })
                 .sorted(Comparator.comparing(WorkApplyWorkResponseDto::getUserName, Comparator.nullsLast(Comparator.naturalOrder()))
@@ -170,9 +283,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         LocalDate endDate = lastDayOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
         
         List<WorkApplyWork> applies;
-        if (isAdmin(requester) && workPlaceIdx != null) {
-            applies = workApplyWorkRepository.findByUser_WorkPlace_WpIdxAndWawDateBetween(workPlaceIdx, startDate.minusDays(7), endDate);
-        } else if (isAdmin(requester)) {
+        if (isAdmin(requester)) {
             applies = workApplyWorkRepository.findByWawDateBetween(startDate.minusDays(7), endDate);
         } else {
             applies = List.of();
@@ -185,22 +296,22 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         
         for (WorkApplyWork apply : applies) {
             LocalDate monday = apply.getWawDate();
-            checkAndIncrementCount(counts, monday, apply.getWawIsMon());
-            checkAndIncrementCount(counts, monday.plusDays(1), apply.getWawIsTue());
-            checkAndIncrementCount(counts, monday.plusDays(2), apply.getWawIsWed());
-            checkAndIncrementCount(counts, monday.plusDays(3), apply.getWawIsThu());
-            checkAndIncrementCount(counts, monday.plusDays(4), apply.getWawIsFri());
-            checkAndIncrementCount(counts, monday.plusDays(5), apply.getWawIsSat());
-            checkAndIncrementCount(counts, monday.plusDays(6), apply.getWawIsSun());
+            for (int i = 0; i < 7; i++) {
+                LocalDate date = monday.plusDays(i);
+                DayOfWeek day = date.getDayOfWeek();
+                ApplyStatus status = getDayStatus(apply, day);
+                if (status == ApplyStatus.배정) {
+                    WorkPlace wp = getDayWorkPlace(apply, day);
+                    if (workPlaceIdx == null || (wp != null && workPlaceIdx.equals(wp.getWpIdx()))) {
+                        if (counts.containsKey(date.toString())) {
+                            counts.put(date.toString(), counts.get(date.toString()) + 1);
+                        }
+                    }
+                }
+            }
         }
         
         return counts;
-    }
-
-    private void checkAndIncrementCount(Map<String, Integer> counts, LocalDate date, ApplyStatus status) {
-        if (status == ApplyStatus.배정 && counts.containsKey(date.toString())) {
-            counts.put(date.toString(), counts.get(date.toString()) + 1);
-        }
     }
 
     @Override
@@ -212,29 +323,17 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         }
 
         LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        List<WorkApplyWork> applies;
-        
-        if (workPlaceIdx != null) {
-            applies = workApplyWorkRepository.findByUser_WorkPlace_WpIdxAndWawDate(workPlaceIdx, monday);
-        } else {
-            applies = workApplyWorkRepository.findByWawDate(monday);
-        }
+        List<WorkApplyWork> applies = workApplyWorkRepository.findByWawDate(monday);
 
         return applies.stream()
                 .filter(apply -> {
                     DayOfWeek dayOfWeek = date.getDayOfWeek();
-                    ApplyStatus status;
-                    switch (dayOfWeek) {
-                        case MONDAY: status = apply.getWawIsMon(); break;
-                        case TUESDAY: status = apply.getWawIsTue(); break;
-                        case WEDNESDAY: status = apply.getWawIsWed(); break;
-                        case THURSDAY: status = apply.getWawIsThu(); break;
-                        case FRIDAY: status = apply.getWawIsFri(); break;
-                        case SATURDAY: status = apply.getWawIsSat(); break;
-                        case SUNDAY: status = apply.getWawIsSun(); break;
-                        default: status = null;
+                    ApplyStatus status = getDayStatus(apply, dayOfWeek);
+                    if (status != ApplyStatus.배정) {
+                        return false;
                     }
-                    return status == ApplyStatus.배정;
+                    WorkPlace wp = getDayWorkPlace(apply, dayOfWeek);
+                    return workPlaceIdx == null || (wp != null && workPlaceIdx.equals(wp.getWpIdx()));
                 })
                 .map(apply -> {
                     DayOfWeek dayOfWeek = date.getDayOfWeek();
@@ -287,7 +386,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         }
 
         if (requestDto.getWawDate() != null) {
-            java.time.LocalDate targetMonday = requestDto.getWawDate().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+            LocalDate targetMonday = requestDto.getWawDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
             
             if (!targetMonday.equals(apply.getWawDate())) {
                 checkDeadline(targetMonday, requester);
@@ -302,23 +401,92 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
             checkDeadline(apply.getWawDate(), requester);
         }
 
+        WorkPlace defaultWp = apply.getUser().getWorkPlace();
+
+        // 월요일
         if (requestDto.getWawIsMon() != null) apply.setWawIsMon(requestDto.getWawIsMon());
+        apply.setWawMonStartTime(requestDto.getWawMonStartTime());
+        if (requestDto.getWawMonWorkPlaceIdx() != null) {
+            apply.setWawMonWorkPlace(resolveWorkPlace(requestDto.getWawMonWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsMon() == ApplyStatus.배정) {
+            apply.setWawMonWorkPlace(defaultWp);
+        } else {
+            apply.setWawMonWorkPlace(null);
+        }
+
+        // 화요일
         if (requestDto.getWawIsTue() != null) apply.setWawIsTue(requestDto.getWawIsTue());
+        apply.setWawTueStartTime(requestDto.getWawTueStartTime());
+        if (requestDto.getWawTueWorkPlaceIdx() != null) {
+            apply.setWawTueWorkPlace(resolveWorkPlace(requestDto.getWawTueWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsTue() == ApplyStatus.배정) {
+            apply.setWawTueWorkPlace(defaultWp);
+        } else {
+            apply.setWawTueWorkPlace(null);
+        }
+
+        // 수요일
         if (requestDto.getWawIsWed() != null) apply.setWawIsWed(requestDto.getWawIsWed());
+        apply.setWawWedStartTime(requestDto.getWawWedStartTime());
+        if (requestDto.getWawWedWorkPlaceIdx() != null) {
+            apply.setWawWedWorkPlace(resolveWorkPlace(requestDto.getWawWedWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsWed() == ApplyStatus.배정) {
+            apply.setWawWedWorkPlace(defaultWp);
+        } else {
+            apply.setWawWedWorkPlace(null);
+        }
+
+        // 목요일
         if (requestDto.getWawIsThu() != null) apply.setWawIsThu(requestDto.getWawIsThu());
+        apply.setWawThuStartTime(requestDto.getWawThuStartTime());
+        if (requestDto.getWawThuWorkPlaceIdx() != null) {
+            apply.setWawThuWorkPlace(resolveWorkPlace(requestDto.getWawThuWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsThu() == ApplyStatus.배정) {
+            apply.setWawThuWorkPlace(defaultWp);
+        } else {
+            apply.setWawThuWorkPlace(null);
+        }
+
+        // 금요일
         if (requestDto.getWawIsFri() != null) apply.setWawIsFri(requestDto.getWawIsFri());
+        apply.setWawFriStartTime(requestDto.getWawFriStartTime());
+        if (requestDto.getWawFriWorkPlaceIdx() != null) {
+            apply.setWawFriWorkPlace(resolveWorkPlace(requestDto.getWawFriWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsFri() == ApplyStatus.배정) {
+            apply.setWawFriWorkPlace(defaultWp);
+        } else {
+            apply.setWawFriWorkPlace(null);
+        }
+
+        // 토요일
         if (requestDto.getWawIsSat() != null) apply.setWawIsSat(requestDto.getWawIsSat());
+        apply.setWawSatStartTime(requestDto.getWawSatStartTime());
+        if (requestDto.getWawSatWorkPlaceIdx() != null) {
+            apply.setWawSatWorkPlace(resolveWorkPlace(requestDto.getWawSatWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsSat() == ApplyStatus.배정) {
+            apply.setWawSatWorkPlace(defaultWp);
+        } else {
+            apply.setWawSatWorkPlace(null);
+        }
+
+        // 일요일
         if (requestDto.getWawIsSun() != null) apply.setWawIsSun(requestDto.getWawIsSun());
-        
-        if (requestDto.getWawMonStartTime() != null) apply.setWawMonStartTime(requestDto.getWawMonStartTime());
-        if (requestDto.getWawTueStartTime() != null) apply.setWawTueStartTime(requestDto.getWawTueStartTime());
-        if (requestDto.getWawWedStartTime() != null) apply.setWawWedStartTime(requestDto.getWawWedStartTime());
-        if (requestDto.getWawThuStartTime() != null) apply.setWawThuStartTime(requestDto.getWawThuStartTime());
-        if (requestDto.getWawFriStartTime() != null) apply.setWawFriStartTime(requestDto.getWawFriStartTime());
-        if (requestDto.getWawSatStartTime() != null) apply.setWawSatStartTime(requestDto.getWawSatStartTime());
-        if (requestDto.getWawSunStartTime() != null) apply.setWawSunStartTime(requestDto.getWawSunStartTime());
+        apply.setWawSunStartTime(requestDto.getWawSunStartTime());
+        if (requestDto.getWawSunWorkPlaceIdx() != null) {
+            apply.setWawSunWorkPlace(resolveWorkPlace(requestDto.getWawSunWorkPlaceIdx(), defaultWp));
+        } else if (apply.getWawIsSun() == ApplyStatus.배정) {
+            apply.setWawSunWorkPlace(defaultWp);
+        } else {
+            apply.setWawSunWorkPlace(null);
+        }
 
         if (requestDto.getWawRemarks() != null) apply.setWawRemarks(requestDto.getWawRemarks());
+
+        // 모든 요일이 미신청인 경우 DB 레코드를 삭제하여 미신청 상태로 유지
+        if (isAllUnapplied(apply)) {
+            workApplyWorkRepository.delete(apply);
+            return;
+        }
 
         workApplyWorkRepository.save(apply);
     }

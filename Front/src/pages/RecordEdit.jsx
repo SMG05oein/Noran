@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, Spinner } from 'react-bootstrap';
+import { Container, Form, Button, Spinner, Card } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWorkRecordById, updateWorkRecord } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
@@ -101,119 +101,121 @@ const RecordEdit = () => {
   }
 
   return (
-    <Container className="py-4 py-md-5" style={{ maxWidth: '600px' }}>
-      <div className="d-flex align-items-center mb-4">
-        <Button variant="link" className="text-dark p-0 me-3" onClick={() => navigate(-1)}>
-          <RiArrowLeftSLine size={24} />
+    <Container className="py-4 py-md-5" style={{ maxWidth: '560px' }}>
+      <div className="d-flex align-items-center mb-4 gap-2">
+        <Button variant="outline-secondary" className="rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }} onClick={() => navigate(-1)}>
+          <RiArrowLeftSLine size={20} />
         </Button>
-        <h2 className="fw-bold text-dark mb-0">근무 기록 수정</h2>
+        <h2 className="fw-bold text-dark mb-0 fs-3">근무 기록 수정</h2>
       </div>
 
-      <div className="glass-card rounded-4 p-4 p-md-5 shadow-sm">
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-bold text-muted small">근무 일자</Form.Label>
-            <Form.Control 
-              type="date" 
-              value={recDate}
-              onChange={(e) => setRecDate(e.target.value)}
-              className="border-0 bg-light p-3 rounded-3"
-            />
-          </Form.Group>
+      <Card className="border-0 shadow-sm rounded-4 p-3 p-md-4">
+        <Card.Body>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">근무 일자</Form.Label>
+              <Form.Control 
+                type="date" 
+                value={recDate}
+                onChange={(e) => setRecDate(e.target.value)}
+                className="custom-input"
+              />
+            </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-bold text-muted small">시작 시간</Form.Label>
-            <div className="d-flex gap-2 align-items-center">
-              <Form.Select 
-                value={startHour} 
-                onChange={e => setStartHour(e.target.value)}
-                className="border-0 bg-light p-3 rounded-3 flex-grow-1"
-              >
-                {[...Array(24)].map((_, i) => (
-                  <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시</option>
-                ))}
-              </Form.Select>
-              <span className="fw-bold text-muted">:</span>
-              <Form.Select 
-                value={startMin} 
-                onChange={e => setStartMin(e.target.value)}
-                className="border-0 bg-light p-3 rounded-3 flex-grow-1"
-              >
-                {['00', '30'].map(m => (
-                  <option key={m} value={m}>{m}분</option>
-                ))}
-              </Form.Select>
-            </div>
-          </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">시작 시간</Form.Label>
+              <div className="d-flex gap-2 align-items-center">
+                <Form.Select 
+                  value={startHour} 
+                  onChange={e => setStartHour(e.target.value)}
+                  className="custom-input flex-grow-1"
+                >
+                  {[...Array(24)].map((_, i) => (
+                    <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시</option>
+                  ))}
+                </Form.Select>
+                <span className="fw-bold text-muted">:</span>
+                <Form.Select 
+                  value={startMin} 
+                  onChange={e => setStartMin(e.target.value)}
+                  className="custom-input flex-grow-1"
+                >
+                  {['00', '30'].map(m => (
+                    <option key={m} value={m}>{m}분</option>
+                  ))}
+                </Form.Select>
+              </div>
+            </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-bold text-muted small">종료 시간</Form.Label>
-            <div className="d-flex gap-2 align-items-center">
-              <Form.Select 
-                value={endHour} 
-                onChange={e => setEndHour(e.target.value)}
-                className="border-0 bg-light p-3 rounded-3 flex-grow-1"
-              >
-                {[...Array(24)].map((_, i) => (
-                  <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시</option>
-                ))}
-              </Form.Select>
-              <span className="fw-bold text-muted">:</span>
-              <Form.Select 
-                value={endMin} 
-                onChange={e => setEndMin(e.target.value)}
-                className="border-0 bg-light p-3 rounded-3 flex-grow-1"
-              >
-                {['00', '30'].map(m => (
-                  <option key={m} value={m}>{m}분</option>
-                ))}
-              </Form.Select>
-            </div>
-          </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">종료 시간</Form.Label>
+              <div className="d-flex gap-2 align-items-center">
+                <Form.Select 
+                  value={endHour} 
+                  onChange={e => setEndHour(e.target.value)}
+                  className="custom-input flex-grow-1"
+                >
+                  {[...Array(24)].map((_, i) => (
+                    <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시</option>
+                  ))}
+                </Form.Select>
+                <span className="fw-bold text-muted">:</span>
+                <Form.Select 
+                  value={endMin} 
+                  onChange={e => setEndMin(e.target.value)}
+                  className="custom-input flex-grow-1"
+                >
+                  {['00', '30'].map(m => (
+                    <option key={m} value={m}>{m}분</option>
+                  ))}
+                </Form.Select>
+              </div>
+            </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-bold text-muted small">휴게 시간</Form.Label>
-            <div className="d-flex gap-2 align-items-center">
-              <Form.Select 
-                value={restHour} 
-                onChange={e => setRestHour(e.target.value)}
-                className="border-0 bg-light p-3 rounded-3 flex-grow-1"
-              >
-                {[...Array(10)].map((_, i) => (
-                  <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시간</option>
-                ))}
-              </Form.Select>
-              <span className="fw-bold text-muted">:</span>
-              <Form.Select 
-                value={restMin} 
-                onChange={e => setRestMin(e.target.value)}
-                className="border-0 bg-light p-3 rounded-3 flex-grow-1"
-              >
-                {['00', '30'].map(m => (
-                  <option key={m} value={m}>{m}분</option>
-                ))}
-              </Form.Select>
-            </div>
-          </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">휴게 시간</Form.Label>
+              <div className="d-flex gap-2 align-items-center">
+                <Form.Select 
+                  value={restHour} 
+                  onChange={e => setRestHour(e.target.value)}
+                  className="custom-input flex-grow-1"
+                >
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시간</option>
+                  ))}
+                </Form.Select>
+                <span className="fw-bold text-muted">:</span>
+                <Form.Select 
+                  value={restMin} 
+                  onChange={e => setRestMin(e.target.value)}
+                  className="custom-input flex-grow-1"
+                >
+                  {['00', '30'].map(m => (
+                    <option key={m} value={m}>{m}분</option>
+                  ))}
+                </Form.Select>
+              </div>
+            </Form.Group>
 
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-bold text-muted small">비고 (선택)</Form.Label>
-            <Form.Control 
-              as="textarea"
-              rows={3}
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="특이사항이 있다면 적어주세요."
-              className="border-0 bg-light p-3 rounded-3"
-            />
-          </Form.Group>
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-bold text-muted small">비고 (선택)</Form.Label>
+              <Form.Control 
+                as="textarea"
+                rows={3}
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="특이사항이 있다면 적어주세요."
+                className="custom-input"
+              />
+            </Form.Group>
 
-          <Button variant="primary" type="submit" className="w-100 p-3 rounded-3 fw-bold fs-5 shadow-sm d-flex align-items-center justify-content-center gap-2">
-            <RiSave3Line />
-            수정 완료
-          </Button>
-        </Form>
-      </div>
+            <Button variant="primary" type="submit" className="w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+              <RiSave3Line size={18} />
+              수정 완료
+            </Button>
+          </Form>
+        </Card.Body>
+      </Card>
     </Container>
   );
 };

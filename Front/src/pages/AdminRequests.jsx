@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Badge, Modal, Form } from 'react-bootstrap';
+import { Container, Card, Table, Button, Spinner, Badge, Modal, Form } from 'react-bootstrap';
 import { fetchWorkRequests, updateWorkRequest } from '../api/workApi';
+import { fetchWorkPlaces } from '../api/authApi';
+import useAuthStore from '../store/authStore';
 import { parseISO, addDays, format, getWeekOfMonth } from 'date-fns';
+import { RiStore2Line, RiFileList3Line } from 'react-icons/ri';
 import './AdminMain.css';
 
 const parseDateString = (dateObj) => {
@@ -24,8 +27,8 @@ const DAY_KEYS = [
   { key: 'wawIsSun', name: '일', offset: 6 },
 ];
 
-const statusColor = { '신청': 'warning', '배정': 'success', '반려': 'danger', '미신청': 'secondary' };
-const statusText = { '신청': '신청', '배정': '배정', '반려': '미배정', '미신청': '미신청' };
+const statusColor = { '신청': 'warning', '배정': 'success', '미배정': 'danger', '미신청': 'secondary', '타지점근무': 'info' };
+const statusText = { '신청': '신청', '배정': '배정', '미배정': '미배정', '미신청': '미신청', '타지점근무': '타지점' };
 
 const TIME_OPTIONS = [];
 for (let h = 10; h <= 23; h++) {
@@ -40,32 +43,55 @@ const formatTimeValue = (timeStr) => {
 };
 
 const AdminRequests = () => {
-  const [selectedBranch, setSelectedBranch] = useState('노란돼지');
+  const { user } = useAuthStore();
+  const [selectedWpIdx, setSelectedWpIdx] = useState(user?.workPlaceIdx || null);
+  const [branches, setBranches] = useState([]);
   const [workRequests, setWorkRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReq, setSelectedReq] = useState(null);
   const [selectedDays, setSelectedDays] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const branches = [
-    { name: '노란돼지', value: '노란돼지' },
-    { name: '약산돼지', value: '약산돼지' },
-  ];
+  const currentBranchObj = useMemo(() => {
+    if (branches.length === 0) return null;
+    return branches.find(b => Number(b.wpIdx) === Number(selectedWpIdx)) || branches[0];
+  }, [branches, selectedWpIdx]);
+
+  const selectedBranchName = currentBranchObj?.wpName || user?.branch || '지점';
 
   const loadData = async () => {
     setLoading(true);
-    const res = await fetchWorkRequests();
-    if (res.success) setWorkRequests(res.data || []);
+    const [reqRes, branchRes] = await Promise.all([
+      fetchWorkRequests(),
+      fetchWorkPlaces()
+    ]);
+    if (branchRes.success && branchRes.data) {
+      setBranches(branchRes.data);
+      const userWpName = user?.workPlaceName || user?.branch;
+      const myBranch = branchRes.data.find(b => 
+        (user?.workPlaceIdx && Number(b.wpIdx) === Number(user.workPlaceIdx)) ||
+        (userWpName && (b.wpName === userWpName || userWpName.includes(b.wpName) || b.wpName.includes(userWpName)))
+      );
+      if (myBranch && !selectedWpIdx) {
+        setSelectedWpIdx(myBranch.wpIdx);
+      } else if (!selectedWpIdx || !branchRes.data.some(b => Number(b.wpIdx) === Number(selectedWpIdx))) {
+        setSelectedWpIdx(myBranch?.wpIdx || branchRes.data[0]?.wpIdx || null);
+      }
+    }
+    if (reqRes.success) setWorkRequests(reqRes.data || []);
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);
 
   const filteredRequests = useMemo(() => {
-    return workRequests.filter(req =>
-      !req.workPlaceName || req.workPlaceName.includes(selectedBranch)
-    );
-  }, [workRequests, selectedBranch]);
+    return workRequests.filter(req => {
+      if (req.workPlaceIdx != null && currentBranchObj?.wpIdx != null) {
+        return Number(req.workPlaceIdx) === Number(currentBranchObj.wpIdx);
+      }
+      return !req.workPlaceName || req.workPlaceName === selectedBranchName;
+    });
+  }, [workRequests, currentBranchObj, selectedBranchName]);
 
   const handleBatchApprove = async (newStatus) => {
     if (selectedDays.length === 0) return;
@@ -88,10 +114,12 @@ const AdminRequests = () => {
     const res = await updateWorkRequest(req.wawIdx, payload);
     setSaving(false);
     if (res.success) {
-      loadData();
+      alert(`선택한 요일의 상태가 [${newStatus}]로 변경되었습니다.`);
       setSelectedReq(null);
+      setSelectedDays([]);
+      loadData();
     } else {
-      alert(res.error || '처리에 실패했습니다.');
+      alert(res.error || '상태 변경에 실패했습니다.');
     }
   };
 
@@ -103,38 +131,42 @@ const AdminRequests = () => {
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-          <h2 className="fw-bold text-dark mb-2 mb-md-0">근무 신청 관리</h2>
-          <ButtonGroup>
-            {branches.map((b, idx) => (
-              <ToggleButton
-                key={idx}
-                id={`req-branch-${idx}`}
-                type="radio"
-                variant={selectedBranch === b.value ? "primary" : "outline-primary"}
-                name="reqBranchRadio"
-                value={b.value}
-                checked={selectedBranch === b.value}
-                onChange={e => setSelectedBranch(e.currentTarget.value)}
-                className="px-4 fw-bold"
-              >
-                {b.name}
-              </ToggleButton>
-            ))}
-          </ButtonGroup>
+        <div className="admin-header-card mb-4">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+              <h2 className="fw-bold text-dark mb-1">근무 신청 관리</h2>
+              <p className="text-muted small mb-0">직원들이 제출한 요일별 근무 희망 일정을 확인하고 배정 상태를 변경합니다.</p>
+            </div>
+            <div className="branch-select-pills mb-0">
+              {branches.map((b) => (
+                <button
+                  key={b.wpIdx}
+                  type="button"
+                  className={`branch-pill ${Number(selectedWpIdx) === Number(b.wpIdx) ? 'active' : ''}`}
+                  onClick={() => setSelectedWpIdx(b.wpIdx)}
+                >
+                  <RiStore2Line className="me-1" />
+                  {b.wpName}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {loading ? (
           <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
         ) : (
-          <Card className="border-0 shadow-sm rounded-4">
-            <Card.Body className="p-4">
+          <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+            <Card.Body className="p-0">
               {filteredRequests.length === 0 ? (
-                <div className="text-center text-muted py-5">신청 내역이 없습니다.</div>
+                <div className="text-center text-muted py-5">
+                  <RiFileList3Line size={36} className="opacity-50 mb-2" />
+                  <p className="mb-0">신청 내역이 없습니다.</p>
+                </div>
               ) : (
                 <div className="table-responsive">
-                  <Table hover className="align-middle mb-0">
-                    <thead className="table-light">
+                  <Table hover className="custom-table align-middle mb-0 text-center">
+                    <thead>
                       <tr>
                         <th>신청자</th>
                         <th>주차 (월)</th>
@@ -178,12 +210,13 @@ const AdminRequests = () => {
 
       {/* 상세 처리 모달 */}
       <Modal show={!!selectedReq} onHide={() => setSelectedReq(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold d-flex align-items-center gap-2">
-            <Badge bg="primary" className="fs-5">{selectedReq?.userName}</Badge> - {selectedReq ? `${format(parseDateString(selectedReq.wawDate), 'M')}월 ${getWeekOfMonth(parseDateString(selectedReq.wawDate), { weekStartsOn: 1 })}주차` : ''}
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold text-dark fs-5 d-flex align-items-center gap-2">
+            <Badge bg="primary" className="fs-6 px-3 py-1">{selectedReq?.userName}</Badge>
+            <span>{selectedReq ? `${format(parseDateString(selectedReq.wawDate), 'M')}월 ${getWeekOfMonth(parseDateString(selectedReq.wawDate), { weekStartsOn: 1 })}주차 신청` : ''}</span>
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           {selectedReq && (
             <div>
               {DAY_KEYS.map(d => {
@@ -207,7 +240,7 @@ const AdminRequests = () => {
                     </label>
                     <Form.Select
                       size="sm"
-                      className="mx-2 text-muted"
+                      className="custom-input py-1 mx-2"
                       style={{ width: '110px' }}
                       value={formatTimeValue(selectedReq[d.key.replace('Is', '') + 'StartTime'])}
                       onChange={(e) => {
@@ -226,20 +259,20 @@ const AdminRequests = () => {
                   </div>
                 );
               })}
-              <div className="mt-3 text-muted small">
+              <div className="mt-3 text-muted small p-2 rounded-3 bg-light">
                 <strong>비고:</strong> {selectedReq.wawRemarks || '없음'}
               </div>
             </div>
           )}
         </Modal.Body>
         <Modal.Footer>
-          <div className="me-auto text-muted small">
-            선택됨: {selectedDays.length}일
+          <div className="me-auto text-muted small fw-bold">
+            선택: <span className="text-primary">{selectedDays.length}일</span>
           </div>
-          <Button size="sm" variant="primary" disabled={saving || selectedDays.length === 0} onClick={() => handleBatchApprove('배정')}>배정</Button>
-          <Button size="sm" variant="outline-danger" disabled={saving || selectedDays.length === 0} onClick={() => handleBatchApprove('반려')}>미배정</Button>
-          <Button size="sm" variant="outline-secondary" disabled={saving || selectedDays.length === 0} onClick={() => handleBatchApprove('신청')}>신청으로</Button>
-          <Button size="sm" variant="secondary" onClick={() => setSelectedReq(null)}>닫기</Button>
+          <Button size="sm" variant="primary" className="rounded-3 px-3 fw-bold" disabled={saving || selectedDays.length === 0} onClick={() => handleBatchApprove('배정')}>배정</Button>
+          <Button size="sm" variant="outline-danger" className="rounded-3 px-3 fw-bold" disabled={saving || selectedDays.length === 0} onClick={() => handleBatchApprove('미배정')}>미배정</Button>
+          <Button size="sm" variant="outline-secondary" className="rounded-3 px-3 fw-bold" disabled={saving || selectedDays.length === 0} onClick={() => handleBatchApprove('신청')}>신청으로</Button>
+          <Button size="sm" variant="secondary" className="rounded-3" onClick={() => setSelectedReq(null)}>닫기</Button>
         </Modal.Footer>
       </Modal>
     </div>

@@ -248,57 +248,85 @@ const AdminUsers = () => {
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-          <h2 className="fw-bold text-dark mb-2 mb-md-0">직원 관리</h2>
-          <div className="d-flex gap-2 align-items-center flex-wrap">
-            <Form.Check
-              type="switch"
-              id="show-inactive-switch"
-              label="퇴사자 포함"
-              checked={showInactive}
-              onChange={e => {
-                setShowInactive(e.target.checked);
-                setPage(0);
-                setPageInput('1');
-              }}
-              className="fw-bold me-3"
-            />
-            <ButtonGroup className="me-2 shadow-sm">
-              <ToggleButton
-                id="role-worker"
-                type="radio"
-                variant={selectedRole === '알바생' ? "primary" : "outline-primary"}
-                name="roleRadio"
-                value="알바생"
-                checked={selectedRole === '알바생'}
+        <div className="admin-header-card">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+              <h2 className="fw-bold text-dark mb-1">직원 관리</h2>
+              <p className="text-muted small mb-0">알바생 및 직원의 시급, 계좌 등 민감정보와 근무 상태를 관리합니다.</p>
+            </div>
+            
+            <div className="d-flex gap-2 align-items-center flex-wrap">
+              <Form.Check
+                type="switch"
+                id="show-inactive-switch"
+                label="퇴사자 포함"
+                checked={showInactive}
                 onChange={e => {
-                  setSelectedRole(e.currentTarget.value);
+                  setShowInactive(e.target.checked);
                   setPage(0);
                   setPageInput('1');
                 }}
-                className="px-3 fw-bold"
-              >
-                알바생
-              </ToggleButton>
-              <ToggleButton
-                id="role-admin"
-                type="radio"
-                variant={selectedRole === '직원' ? "primary" : "outline-primary"}
-                name="roleRadio"
-                value="직원"
-                checked={selectedRole === '직원'}
-                onChange={e => {
-                  setSelectedRole(e.currentTarget.value);
-                  setPage(0);
-                  setPageInput('1');
-                }}
-                className="px-3 fw-bold"
-              >
-                직원
-              </ToggleButton>
-            </ButtonGroup>
+                className="fw-bold me-2"
+              />
+              <ButtonGroup className="shadow-xs">
+                <ToggleButton
+                  id="role-worker"
+                  type="radio"
+                  variant={selectedRole === '알바생' ? "primary" : "outline-primary"}
+                  name="roleRadio"
+                  value="알바생"
+                  checked={selectedRole === '알바생'}
+                  onChange={e => {
+                    setSelectedRole(e.currentTarget.value);
+                    setPage(0);
+                    setPageInput('1');
+                  }}
+                  className="px-3 fw-bold"
+                >
+                  알바생
+                </ToggleButton>
+                <ToggleButton
+                  id="role-admin"
+                  type="radio"
+                  variant={selectedRole === '직원' ? "primary" : "outline-primary"}
+                  name="roleRadio"
+                  value="직원"
+                  checked={selectedRole === '직원'}
+                  onChange={e => {
+                    setSelectedRole(e.currentTarget.value);
+                    setSelectedBranch('');
+                    setPage(0);
+                    setPageInput('1');
+                  }}
+                  className="px-3 fw-bold"
+                >
+                  직원(관리자)
+                </ToggleButton>
+              </ButtonGroup>
+            </div>
+          </div>
+
+          <hr className="my-3 opacity-25" />
+
+          {/* 검색 및 지점 필터 */}
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <Form onSubmit={handleSearch} className="d-flex align-items-center gap-1" style={{ minWidth: '220px', maxWidth: '320px' }}>
+              <Form.Control
+                type="text"
+                placeholder="이름 검색"
+                value={searchName}
+                onChange={e => setSearchName(e.target.value)}
+                className="custom-input py-2"
+                disabled={selectedRole === '직원'}
+              />
+              <Button type="submit" variant="primary" className="fw-bold rounded-3 px-3 py-2 text-nowrap" disabled={selectedRole === '직원'}>
+                검색
+              </Button>
+            </Form>
+
             <BranchFilter 
               selectedBranch={selectedBranch} 
+              onlyAll={selectedRole === '직원'}
               onChange={(val) => {
                 setSelectedBranch(val);
                 setPage(0);
@@ -308,34 +336,15 @@ const AdminUsers = () => {
           </div>
         </div>
 
-        <div className="d-flex justify-content-end mb-4">
-          <Form onSubmit={handleSearch} className="d-flex w-100" style={{ maxWidth: '300px' }}>
-            <Form.Control
-              type="text"
-              placeholder="이름 검색"
-              value={searchName}
-              onChange={e => setSearchName(e.target.value)}
-              className="me-2"
-              disabled={selectedRole === '직원'}
-            />
-            <Button type="submit" variant="primary" className="fw-bold text-nowrap" disabled={selectedRole === '직원'}>
-              검색
-            </Button>
-          </Form>
-        </div>
-
         {loading ? (
           <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
         ) : (
           <>
             {selectedRole === '직원' && (
-              <Card className="border-0 shadow-sm rounded-4 mb-4">
-                <Card.Header className="bg-white border-0 pt-4 pb-2 px-4">
-                  <h5 className="fw-bold mb-0 text-danger">관리자 목록</h5>
-                </Card.Header>
-                <Card.Body className="p-4 pt-0">
+              <Card className="border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <Card.Body className="p-0">
                   <div className="table-responsive">
-                    <Table hover className="align-middle mb-0 text-center">
+                    <Table hover className="custom-table align-middle mb-0 text-center">
                       <thead className="table-light">
                         <tr>
                           <th>No</th>
@@ -346,7 +355,7 @@ const AdminUsers = () => {
                           <th>시급</th>
                           <th>연락처</th>
                           <th>상태</th>
-                          <th>관리</th>
+                          <th style={{ minWidth: '360px', whiteSpace: 'nowrap' }}>관리</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -363,14 +372,14 @@ const AdminUsers = () => {
                               {u.userIsActive === 1 ? <Badge bg="success">재직</Badge> : <Badge bg="dark">퇴사</Badge>}
                             </td>
                             <td>
-                              <div className="d-flex justify-content-center gap-1 flex-wrap">
-                                <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold" onClick={() => openEditModal(u)}>수정</Button>
-                                <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold" onClick={() => { setSensitiveUser(u); setSensitiveData(null); setSensitiveMsg(''); setEditSensitive(false); }}>민감정보</Button>
-                                <Button size="sm" variant="outline-warning" className="rounded-pill fw-bold" onClick={() => { setTempPwUser(u); setTempPwValue(''); setTempPwMsg(''); }}>임시PW</Button>
-                                <Button size="sm" variant={u.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="rounded-pill fw-bold" onClick={() => handleToggleActive(u)}>
+                              <div className="d-flex justify-content-center align-items-center gap-1 flex-nowrap text-nowrap">
+                                <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => openEditModal(u)}>수정</Button>
+                                <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setSensitiveUser(u); setSensitiveData(null); setSensitiveMsg(''); setEditSensitive(false); }}>민감정보</Button>
+                                <Button size="sm" variant="outline-warning" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setTempPwUser(u); setTempPwValue(''); setTempPwMsg(''); }}>임시PW</Button>
+                                <Button size="sm" variant={u.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleToggleActive(u)}>
                                   {u.userIsActive === 1 ? '비활성화' : '복구'}
                                 </Button>
-                                <Button size="sm" variant="danger" className="rounded-pill fw-bold text-white" onClick={() => handleHardDelete(u)}>영구삭제</Button>
+                                <Button size="sm" variant="danger" className="rounded-pill fw-bold text-white px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleHardDelete(u)}>영구삭제</Button>
                               </div>
                             </td>
                           </tr>
@@ -388,13 +397,10 @@ const AdminUsers = () => {
             )}
 
             {selectedRole === '알바생' && (
-              <Card className="border-0 shadow-sm rounded-4">
-                <Card.Header className="bg-white border-0 pt-4 pb-2 px-4">
-                  <h5 className="fw-bold mb-0 text-primary">알바생 목록</h5>
-                </Card.Header>
-                <Card.Body className="p-4 pt-0">
+              <Card className="border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <Card.Body className="p-0">
                   <div className="table-responsive">
-                    <Table hover className="align-middle mb-0 text-center">
+                    <Table hover className="custom-table align-middle mb-0 text-center">
                       <thead className="table-light">
                         <tr>
                           <th>No</th>
@@ -405,7 +411,7 @@ const AdminUsers = () => {
                           <th>시급</th>
                           <th>연락처</th>
                           <th>상태</th>
-                          <th>관리</th>
+                          <th style={{ minWidth: '360px', whiteSpace: 'nowrap' }}>관리</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -422,14 +428,14 @@ const AdminUsers = () => {
                               {u.userIsActive === 1 ? <Badge bg="success">재직</Badge> : <Badge bg="dark">퇴사</Badge>}
                             </td>
                             <td>
-                              <div className="d-flex justify-content-center gap-1 flex-wrap">
-                                <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold" onClick={() => openEditModal(u)}>수정</Button>
-                                <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold" onClick={() => { setSensitiveUser(u); setSensitiveData(null); setSensitiveMsg(''); setEditSensitive(false); }}>민감정보</Button>
-                                <Button size="sm" variant="outline-warning" className="rounded-pill fw-bold" onClick={() => { setTempPwUser(u); setTempPwValue(''); setTempPwMsg(''); }}>임시PW</Button>
-                                <Button size="sm" variant={u.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="rounded-pill fw-bold" onClick={() => handleToggleActive(u)}>
+                              <div className="d-flex justify-content-center align-items-center gap-1 flex-nowrap text-nowrap">
+                                <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => openEditModal(u)}>수정</Button>
+                                <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setSensitiveUser(u); setSensitiveData(null); setSensitiveMsg(''); setEditSensitive(false); }}>민감정보</Button>
+                                <Button size="sm" variant="outline-warning" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setTempPwUser(u); setTempPwValue(''); setTempPwMsg(''); }}>임시PW</Button>
+                                <Button size="sm" variant={u.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleToggleActive(u)}>
                                   {u.userIsActive === 1 ? '비활성화' : '복구'}
                                 </Button>
-                                <Button size="sm" variant="danger" className="rounded-pill fw-bold text-white" onClick={() => handleHardDelete(u)}>영구삭제</Button>
+                                <Button size="sm" variant="danger" className="rounded-pill fw-bold text-white px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleHardDelete(u)}>영구삭제</Button>
                               </div>
                             </td>
                           </tr>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authSignup, fetchWorkPlaces } from '../api/authApi';
-import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
+import { Form, Button, Container, Card, Alert, Spinner, Modal } from 'react-bootstrap';
+import { RiUser3Line, RiLockPasswordLine, RiPhoneLine, RiStore2Line, RiRestaurantLine } from 'react-icons/ri';
 import './Auth.css';
 
 const Signup = () => {
@@ -15,6 +16,8 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   // 실시간 유효성 상태
   const [userIdError, setUserIdError] = useState('');
@@ -94,6 +97,10 @@ const Signup = () => {
     e.preventDefault();
 
     // 제출 시 최종 검증
+    if (!consent) {
+      return setError('개인정보 수집 및 이용에 동의해야 회원가입이 가능합니다.');
+    }
+
     if (password !== passwordConfirm) {
       return setError('비밀번호가 일치하지 않습니다.');
     }
@@ -136,31 +143,41 @@ const Signup = () => {
 
   return (
     <div className="auth-container">
-      <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh", padding: "20px 0" }}>
-        <div className="w-100" style={{ maxWidth: "450px" }}>
-          <Card className="glass-card shadow-lg border-0 rounded-4">
-            <Card.Body className="p-5">
-              <h2 className="text-center mb-4 fw-bold auth-title">회원가입</h2>
-              {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
-              {success && <Alert variant="success" className="rounded-3">{successMessage}</Alert>}
-              <Form onSubmit={handleSignup}>
+      <Container className="d-flex align-items-center justify-content-center p-4">
+        <div className="w-100" style={{ maxWidth: "460px" }}>
+          <Card className="auth-card border-0 shadow-sm">
+            <Card.Body className="p-4">
+              <div className="auth-header">
+                <div className="auth-brand-logo shadow-sm">
+                  <RiRestaurantLine />
+                </div>
+                <h1 className="auth-title">회원가입</h1>
+              </div>
 
+              {error && <Alert variant="danger" className="rounded-3 py-2 text-center">{error}</Alert>}
+              {success && <Alert variant="success" className="rounded-3 py-2 text-center">{successMessage}</Alert>}
+
+              <Form onSubmit={handleSignup}>
                 {/* 이름 */}
                 <Form.Group id="userName" className="mb-3">
-                  <Form.Label className="fw-semibold">이름</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiUser3Line /> 이름
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     required
-                    placeholder="홍길동"
+                    placeholder="성명을 입력하세요"
                     className="custom-input"
                   />
                 </Form.Group>
 
                 {/* 아이디 */}
                 <Form.Group id="userId" className="mb-3">
-                  <Form.Label className="fw-semibold">아이디</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiUser3Line /> 아이디
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     value={userId}
@@ -178,26 +195,30 @@ const Signup = () => {
 
                 {/* 비밀번호 */}
                 <Form.Group id="password" className="mb-3">
-                  <Form.Label className="fw-semibold">비밀번호</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiLockPasswordLine /> 비밀번호
+                  </Form.Label>
                   <Form.Control
                     type="password"
                     value={password}
                     onChange={handlePasswordChange}
                     required
-                    placeholder="비밀번호"
+                    placeholder="비밀번호 입력"
                     className="custom-input"
                   />
                 </Form.Group>
 
                 {/* 비밀번호 확인 */}
                 <Form.Group id="passwordConfirm" className="mb-3">
-                  <Form.Label className="fw-semibold">비밀번호 확인</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiLockPasswordLine /> 비밀번호 확인
+                  </Form.Label>
                   <Form.Control
                     type="password"
                     value={passwordConfirm}
                     onChange={handlePasswordConfirmChange}
                     required
-                    placeholder="비밀번호 확인"
+                    placeholder="비밀번호 재입력"
                     className={`custom-input ${pwMatchError ? 'is-invalid' : passwordConfirm && !pwMatchError ? 'is-valid' : ''}`}
                   />
                   {pwMatchError && (
@@ -206,7 +227,7 @@ const Signup = () => {
                     </div>
                   )}
                   {!pwMatchError && passwordConfirm && (
-                    <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+                    <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px', fontWeight: '600' }}>
                       ✅ 비밀번호가 일치합니다.
                     </div>
                   )}
@@ -214,7 +235,9 @@ const Signup = () => {
 
                 {/* 전화번호 */}
                 <Form.Group id="phone" className="mb-3">
-                  <Form.Label className="fw-semibold">전화번호</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiPhoneLine /> 연락처
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     value={phone}
@@ -229,7 +252,7 @@ const Signup = () => {
                       ⚠️ {phoneError}
                     </div>
                   ) : phone && (
-                    <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px' }}>
+                    <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px', fontWeight: '600' }}>
                       ✅ 올바른 전화번호 형식입니다.
                     </div>
                   )}
@@ -237,7 +260,9 @@ const Signup = () => {
 
                 {/* 소속 지점 */}
                 <Form.Group id="branch" className="mb-4">
-                  <Form.Label className="fw-semibold">소속 지점</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiStore2Line /> 소속 지점
+                  </Form.Label>
                   <Form.Select
                     value={branch}
                     onChange={(e) => setBranch(Number(e.target.value))}
@@ -251,22 +276,89 @@ const Signup = () => {
                   </Form.Select>
                 </Form.Group>
 
+                {/* 개인정보 수집 및 이용 동의 */}
+                <Form.Group className="mb-4 d-flex align-items-start gap-2 p-3 bg-light rounded-3 border">
+                  <Form.Check
+                    type="checkbox"
+                    id="privacyConsent"
+                    checked={consent}
+                    onChange={(e) => {
+                      setConsent(e.target.checked);
+                      if (error === '개인정보 수집 및 이용에 동의해야 회원가입이 가능합니다.') setError('');
+                    }}
+                    className="mt-1"
+                  />
+                  <div>
+                    <Form.Label htmlFor="privacyConsent" className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>
+                      [필수] 개인정보 수집 및 이용 동의
+                    </Form.Label>
+                    <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+                      원활한 서비스 이용을 위해 이름, 연락처, 이메일을 수집합니다.{' '}
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 text-decoration-none fw-bold"
+                        style={{ fontSize: '0.8rem' }}
+                        onClick={() => setShowConsentModal(true)}
+                      >
+                        자세히 보기
+                      </button>
+                    </div>
+                  </div>
+                </Form.Group>
+
                 <Button
-                  disabled={loading || success || hasErrors}
-                  className="w-100 mb-3 custom-btn"
+                  disabled={loading || success || hasErrors || !consent}
+                  className="w-100 mb-2 custom-btn d-flex align-items-center justify-content-center"
                   type="submit"
                   size="lg"
                 >
-                  {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "가입하기"}
+                  {loading ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-2" role="status" aria-hidden="true" />
+                      가입 진행 중...
+                    </>
+                  ) : "가입하기"}
                 </Button>
               </Form>
-              <div className="w-100 text-center mt-3 text-muted">
-                이미 계정이 있으신가요? <Link to="/login" className="text-decoration-none fw-bold auth-link">로그인</Link>
+
+              <div className="auth-footer">
+                이미 계정이 있으신가요? <Link to="/login" className="auth-link ms-1">로그인</Link>
               </div>
             </Card.Body>
           </Card>
         </div>
       </Container>
+
+      {/* 약관 모달 */}
+      <Modal show={showConsentModal} onHide={() => setShowConsentModal(false)} centered>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold fs-5">개인정보 수집 및 이용 동의</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2 text-dark">
+          <p className="small mb-3">원활한 서비스 이용을 위해 아래와 같이 개인정보를 수집 및 이용합니다.</p>
+          <div className="bg-light p-3 rounded-3 border small">
+            <h6 className="fw-bold mb-1">1. 수집하는 개인정보 항목</h6>
+            <p className="mb-3 text-muted">필수항목: 이름, 아이디, 비밀번호, 전화번호, 소속 지점<br />선택항목: 이메일</p>
+
+            <h6 className="fw-bold mb-1">2. 수집 및 이용 목적</h6>
+            <p className="mb-3 text-muted">서비스 회원가입 및 관리, 주간 근무 스케줄 배정 및 관리, 본인 식별, 원활한 의사소통 경로 확보</p>
+
+            <h6 className="fw-bold mb-1">3. 보유 및 이용 기간</h6>
+            <p className="mb-3 text-muted fw-bold">근로 계약 종료 시까지 이용하며, 관계 법령(소득세법, 근로기준법)에 의거 보존할 필요가 있는 경우 해당 기간 동안 보존합니다.</p>
+
+            <h6 className="fw-bold mb-1">4. 동의 거부권 및 불이익</h6>
+            <p className="mb-0 text-muted">귀하는 개인정보 수집에 동의를 거부할 권리가 있습니다. 단, 필수항목 수집 동의 거부 시 회원가입 및 서비스 이용이 제한됩니다.</p>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="primary" className="w-100 fw-bold rounded-pill" onClick={() => {
+            setConsent(true);
+            setShowConsentModal(false);
+          }}>
+            동의합니다
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

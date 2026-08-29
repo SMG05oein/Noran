@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { authLogin, fetchMyInfo } from '../api/authApi';
 import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
+import { RiUser3Line, RiLockPasswordLine, RiRestaurantLine } from 'react-icons/ri';
 import './Auth.css';
 
 const Login = () => {
@@ -73,23 +74,33 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-container">
-      <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
-        <div className="w-100" style={{ maxWidth: "400px" }}>
-          <Card className="glass-card shadow-lg border-0 rounded-4">
-            <Card.Body className="p-5">
-              <h2 className="text-center mb-4 fw-bold auth-title">로그인</h2>
-              {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
+    <div className="auth-container login-container">
+      <Container className="d-flex align-items-center justify-content-center p-2">
+        <div className="w-100" style={{ maxWidth: "380px" }}>
+          <Card className="auth-card border-0 shadow-sm">
+            <Card.Body className="p-4">
+              <div className="auth-header">
+                <div className="auth-brand-logo shadow-sm">
+                  <RiRestaurantLine />
+                </div>
+                <h1 className="auth-title">로그인</h1>
+              </div>
+
+              {error && <Alert variant="danger" className="rounded-3 py-2 text-center">{error}</Alert>}
+
               <Form onSubmit={handleLogin}>
                 <Form.Group id="userId" className="mb-3">
-                  <Form.Label className="fw-semibold">아이디</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiUser3Line /> 아이디
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     value={userId}
                     onChange={handleUserIdChange}
                     required
-                    placeholder="아이디를 입력하세요 (영문, 숫자)"
+                    placeholder="아이디를 입력하세요"
                     className={`custom-input ${userIdError ? 'is-invalid' : ''}`}
+                    autoComplete="username"
                   />
                   {userIdError && (
                     <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
@@ -97,8 +108,11 @@ const Login = () => {
                     </div>
                   )}
                 </Form.Group>
+
                 <Form.Group id="password" className="mb-4">
-                  <Form.Label className="fw-semibold">비밀번호</Form.Label>
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiLockPasswordLine /> 비밀번호
+                  </Form.Label>
                   <Form.Control
                     type="password"
                     value={password}
@@ -106,14 +120,27 @@ const Login = () => {
                     required
                     placeholder="비밀번호를 입력하세요"
                     className="custom-input"
+                    autoComplete="current-password"
                   />
                 </Form.Group>
-                <Button disabled={loading || !!userIdError} className="w-100 mb-3 custom-btn" type="submit" size="lg">
-                  {loading ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "로그인"}
+
+                <Button
+                  disabled={loading || !!userIdError}
+                  className="w-100 mb-2 custom-btn d-flex align-items-center justify-content-center"
+                  type="submit"
+                  size="lg"
+                >
+                  {loading ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-2" role="status" aria-hidden="true" />
+                      로그인 중...
+                    </>
+                  ) : "로그인"}
                 </Button>
               </Form>
-              <div className="w-100 text-center mt-3 text-muted">
-                계정이 없으신가요? <Link to="/signup" className="text-decoration-none fw-bold auth-link">회원가입</Link>
+
+              <div className="auth-footer">
+                계정이 없으신가요? <Link to="/signup" className="auth-link ms-1">회원가입</Link>
               </div>
             </Card.Body>
           </Card>

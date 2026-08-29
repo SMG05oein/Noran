@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ButtonGroup, ToggleButton } from 'react-bootstrap';
 import { fetchWorkPlaces } from '../api/authApi';
+import { RiStore2Line } from 'react-icons/ri';
 
-const BranchFilter = ({ selectedBranch, onChange }) => {
+const BranchFilter = ({ selectedBranch, onChange, onlyAll = false }) => {
   const [branches, setBranches] = useState([{ wpIdx: '', wpName: '전체' }]);
 
   useEffect(() => {
@@ -19,27 +19,26 @@ const BranchFilter = ({ selectedBranch, onChange }) => {
     loadBranches();
   }, []);
 
+  const displayedBranches = onlyAll ? branches.filter(b => !b.wpIdx) : branches;
+
   return (
-    <ButtonGroup className="shadow-sm">
-      {branches.map((b, idx) => {
+    <div className="branch-select-pills mb-0">
+      {displayedBranches.map((b) => {
         const val = b.wpIdx !== null && b.wpIdx !== undefined ? String(b.wpIdx) : '';
+        const isActive = selectedBranch === val;
         return (
-          <ToggleButton
-            key={idx}
-            id={`branch-filter-${idx}`}
-            type="radio"
-            variant={selectedBranch === val ? "primary" : "outline-primary"}
-            name="branchFilterRadio"
-            value={val}
-            checked={selectedBranch === val}
-            onChange={(e) => onChange(e.currentTarget.value)}
-            className="px-3 fw-bold"
+          <button
+            key={b.wpIdx ?? 'all'}
+            type="button"
+            className={`branch-pill ${isActive ? 'active' : ''}`}
+            onClick={() => onChange(val)}
           >
+            <RiStore2Line className="me-1" />
             {b.wpName}
-          </ToggleButton>
+          </button>
         );
       })}
-    </ButtonGroup>
+    </div>
   );
 };
 

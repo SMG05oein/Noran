@@ -12,6 +12,7 @@ import GNB from './components/GNB';
 import AdminGNB from './components/AdminGNB';
 import BottomNav from './components/BottomNav';
 import AdminBottomNav from './components/AdminBottomNav';
+import Footer from './components/Footer';
 import AdminMain from './pages/AdminMain';
 import AdminUsers from './pages/AdminUsers';
 import AdminRecords from './pages/AdminRecords';
@@ -39,8 +40,11 @@ const ProtectedRoute = ({ children }) => {
   return (
     <div className="app-layout">
       <GNB />
-      <div className="content-wrapper pb-5 pb-lg-0">
+      <div className="content-wrapper">
         {children}
+      </div>
+      <div className="pb-5 pb-lg-0 w-100">
+        <Footer />
       </div>
       <BottomNav />
     </div>
@@ -58,8 +62,11 @@ const AdminRoute = ({ children }) => {
   return (
     <div className="app-layout">
       <AdminGNB />
-      <div className="content-wrapper pb-5 pb-lg-0">
+      <div className="content-wrapper">
         {children}
+      </div>
+      <div className="pb-5 pb-lg-0 w-100">
+        <Footer />
       </div>
       <AdminBottomNav />
     </div>

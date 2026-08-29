@@ -21,37 +21,59 @@ const AdminGNB = () => {
   const displayName = fullName.split('(')[0].trim();
 
   return (
-    <Navbar expand="lg" className="custom-gnb shadow-sm" sticky="top" style={{ backgroundColor: 'var(--color-primary)' }} variant="dark">
-      <Container className="d-flex justify-content-between">
-        <Navbar.Brand as={Link} to="/admin" className="fw-bold gnb-brand fs-4 text-white">
-          {displayName} <Badge bg="danger" className="ms-2 fs-6">관리자</Badge>
-        </Navbar.Brand>
+    <Navbar expand="lg" className="custom-gnb admin-gnb shadow-sm sticky-top">
+      <Container className="d-flex justify-content-between align-items-center">
+        <Link to="/admin" className="gnb-brand">
+          <span className="gnb-brand-highlight fs-4">{displayName || '노란돼지'}</span>
+          <Badge bg="danger" className="ms-2 px-2 py-1 fs-6">관리자</Badge>
+        </Link>
 
         {/* 모바일 화면에서만 보이는 다크모드/로그아웃 아이콘 영역 */}
-        <div className="d-lg-none d-flex align-items-center gap-3">
-          <div onClick={toggleTheme} style={{ cursor: 'pointer' }}>
-            {theme === 'dark' ? <RiSunLine size={22} className="text-warning" /> : <RiMoonLine size={22} className="text-secondary" />}
-          </div>
-          <div onClick={handleLogout} style={{ cursor: 'pointer' }}>
-            <RiLogoutBoxRLine size={22} className="text-white" />
-          </div>
+        <div className="d-lg-none d-flex align-items-center gap-2">
+          <button 
+            type="button" 
+            onClick={toggleTheme} 
+            className="theme-toggle-btn"
+            aria-label="테마 전환"
+          >
+            {theme === 'dark' ? <RiSunLine size={18} className="text-warning" /> : <RiMoonLine size={18} />}
+          </button>
+          <button 
+            type="button" 
+            onClick={handleLogout} 
+            className="theme-toggle-btn"
+            aria-label="로그아웃"
+          >
+            <RiLogoutBoxRLine size={18} />
+          </button>
         </div>
 
-        {/* 데스크탑 화면에서만 보이는 상단 메뉴 (모바일에선 AdminBottomNav로 대체) */}
+        {/* 데스크톱 화면에서만 보이는 상단 메뉴 */}
         <div className="d-none d-lg-block">
-          <Nav className="ms-auto align-items-center gap-2">
-
-            <Nav.Link as={Link} to="/admin/records" className={`gnb-link px-3 py-2 rounded-pill ${location.pathname.startsWith('/admin/records') ? 'active-pill' : 'text-white'}`}>기록 관리</Nav.Link>
-            <Nav.Link as={Link} to="/admin/employees" className={`gnb-link px-3 py-2 rounded-pill ${location.pathname.startsWith('/admin/employees') ? 'active-pill' : 'text-white'}`}>직원 관리</Nav.Link>
-            <Nav.Link as={Link} to="/admin/workplaces" className={`gnb-link px-3 py-2 rounded-pill ${location.pathname.startsWith('/admin/workplaces') ? 'active-pill' : 'text-white'}`}>지점 관리</Nav.Link>
-            <Nav.Link as={Link} to="/admin/user-types" className={`gnb-link px-3 py-2 rounded-pill ${location.pathname.startsWith('/admin/user-types') ? 'active-pill' : 'text-white'}`}>직급 관리</Nav.Link>
-            <Nav.Link as={Link} to="/admin/mypage" className={`gnb-link px-3 py-2 rounded-pill ${location.pathname.startsWith('/admin/mypage') ? 'active-pill' : 'text-white'}`}>마이페이지</Nav.Link>
-            <Nav.Link onClick={toggleTheme} className="gnb-link text-white px-3 py-2 rounded-pill d-flex align-items-center">
-              {theme === 'dark' ? <><RiSunLine size={18} className="me-1 text-warning" /> 라이트</> : <><RiMoonLine size={18} className="me-1" /> 다크</>}
-            </Nav.Link>
-            <Nav.Link onClick={handleLogout} className="gnb-link gnb-logout text-white px-4 py-2 rounded-pill">
-              로그아웃
-            </Nav.Link>
+          <Nav className="ms-auto align-items-center gap-1">
+            <Nav.Link as={Link} to="/admin" className={`gnb-link ${location.pathname === '/admin' ? 'active-pill' : ''}`}>대시보드</Nav.Link>
+            <Nav.Link as={Link} to="/admin/records" className={`gnb-link ${location.pathname.startsWith('/admin/records') ? 'active-pill' : ''}`}>기록 관리</Nav.Link>
+            <Nav.Link as={Link} to="/admin/employees" className={`gnb-link ${location.pathname.startsWith('/admin/employees') ? 'active-pill' : ''}`}>직원 관리</Nav.Link>
+            <Nav.Link as={Link} to="/admin/workplaces" className={`gnb-link ${location.pathname.startsWith('/admin/workplaces') ? 'active-pill' : ''}`}>지점 관리</Nav.Link>
+            <Nav.Link as={Link} to="/admin/user-types" className={`gnb-link ${location.pathname.startsWith('/admin/user-types') ? 'active-pill' : ''}`}>직급 관리</Nav.Link>
+            <Nav.Link as={Link} to="/admin/mypage" className={`gnb-link ${location.pathname.startsWith('/admin/mypage') ? 'active-pill' : ''}`}>마이페이지</Nav.Link>
+            
+            <div className="ms-2 d-flex align-items-center gap-2">
+              <button 
+                type="button"
+                onClick={toggleTheme} 
+                className="theme-toggle-btn"
+              >
+                {theme === 'dark' ? <><RiSunLine size={16} className="text-warning" /> 라이트</> : <><RiMoonLine size={16} /> 다크</>}
+              </button>
+              <button 
+                type="button"
+                onClick={handleLogout} 
+                className="gnb-logout"
+              >
+                로그아웃
+              </button>
+            </div>
           </Nav>
         </div>
       </Container>

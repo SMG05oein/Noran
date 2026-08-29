@@ -2,7 +2,8 @@ package com.recode.Dwaeji.work_apply_work.database;
 
 public enum ApplyStatus {
     미신청,
-    신청,
+    미배정,
     배정,
-    반려
+    신청,
+    타지점근무
 }

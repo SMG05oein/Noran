@@ -5,6 +5,7 @@ import { RiTimeLine, RiCalendarCheckLine, RiAddLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { fetchWorkRecords, createWorkRecord } from '../api/workApi';
+import './Main.css';
 
 const Records = () => {
   const user = useAuthStore(state => state.user);
@@ -108,44 +109,47 @@ const Records = () => {
 
   return (
     <Container className="py-4 py-md-5 mb-5">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold text-dark mb-0">근무 기록</h2>
-        <Button 
-          variant="primary" 
-          className="rounded-circle shadow-sm d-flex justify-content-center align-items-center"
-          style={{ width: '45px', height: '45px' }}
-          onClick={() => setShowModal(true)}
-        >
-          <RiAddLine />
-        </Button>
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+        <div>
+          <h2 className="fw-bold text-dark mb-1">근무 기록</h2>
+          <p className="text-muted small mb-0">월별 근무 내역을 확인하고 수정할 수 있습니다.</p>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <Form.Select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="custom-month-select fw-bold"
+            style={{ width: 'auto', minWidth: '140px' }}
+          >
+            {[...Array(6)].map((_, i) => {
+              const d = subMonths(new Date(), i);
+              const val = format(d, 'yyyy-MM');
+              return <option key={val} value={val}>{format(d, 'yyyy년 M월')}</option>;
+            })}
+          </Form.Select>
+          <Button 
+            className="rounded-pill px-3 py-2 fw-bold text-nowrap d-inline-flex align-items-center gap-1"
+            onClick={() => setShowModal(true)}
+            style={{ whiteSpace: 'nowrap', backgroundColor: '#A85A47', borderColor: '#A85A47', color: '#fff' }}
+          >
+            <RiAddLine size={18} /> 새 기록 추가
+          </Button>
+        </div>
       </div>
 
-      <div className="d-flex justify-content-end mb-4">
-        <Form.Select 
-          value={selectedMonth} 
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="custom-month-select fw-bold"
-        >
-          {[...Array(6)].map((_, i) => {
-            const d = subMonths(new Date(), i);
-            const val = format(d, 'yyyy-MM');
-            return <option key={val} value={val}>{format(d, 'yyyy년 M월')}</option>;
-          })}
-        </Form.Select>
-      </div>
-
-      <Row className="mb-4">
+      <Row className="g-3 mb-4">
         <Col xs={6}>
           <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100">
-            <h6 className="text-muted fw-bold mb-2">이번 달 근무일</h6>
-            <h3 className="fw-bold text-primary mb-0">{filteredRecords.length}일</h3>
+            <h6 className="text-muted fw-bold small mb-2">이번 달 근무일</h6>
+            <h3 className="fw-bold mb-0" style={{ color: '#A85A47' }}>{filteredRecords.length}<span className="fs-6 text-muted ms-1">일</span></h3>
           </Card>
         </Col>
         <Col xs={6}>
           <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100">
-            <h6 className="text-muted fw-bold mb-2">누적 근무시간</h6>
-            <h3 className="fw-bold text-success mb-0">
-              {filteredRecords.reduce((acc, r) => acc + calculateTotalHours(r.wrStartTime, r.wrEndTime), 0).toFixed(1)}H
+            <h6 className="text-muted fw-bold small mb-2">누적 근무시간</h6>
+            <h3 className="fw-bold mb-0" style={{ color: '#A85A47' }}>
+              {filteredRecords.reduce((acc, r) => acc + calculateTotalHours(r.wrStartTime, r.wrEndTime, r.wrRestTime), 0).toFixed(1)}
+              <span className="fs-6 text-muted ms-1">시간</span>
             </h3>
           </Card>
         </Col>
@@ -153,9 +157,9 @@ const Records = () => {
 
       <div className="d-flex flex-column gap-3">
         {filteredRecords.length === 0 ? (
-          <div className="text-center text-muted py-5">
-            <RiCalendarCheckLine size={40} className="mb-3 opacity-50" />
-            <p>해당 월의 근무 기록이 없습니다.</p>
+          <div className="text-center text-muted py-5 rounded-4 border">
+            <RiCalendarCheckLine size={44} className="mb-2" style={{ opacity: 0.4, color: '#A85A47' }} />
+            <p className="mb-0 fw-medium">해당 월의 근무 기록이 없습니다.</p>
           </div>
         ) : (
           filteredRecords.map(record => {
@@ -169,19 +173,19 @@ const Records = () => {
             const totalHours = calculateTotalHours(record.wrStartTime, record.wrEndTime, record.wrRestTime).toFixed(1);
 
             return (
-              <Card key={record.wrIdx} className="border-0 shadow-sm rounded-4 overflow-hidden">
-                <div className="d-flex" style={{ borderLeft: `6px solid #2ecc71` }}>
-                  <Card.Body className="p-3">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="fw-bold fs-5">{record.wrDate}</span>
-                      <Badge bg="success" className="px-2 py-1">완료</Badge>
+              <Card key={record.wrIdx} className="border-0 shadow-sm rounded-4 overflow-hidden card-hover">
+                <div className="d-flex" style={{ borderLeft: '10px solid #A85A47' }}>
+                  <Card className="py-3 px-4 p-md-1 flex-fill">
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <span className="fw-bold">{record.wrDate}</span>
+                      <span className="px-2 py-0 rounded-pill fw-bold" style={{ background: '#EEF4EE', color: '#4A7C59', fontSize: '0.78rem' }}>완료</span>
                     </div>
-                    <div className="d-flex justify-content-between text-muted align-items-center" style={{ fontSize: '0.95rem' }}>
-                      <div className="d-flex align-items-center gap-1">
-                        <RiTimeLine /> {sh}:{sm} - {eh}:{em}
+                    <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                      <div className="d-flex align-items-center gap-1 fw-medium text-muted small">
+                        <RiTimeLine style={{ color: '#A85A47' }} /> {sh}:{sm} - {eh}:{em}
                       </div>
-                      <div className="fw-bold text-dark">
-                        {totalHours}시간
+                      <div className="fw-bold small">
+                        총 <span style={{ color: '#A85A47' }}>{totalHours}</span>시간
                       </div>
                     </div>
                     {rt && (rt.hour > 0 || rt.minute > 0) && (
@@ -190,41 +194,44 @@ const Records = () => {
                       </div>
                     )}
                     {record.wrRemarks && (
-                      <div className="mt-2 text-muted small">비고: {record.wrRemarks}</div>
+                      <div className="mt-1 text-muted small p-1 rounded-3 bg-light">비고: {record.wrRemarks}</div>
                     )}
-                    <Button variant="outline-secondary" size="sm" className="rounded-pill fw-bold px-3 mt-3" onClick={() => navigate(`/records/edit/${record.wrIdx}`)}>
-                      수정
-                    </Button>
-                  </Card.Body>
+                    <div className="d-flex justify-content-end mt-2">
+                      <Button size="sm" className="rounded-pill fw-bold px-3 req-outline-btn" onClick={() => navigate(`/records/edit/${record.wrIdx}`)}>
+                        수정하기
+                      </Button>
+                    </div>
+                  </Card>
                 </div>
               </Card>
-            )
+            );
           })
         )}
       </div>
 
+      {/* 새 기록 추가 모달 */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton className="border-0">
-          <Modal.Title className="fw-bold">새 근무 기록 추가</Modal.Title>
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold text-dark">새 근무 기록 추가</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           <Form onSubmit={handleAddRecord}>
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">근무 날짜</Form.Label>
-              <Form.Control type="date" value={recDate} onChange={e=>setRecDate(e.target.value)} required />
+              <Form.Control type="date" value={recDate} onChange={e=>setRecDate(e.target.value)} required className="custom-input" />
             </Form.Group>
 
-            <Form.Group className="mb-4">
+            <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">출근 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
-                <Form.Select value={startHour} onChange={e=>setStartHour(e.target.value)} className="border-0 bg-light p-3 rounded-3 flex-grow-1">
+                <Form.Select value={startHour} onChange={e=>setStartHour(e.target.value)} className="custom-input flex-grow-1">
                   {[...Array(24)].map((_,i) => <option key={i} value={String(i).padStart(2,'0')}>{String(i).padStart(2,'0')}시</option>)}
                 </Form.Select>
                 <span className="fw-bold text-muted">:</span>
                 <Form.Select 
                   value={startMin} 
                   onChange={e => setStartMin(e.target.value)}
-                  className="border-0 bg-light p-3 rounded-3 flex-grow-1"
+                  className="custom-input flex-grow-1"
                 >
                   {['00', '30'].map(m => (
                     <option key={m} value={m}>{m}분</option>
@@ -233,13 +240,13 @@ const Records = () => {
               </div>
             </Form.Group>
 
-            <Form.Group className="mb-4">
+            <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">종료 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
                 <Form.Select 
                   value={endHour} 
                   onChange={e => setEndHour(e.target.value)}
-                  className="border-0 bg-light p-3 rounded-3 flex-grow-1"
+                  className="custom-input flex-grow-1"
                 >
                   {[...Array(24)].map((_, i) => (
                     <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시</option>
@@ -249,7 +256,7 @@ const Records = () => {
                 <Form.Select 
                   value={endMin} 
                   onChange={e => setEndMin(e.target.value)}
-                  className="border-0 bg-light p-3 rounded-3 flex-grow-1"
+                  className="custom-input flex-grow-1"
                 >
                   {['00', '30'].map(m => (
                     <option key={m} value={m}>{m}분</option>
@@ -258,13 +265,13 @@ const Records = () => {
               </div>
             </Form.Group>
 
-            <Form.Group className="mb-4">
+            <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">휴게 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
                 <Form.Select 
                   value={restHour} 
                   onChange={e => setRestHour(e.target.value)}
-                  className="border-0 bg-light p-3 rounded-3 flex-grow-1"
+                  className="custom-input flex-grow-1"
                 >
                   {[...Array(10)].map((_, i) => (
                     <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}시간</option>
@@ -274,7 +281,7 @@ const Records = () => {
                 <Form.Select 
                   value={restMin} 
                   onChange={e => setRestMin(e.target.value)}
-                  className="border-0 bg-light p-3 rounded-3 flex-grow-1"
+                  className="custom-input flex-grow-1"
                 >
                   {['00', '30'].map(m => (
                     <option key={m} value={m}>{m}분</option>
@@ -285,11 +292,11 @@ const Records = () => {
 
             <Form.Group className="mb-4">
               <Form.Label className="fw-bold text-muted small">비고</Form.Label>
-              <Form.Control type="text" value={remarks} onChange={e=>setRemarks(e.target.value)} />
+              <Form.Control type="text" placeholder="특이사항 입력" value={remarks} onChange={e=>setRemarks(e.target.value)} className="custom-input" />
             </Form.Group>
 
-            <Button disabled={loading} variant="primary" type="submit" className="w-100 fw-bold">
-              기록 저장
+            <Button disabled={loading} variant="primary" type="submit" className="w-100 py-3 fw-bold rounded-3">
+              {loading ? '저장 중...' : '기록 저장'}
             </Button>
           </Form>
         </Modal.Body>

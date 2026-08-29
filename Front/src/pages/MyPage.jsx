@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Form, Button, Alert, Spinner, Modal } from 'react-bootstrap';
+import { Container, Card, Form, Button, Alert, Spinner, Modal, Badge } from 'react-bootstrap';
 import { fetchMyInfo, updateUserInfo, changePassword, getMyAccountDetails, fetchWorkPlaces, updateMyBankInfo } from '../api/authApi';
 import useAuthStore from '../store/useAuthStore';
+import { RiUser3Line, RiLockPasswordLine, RiBankCardLine, RiStore2Line, RiShieldCheckLine, RiEdit2Line } from 'react-icons/ri';
 import './Main.css';
 
 const MyPage = () => {
@@ -185,24 +186,32 @@ const MyPage = () => {
   }
 
   return (
-    <Container className="py-5" style={{ maxWidth: '600px' }}>
-      <h2 className="fw-bold mb-4 text-primary">내 정보 관리 (마이페이지)</h2>
+    <Container className="py-4 py-md-5 mb-5" style={{ maxWidth: '640px' }}>
+      <div className="mb-4">
+        <h2 className="fw-bold text-dark mb-1">내 정보 관리</h2>
+        <p className="text-muted small mb-0">프로필 정보 및 급여 지급 계좌를 안전하게 관리합니다.</p>
+      </div>
 
-      {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
-      {success && <Alert variant="success" className="rounded-3">{success}</Alert>}
+      {error && <Alert variant="danger" className="rounded-3 py-2">{error}</Alert>}
+      {success && <Alert variant="success" className="rounded-3 py-2">{success}</Alert>}
 
       {/* 기본 정보 (수정 불가) */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">
-        <Card.Body className="p-4 pb-3">
-          <div className="fw-bold text-muted small mb-3">🔒 기본 정보 (수정 불가)</div>
-          <div className="p-3 rounded-3 border" style={{ backgroundColor: 'var(--color-input-bg)' }}>
+        <Card.Body className="p-4">
+          <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
+            <RiShieldCheckLine className="text-primary" /> 기본 계정 정보
+          </div>
+          <div className="p-3 rounded-3" style={{ backgroundColor: 'var(--color-input-bg)', border: '1px solid var(--color-input-border)' }}>
              <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
                 <div className="text-muted fw-bold small">아이디</div>
                 <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userId || '-'}</div>
              </div>
              <div className="d-flex align-items-center justify-content-between">
-                <div className="text-muted fw-bold small">직급</div>
-                <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userTypeName || '-'}</div>
+                <div className="text-muted fw-bold small">직급 및 역할</div>
+                <div>
+                  <Badge bg="primary" className="px-2 py-1 me-1">{userInfo?.userTypeName || '직원'}</Badge>
+                  {userInfo?.is_admin === 1 && <Badge bg="danger" className="px-2 py-1">관리자</Badge>}
+                </div>
              </div>
           </div>
         </Card.Body>
@@ -211,26 +220,28 @@ const MyPage = () => {
       {/* 연락처 및 소속 정보 (수정 가능) */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-4">
-          <div className="fw-bold text-muted small mb-3">✏️ 연락처 및 소속 정보 수정</div>
+          <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
+            <RiEdit2Line className="text-primary" /> 연락처 및 소속 정보 수정
+          </div>
           <Form onSubmit={handleUpdate}>
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">이름</Form.Label>
-              <Form.Control type="text" value={userName} onChange={e => setUserName(e.target.value)} required />
+              <Form.Control type="text" value={userName} onChange={e => setUserName(e.target.value)} required className="custom-input" />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">전화번호</Form.Label>
-              <Form.Control type="text" value={userPhone} onChange={handlePhoneChange} required />
+              <Form.Control type="text" value={userPhone} onChange={handlePhoneChange} required className="custom-input" />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">이메일</Form.Label>
-              <Form.Control type="email" value={userEmail} onChange={e => setUserEmail(e.target.value)} />
+              <Form.Control type="email" value={userEmail} onChange={e => setUserEmail(e.target.value)} className="custom-input" />
             </Form.Group>
 
             <Form.Group className="mb-4">
               <Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
-              <Form.Select value={fkWorkPlaceIdx} onChange={e => setFkWorkPlaceIdx(Number(e.target.value))}>
+              <Form.Select value={fkWorkPlaceIdx} onChange={e => setFkWorkPlaceIdx(Number(e.target.value))} className="custom-input">
                 {branches.map(b => (
                   <option key={b.wpIdx} value={b.wpIdx}>
                     {b.wpName}
@@ -239,12 +250,12 @@ const MyPage = () => {
               </Form.Select>
             </Form.Group>
 
-            <div className="d-flex gap-3">
-              <Button disabled={saving} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2">
-                {saving ? <Spinner as="span" animation="border" size="sm" /> : "정보 수정하기"}
+            <div className="d-flex gap-2 flex-wrap">
+              <Button disabled={saving} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2 rounded-3 shadow-sm">
+                {saving ? <Spinner as="span" animation="border" size="sm" /> : "정보 수정 저장"}
               </Button>
-              <Button variant="outline-secondary" className="fw-bold py-2 px-3" onClick={() => setShowPwModal(true)} type="button">
-                🔐 비밀번호 변경
+              <Button variant="outline-secondary" className="fw-bold py-2 px-3 rounded-3" onClick={() => setShowPwModal(true)} type="button">
+                <RiLockPasswordLine className="me-1" /> 비밀번호 변경
               </Button>
             </div>
           </Form>
@@ -254,30 +265,34 @@ const MyPage = () => {
       {/* 계좌 정보 수정 (별도 영역) */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-4">
-          <div className="fw-bold text-muted small mb-3">💳 계좌 정보 수정</div>
+          <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
+            <RiBankCardLine className="text-primary" /> 급여 계좌 정보
+          </div>
           
-          <Form.Group className="mb-2">
-            <Form.Label className="fw-semibold small mb-1">은행</Form.Label>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
             <Form.Control 
               type="text" 
               value={userBank} 
               onChange={e => setUserBank(e.target.value)} 
               placeholder="예: 카카오뱅크, 신한은행"
               disabled={userInfo?.userAccountNumber && !accountDetails}
+              className="custom-input"
             />
           </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label className="fw-semibold small mb-1">예금주</Form.Label>
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">예금주</Form.Label>
             <Form.Control 
               type="text" 
               value={userAccountName} 
               onChange={e => setUserAccountName(e.target.value)} 
-              placeholder="예금주 명"
+              placeholder="예금주 성명"
               disabled={userInfo?.userAccountNumber && !accountDetails}
+              className="custom-input"
             />
           </Form.Group>
           <Form.Group className="mb-3">
-            <Form.Label className="fw-semibold small mb-1">계좌번호 (숫자만)</Form.Label>
+            <Form.Label className="fw-bold text-muted small">계좌번호 (숫자만)</Form.Label>
             <div className="d-flex gap-2">
               <Form.Control 
                 type="text" 
@@ -285,9 +300,10 @@ const MyPage = () => {
                 onChange={e => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))} 
                 placeholder="계좌번호 입력"
                 disabled={userInfo?.userAccountNumber && !accountDetails}
+                className="custom-input flex-grow-1"
               />
               {userInfo?.userAccountNumber && !accountDetails && (
-                <Button size="sm" variant="outline-secondary" className="px-3 text-nowrap" onClick={handleRevealAccount} disabled={accountLoading}>
+                <Button size="sm" variant="outline-secondary" className="px-3 text-nowrap rounded-3 fw-bold" onClick={handleRevealAccount} disabled={accountLoading}>
                   {accountLoading ? <Spinner as="span" animation="border" size="sm" /> : '원문 조회 및 수정'}
                 </Button>
               )}
@@ -296,18 +312,16 @@ const MyPage = () => {
 
           {/* 정보 수정/입력 모드일 때만 동의서 노출 */}
           {(!userInfo?.userAccountNumber || accountDetails) && (
-            <div className="p-3 rounded-3 mb-3 border" style={{ backgroundColor: 'var(--color-input-bg)' }}>
-              <div className="fw-bold small mb-2" style={{ color: 'var(--color-input-text)' }}>📌 [개인정보 수집 및 이용 동의]</div>
+            <div className="p-3 rounded-3 mb-3" style={{ backgroundColor: 'var(--color-input-bg)', border: '1px solid var(--color-input-border)' }}>
+              <div className="fw-bold small mb-2 text-dark">📌 [개인정보 수집 및 이용 동의]</div>
               <ul className="text-muted small ps-3 mb-3">
-                <li><strong style={{ color: 'var(--color-input-text)' }}>수집 목적</strong>: 급여 지급 및 정산</li>
-                <li><strong style={{ color: 'var(--color-input-text)' }}>수집 항목</strong>: 은행명, 예금주, 계좌번호</li>
+                <li><strong className="text-dark">수집 목적</strong>: 급여 지급 및 정산</li>
+                <li><strong className="text-dark">수집 항목</strong>: 은행명, 예금주, 계좌번호</li>
                 <li>
-                  <strong style={{ color: 'var(--color-input-text)' }}>보유 및 이용 기간</strong>: 근로 계약(또는 서비스 이용) 종료 시까지 이용하며, 종료 후에는 다음의 관계 법령에 따라 보존합니다.
-                  <ul className="text-muted mt-1 mb-1 ps-3" style={{ listStyleType: 'circle' }}>
-                    <li>소득세법/법인세법에 따른 급여 지급 및 원천징수 증빙 기록: 5년</li>
-                    <li>근로기준법에 따른 근로계약 및 임금대장 관련 기록: 3년</li>
-                  </ul>
-                  <span className="small text-secondary">(※ 보존 기간이 상이한 경우 가장 긴 기간인 5년을 기준으로 보관 후 지체 없이 파기합니다.)</span>
+                  <strong className="text-dark">보유 및 이용 기간</strong>: 근로 계약 종료 시까지 이용하며, 관계 법령(소득세법 5년, 근로기준법 3년)에 따라 보존합니다.
+                </li>
+                <li>
+                  <strong className="text-dark">동의 거부권 및 불이익</strong>: 귀하는 위 개인정보 수집에 대한 동의를 거부할 권리가 있습니다. 단, 동의 거부 시 급여 이체 및 정산 처리가 불가능합니다.
                 </li>
               </ul>
               <Form.Check 
@@ -322,7 +336,7 @@ const MyPage = () => {
 
           <Button 
             variant="success" 
-            className="w-100 fw-bold py-2" 
+            className="w-100 fw-bold py-2 rounded-3 shadow-sm" 
             onClick={handleUpdateBankInfo} 
             disabled={bankSaving || (userInfo?.userAccountNumber && !accountDetails) || (!userInfo?.userAccountNumber || accountDetails) && !bankConsentAgreed}
           >
@@ -333,31 +347,30 @@ const MyPage = () => {
 
       {/* 비밀번호 변경 모달 */}
       <Modal show={showPwModal} onHide={handleClosePwModal} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">🔐 비밀번호 변경</Modal.Title>
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold text-dark fs-5">
+            <RiLockPasswordLine className="me-1 text-primary" /> 비밀번호 변경
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          {pwError && <Alert variant="danger" className="rounded-3 py-2">{pwError}</Alert>}
-          {pwSuccess && <Alert variant="success" className="rounded-3 py-2">{pwSuccess}</Alert>}
+        <Modal.Body className="p-4">
+          {pwError && <Alert variant="danger" className="rounded-3 py-2 text-center">{pwError}</Alert>}
+          {pwSuccess && <Alert variant="success" className="rounded-3 py-2 text-center">{pwSuccess}</Alert>}
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">현재 비밀번호</Form.Label>
-            <Form.Control type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="현재 비밀번호 입력" />
+            <Form.Control type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="현재 비밀번호 입력" className="custom-input" />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">새 비밀번호</Form.Label>
-            <Form.Control type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="새 비밀번호 입력" />
+            <Form.Control type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="새 비밀번호 입력" className="custom-input" />
           </Form.Group>
-          <Form.Group>
+          <Form.Group className="mb-4">
             <Form.Label className="fw-bold text-muted small">새 비밀번호 확인</Form.Label>
-            <Form.Control type="password" value={newPwConfirm} onChange={e => setNewPwConfirm(e.target.value)} placeholder="새 비밀번호 재입력" />
+            <Form.Control type="password" value={newPwConfirm} onChange={e => setNewPwConfirm(e.target.value)} placeholder="새 비밀번호 재입력" className="custom-input" />
           </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClosePwModal}>취소</Button>
-          <Button variant="primary" onClick={handleChangePassword} disabled={pwSaving}>
-            {pwSaving ? <Spinner as="span" animation="border" size="sm" /> : "변경하기"}
+          <Button variant="primary" onClick={handleChangePassword} disabled={pwSaving} className="w-100 py-2 fw-bold rounded-3">
+            {pwSaving ? <Spinner as="span" animation="border" size="sm" /> : "비밀번호 변경하기"}
           </Button>
-        </Modal.Footer>
+        </Modal.Body>
       </Modal>
     </Container>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Button, Spinner, Modal, Form, Badge, Alert } from 'react-bootstrap';
 import { fetchUserTypes, createUserType, updateUserType, deleteUserType } from '../api/authApi';
+import { RiAddLine, RiUserStarLine } from 'react-icons/ri';
 import './AdminMain.css';
 
 const AdminUserTypes = () => {
@@ -104,52 +105,57 @@ const AdminUserTypes = () => {
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-          <h2 className="fw-bold text-dark mb-2 mb-md-0">직급 관리</h2>
-          <Button variant="primary" className="fw-bold px-4 rounded-pill" onClick={handleOpenAdd}>
-            + 새 직급 추가
-          </Button>
+        <div className="admin-header-card">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+              <h2 className="fw-bold text-dark mb-1">직급 및 권한 관리</h2>
+              <p className="text-muted small mb-0">직원 역할 및 관리자 접근 권한을 설정합니다.</p>
+            </div>
+            <Button variant="primary" className="fw-bold px-4 py-2 rounded-pill shadow-xs d-flex align-items-center gap-1" onClick={handleOpenAdd}>
+              <RiAddLine size={18} /> 새 직급 추가
+            </Button>
+          </div>
         </div>
 
         {loading ? (
           <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
         ) : (
-          <Card className="border-0 shadow-sm rounded-4">
-            <Card.Header className="bg-white border-0 pt-4 pb-2 px-4">
-              <h5 className="fw-bold mb-0 text-primary">직급 목록</h5>
-            </Card.Header>
-            <Card.Body className="p-4 pt-0">
+          <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+            <Card.Body className="p-0">
               <div className="table-responsive">
-                <Table hover className="align-middle mb-0 text-center">
-                  <thead className="table-light">
+                <Table hover className="custom-table align-middle mb-0 text-center">
+                  <thead>
                     <tr>
-                      <th>ID</th>
+                      <th style={{ width: '60px' }}>ID</th>
                       <th>직급명</th>
-                      <th>관리자 여부</th>
-                      <th>관리</th>
+                      <th>권한 등급</th>
+                      <th style={{ width: '140px' }}>관리</th>
                     </tr>
                   </thead>
                   <tbody>
                     {userTypes.map(ut => (
                       <tr key={ut.utIdx}>
-                        <td className="text-muted small">{ut.utIdx}</td>
-                        <td className="fw-bold">{ut.utName}</td>
+                        <td className="text-muted fw-semibold">{ut.utIdx}</td>
+                        <td className="fw-bold text-dark">{ut.utName}</td>
                         <td>
                           {ut.utIsAdmin === 1 
-                            ? <Badge bg="danger">관리자</Badge> 
-                            : <Badge bg="secondary">일반</Badge>}
+                            ? <Badge bg="danger" className="px-3 py-1">관리자 권한</Badge> 
+                            : <Badge bg="secondary" className="px-3 py-1">일반 직원</Badge>}
                         </td>
                         <td>
-                          <div className="d-flex justify-content-center gap-1 flex-wrap">
-                            <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold" onClick={() => handleOpenEdit(ut)}>수정</Button>
-                            <Button size="sm" variant="outline-danger" className="rounded-pill fw-bold" onClick={() => handleDelete(ut.utIdx, ut.utName)}>삭제</Button>
+                          <div className="d-flex justify-content-center gap-2">
+                            <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-3" onClick={() => handleOpenEdit(ut)}>수정</Button>
+                            <Button size="sm" variant="outline-danger" className="rounded-pill fw-bold px-3" onClick={() => handleDelete(ut.utIdx, ut.utName)}>삭제</Button>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {userTypes.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="text-center py-5 text-muted">등록된 직급이 없습니다.</td>
+                        <td colSpan={4} className="text-center py-5 text-muted">
+                          <RiUserStarLine size={36} className="opacity-50 mb-2" />
+                          <p className="mb-0">등록된 직급이 없습니다.</p>
+                        </td>
                       </tr>
                     )}
                   </tbody>
@@ -162,33 +168,34 @@ const AdminUserTypes = () => {
 
       {/* 추가/수정 모달 */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">{editMode ? '✏️ 직급 수정' : '➕ 직급 추가'}</Modal.Title>
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold text-dark fs-5">{editMode ? '직급 수정' : '새 직급 추가'}</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          {errorMsg && <Alert variant="danger" className="py-2">{errorMsg}</Alert>}
-          {successMsg && <Alert variant="success" className="py-2">{successMsg}</Alert>}
+        <Modal.Body className="p-4">
+          {errorMsg && <Alert variant="danger" className="py-2 rounded-3 text-center">{errorMsg}</Alert>}
+          {successMsg && <Alert variant="success" className="py-2 rounded-3 text-center">{successMsg}</Alert>}
           
           <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">직급명</Form.Label>
+            <Form.Label className="fw-bold text-muted small">직급명 *</Form.Label>
             <Form.Control 
               value={utName} 
               onChange={e => setUtName(e.target.value)} 
-              placeholder="예: 파트타임, 정규직 등"
+              placeholder="예: 파트타임, 홀매니저, 정규직 등"
+              className="custom-input"
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">권한 설정 (관리자 기능 접근)</Form.Label>
-            <Form.Select value={utIsAdmin} onChange={e => setUtIsAdmin(e.target.value)}>
-              <option value={0}>일반 알바생 / 직원 (관리자 페이지 접근 불가)</option>
-              <option value={1}>관리자 (관리자 페이지 접근 가능)</option>
+            <Form.Select value={utIsAdmin} onChange={e => setUtIsAdmin(e.target.value)} className="custom-input">
+              <option value={0}>일반 알바생 / 직원 (관리자 기능 제한)</option>
+              <option value={1}>관리자 (관리자 대시보드 접근 허용)</option>
             </Form.Select>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>닫기</Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
+          <Button variant="secondary" onClick={() => setShowModal(false)} className="rounded-3">닫기</Button>
+          <Button variant="primary" onClick={handleSave} disabled={saving} className="rounded-3 px-3">
             {saving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
           </Button>
         </Modal.Footer>

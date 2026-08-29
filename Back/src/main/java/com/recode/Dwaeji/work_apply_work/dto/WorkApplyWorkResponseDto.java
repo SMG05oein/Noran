@@ -40,6 +40,21 @@ public class WorkApplyWorkResponseDto {
     private LocalTime wawSatStartTime;
     private LocalTime wawSunStartTime;
 
+    private Long wawMonWorkPlaceIdx;
+    private String wawMonWorkPlaceName;
+    private Long wawTueWorkPlaceIdx;
+    private String wawTueWorkPlaceName;
+    private Long wawWedWorkPlaceIdx;
+    private String wawWedWorkPlaceName;
+    private Long wawThuWorkPlaceIdx;
+    private String wawThuWorkPlaceName;
+    private Long wawFriWorkPlaceIdx;
+    private String wawFriWorkPlaceName;
+    private Long wawSatWorkPlaceIdx;
+    private String wawSatWorkPlaceName;
+    private Long wawSunWorkPlaceIdx;
+    private String wawSunWorkPlaceName;
+
     private String wawRemarks;
     private LocalDateTime wawCreatedAt;
     private LocalDateTime wawUpdatedAt;
@@ -66,6 +81,20 @@ public class WorkApplyWorkResponseDto {
                 .wawFriStartTime(entity.getWawFriStartTime())
                 .wawSatStartTime(entity.getWawSatStartTime())
                 .wawSunStartTime(entity.getWawSunStartTime())
+                .wawMonWorkPlaceIdx(entity.getWawMonWorkPlace() != null ? entity.getWawMonWorkPlace().getWpIdx() : null)
+                .wawMonWorkPlaceName(entity.getWawMonWorkPlace() != null ? entity.getWawMonWorkPlace().getWpName() : null)
+                .wawTueWorkPlaceIdx(entity.getWawTueWorkPlace() != null ? entity.getWawTueWorkPlace().getWpIdx() : null)
+                .wawTueWorkPlaceName(entity.getWawTueWorkPlace() != null ? entity.getWawTueWorkPlace().getWpName() : null)
+                .wawWedWorkPlaceIdx(entity.getWawWedWorkPlace() != null ? entity.getWawWedWorkPlace().getWpIdx() : null)
+                .wawWedWorkPlaceName(entity.getWawWedWorkPlace() != null ? entity.getWawWedWorkPlace().getWpName() : null)
+                .wawThuWorkPlaceIdx(entity.getWawThuWorkPlace() != null ? entity.getWawThuWorkPlace().getWpIdx() : null)
+                .wawThuWorkPlaceName(entity.getWawThuWorkPlace() != null ? entity.getWawThuWorkPlace().getWpName() : null)
+                .wawFriWorkPlaceIdx(entity.getWawFriWorkPlace() != null ? entity.getWawFriWorkPlace().getWpIdx() : null)
+                .wawFriWorkPlaceName(entity.getWawFriWorkPlace() != null ? entity.getWawFriWorkPlace().getWpName() : null)
+                .wawSatWorkPlaceIdx(entity.getWawSatWorkPlace() != null ? entity.getWawSatWorkPlace().getWpIdx() : null)
+                .wawSatWorkPlaceName(entity.getWawSatWorkPlace() != null ? entity.getWawSatWorkPlace().getWpName() : null)
+                .wawSunWorkPlaceIdx(entity.getWawSunWorkPlace() != null ? entity.getWawSunWorkPlace().getWpIdx() : null)
+                .wawSunWorkPlaceName(entity.getWawSunWorkPlace() != null ? entity.getWawSunWorkPlace().getWpName() : null)
                 .wawRemarks(entity.getWawRemarks())
                 .wawCreatedAt(entity.getWawCreatedAt())
                 .wawUpdatedAt(entity.getWawUpdatedAt())
@@ -73,11 +102,39 @@ public class WorkApplyWorkResponseDto {
     }
 
     public static WorkApplyWorkResponseDto emptyForUser(User user) {
+        return emptyForUser(user, null);
+    }
+
+    public static WorkApplyWorkResponseDto emptyForUser(User user, LocalDate wawDate) {
         if (user == null) return null;
+        Long homeWpIdx = user.getWorkPlace() != null ? user.getWorkPlace().getWpIdx() : null;
+        String homeWpName = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null;
         return WorkApplyWorkResponseDto.builder()
                 .userIdx(user.getUserIdx())
                 .userName(user.getUserName())
-                .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
+                .workPlaceName(homeWpName)
+                .wawDate(wawDate)
+                .wawIsMon(ApplyStatus.미신청)
+                .wawIsTue(ApplyStatus.미신청)
+                .wawIsWed(ApplyStatus.미신청)
+                .wawIsThu(ApplyStatus.미신청)
+                .wawIsFri(ApplyStatus.미신청)
+                .wawIsSat(ApplyStatus.미신청)
+                .wawIsSun(ApplyStatus.미신청)
+                .wawMonWorkPlaceIdx(homeWpIdx)
+                .wawMonWorkPlaceName(homeWpName)
+                .wawTueWorkPlaceIdx(homeWpIdx)
+                .wawTueWorkPlaceName(homeWpName)
+                .wawWedWorkPlaceIdx(homeWpIdx)
+                .wawWedWorkPlaceName(homeWpName)
+                .wawThuWorkPlaceIdx(homeWpIdx)
+                .wawThuWorkPlaceName(homeWpName)
+                .wawFriWorkPlaceIdx(homeWpIdx)
+                .wawFriWorkPlaceName(homeWpName)
+                .wawSatWorkPlaceIdx(homeWpIdx)
+                .wawSatWorkPlaceName(homeWpName)
+                .wawSunWorkPlaceIdx(homeWpIdx)
+                .wawSunWorkPlaceName(homeWpName)
                 .build();
     }
 }

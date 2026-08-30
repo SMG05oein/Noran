@@ -12,6 +12,7 @@ import java.util.Map;
 public interface WorkApplyWorkService {
     void createWorkApplyWork(String requesterId, WorkApplyWorkRequestDto requestDto);
     List<WorkApplyWorkResponseDto> getAllWorkApplyWorks(String requesterId, Long workPlaceIdx, LocalDate wawDate);
+    List<WorkApplyWorkResponseDto> getMonthlyWorkApplyWorks(String requesterId, int year, int month);
     WorkApplyWorkResponseDto getWorkApplyWorkById(String requesterId, Long wawIdx);
     void updateWorkApplyWork(String requesterId, Long wawIdx, WorkApplyWorkRequestDto requestDto);
     void deleteWorkApplyWork(String requesterId, Long wawIdx);

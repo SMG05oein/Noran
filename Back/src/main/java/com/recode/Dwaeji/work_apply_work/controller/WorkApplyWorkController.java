@@ -41,6 +41,15 @@ public class WorkApplyWorkController {
         return ResponseEntity.ok(workApplyWorkService.getAllWorkApplyWorks(userDetails.getUsername(), workPlaceIdx, wawDate));
     }
 
+    @Operation(summary = "알바생 월별 근무 신청 내역 조회", description = "알바생(일반 유저)이 캘린더에서 특정 연/월의 본인 근무 신청 내역을 리스트로 조회합니다.")
+    @GetMapping("/monthly")
+    public ResponseEntity<List<WorkApplyWorkResponseDto>> getMonthlyWorkApplyWorks(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam int year,
+            @RequestParam int month) {
+        return ResponseEntity.ok(workApplyWorkService.getMonthlyWorkApplyWorks(userDetails.getUsername(), year, month));
+    }
+
     @Operation(summary = "캘린더 월간 배정 인원 조회", description = "관리자 페이지의 캘린더에서 사용하기 위해 특정 월의 일자별 배정 인원수를 반환합니다.")
     @GetMapping("/calendar")
     public ResponseEntity<Map<String, Integer>> getCalendarAssignmentCounts(

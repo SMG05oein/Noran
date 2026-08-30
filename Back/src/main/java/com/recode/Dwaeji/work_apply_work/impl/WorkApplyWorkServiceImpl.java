@@ -231,7 +231,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
         List<WorkApplyWork> applies;
 
         if (wawDate != null) {
-            applies = workApplyWorkRepository.findByWawDate(wawDate);
+            applies = workApplyWorkRepository.findByWawDateFetch(wawDate);
         } else {
             applies = workApplyWorkRepository.findAll();
         }
@@ -273,6 +273,27 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<WorkApplyWorkResponseDto> getMonthlyWorkApplyWorks(String requesterId, int year, int month) {
+        User requester = getRequester(requesterId);
+        
+        YearMonth yearMonth = YearMonth.of(year, month);
+        LocalDate firstDayOfMonth = yearMonth.atDay(1);
+        LocalDate lastDayOfMonth = yearMonth.atEndOfMonth();
+        
+        // 해당 월에 걸쳐있는 모든 주차(월요일 기준)를 가져오기 위함
+        LocalDate startDate = firstDayOfMonth.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endDate = lastDayOfMonth.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+
+        List<WorkApplyWork> applies = workApplyWorkRepository.findByUserIdxAndWawDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
+        
+        return applies.stream()
+                .map(this::mapToDto)
+                .sorted(Comparator.comparing(WorkApplyWorkResponseDto::getWawDate).reversed())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<String, Integer> getCalendarAssignmentCounts(String requesterId, int year, int month, Long workPlaceIdx) {
         User requester = getRequester(requesterId);
         YearMonth yearMonth = YearMonth.of(year, month);
@@ -300,7 +321,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                 LocalDate date = monday.plusDays(i);
                 DayOfWeek day = date.getDayOfWeek();
                 ApplyStatus status = getDayStatus(apply, day);
-                if (status == ApplyStatus.배정) {
+                if (status == ApplyStatus.배정 || status == ApplyStatus.타지점근무) {
                     WorkPlace wp = getDayWorkPlace(apply, day);
                     if (workPlaceIdx == null || (wp != null && workPlaceIdx.equals(wp.getWpIdx()))) {
                         if (counts.containsKey(date.toString())) {
@@ -329,7 +350,7 @@ public class WorkApplyWorkServiceImpl implements WorkApplyWorkService {
                 .filter(apply -> {
                     DayOfWeek dayOfWeek = date.getDayOfWeek();
                     ApplyStatus status = getDayStatus(apply, dayOfWeek);
-                    if (status != ApplyStatus.배정) {
+                    if (status != ApplyStatus.배정 && status != ApplyStatus.타지점근무) {
                         return false;
                     }
                     WorkPlace wp = getDayWorkPlace(apply, dayOfWeek);

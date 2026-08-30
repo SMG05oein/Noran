@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Modal, Badge } from 'react-bootstrap';
-import { fetchMyInfo, updateUserInfo, changePassword, getMyAccountDetails, fetchWorkPlaces, updateMyBankInfo } from '../api/authApi';
+import { fetchMyInfo, updateUserInfo, changePassword, getMyAccountDetails, fetchWorkPlaces, updateMyBankInfo, withdrawUser } from '../api/authApi';
 import useAuthStore from '../store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 import { RiUser3Line, RiLockPasswordLine, RiBankCardLine, RiStore2Line, RiShieldCheckLine, RiEdit2Line } from 'react-icons/ri';
 import './Main.css';
 
 const MyPage = () => {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
@@ -40,13 +42,18 @@ const MyPage = () => {
   // 지점 목록
   const [branches, setBranches] = useState([]);
 
+  // 회원 탈퇴 모달 상태
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawSaving, setWithdrawSaving] = useState(false);
+  const [withdrawError, setWithdrawError] = useState('');
+
   useEffect(() => {
     loadMyInfo();
   }, []);
 
   const loadMyInfo = async () => {
     setLoading(true);
-    
+
     // 지점 목록 먼저 가져오기
     let workPlaceList = [];
     const wpRes = await fetchWorkPlaces();
@@ -64,7 +71,7 @@ const MyPage = () => {
       setUserBank(res.data.userBank || '');
       setUserAccountName(res.data.userAccountName || '');
       setUserAccountNumber(res.data.userAccountNumber || '');
-      
+
       // 내 지점 이름과 일치하는 wpIdx 찾기
       const myBranchName = res.data.workPlaceName;
       const matchedBranch = workPlaceList.find(b => b.wpName === myBranchName);
@@ -97,10 +104,10 @@ const MyPage = () => {
     }
 
     setSaving(true);
-    const payload = { 
-      userName, 
-      userEmail, 
-      userPhone, 
+    const payload = {
+      userName,
+      userEmail,
+      userPhone,
       fkWorkPlaceIdx
     };
     const res = await updateUserInfo(userInfo.userIdx, payload);
@@ -177,6 +184,21 @@ const MyPage = () => {
     setPwSuccess('');
   };
 
+  const handleWithdraw = async () => {
+    setWithdrawError('');
+    setWithdrawSaving(true);
+    const res = await withdrawUser();
+    setWithdrawSaving(false);
+
+    if (res.success) {
+      alert('회원 탈퇴가 완료되었습니다.');
+      logout();
+      navigate('/login');
+    } else {
+      setWithdrawError(res.error || '회원 탈퇴에 실패했습니다.');
+    }
+  };
+
   if (loading) {
     return (
       <Container className="py-5 text-center">
@@ -202,17 +224,17 @@ const MyPage = () => {
             <RiShieldCheckLine className="text-primary" /> 기본 계정 정보
           </div>
           <div className="p-3 rounded-3" style={{ backgroundColor: 'var(--color-input-bg)', border: '1px solid var(--color-input-border)' }}>
-             <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
-                <div className="text-muted fw-bold small">아이디</div>
-                <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userId || '-'}</div>
-             </div>
-             <div className="d-flex align-items-center justify-content-between">
-                <div className="text-muted fw-bold small">직급 및 역할</div>
-                <div>
-                  <Badge bg="primary" className="px-2 py-1 me-1">{userInfo?.userTypeName || '직원'}</Badge>
-                  {userInfo?.is_admin === 1 && <Badge bg="danger" className="px-2 py-1">관리자</Badge>}
-                </div>
-             </div>
+            <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+              <div className="text-muted fw-bold small">아이디</div>
+              <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userId || '-'}</div>
+            </div>
+            <div className="d-flex align-items-center justify-content-between">
+              <div className="text-muted fw-bold small">직급 및 역할</div>
+              <div>
+                <Badge bg="primary" className="px-2 py-1 me-1">{userInfo?.userTypeName || '직원'}</Badge>
+                {userInfo?.is_admin === 1 && <Badge bg="danger" className="px-2 py-1">관리자</Badge>}
+              </div>
+            </div>
           </div>
         </Card.Body>
       </Card>
@@ -268,13 +290,13 @@ const MyPage = () => {
           <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
             <RiBankCardLine className="text-primary" /> 급여 계좌 정보
           </div>
-          
+
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
-            <Form.Control 
-              type="text" 
-              value={userBank} 
-              onChange={e => setUserBank(e.target.value)} 
+            <Form.Control
+              type="text"
+              value={userBank}
+              onChange={e => setUserBank(e.target.value)}
               placeholder="예: 카카오뱅크, 신한은행"
               disabled={userInfo?.userAccountNumber && !accountDetails}
               className="custom-input"
@@ -282,10 +304,10 @@ const MyPage = () => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">예금주</Form.Label>
-            <Form.Control 
-              type="text" 
-              value={userAccountName} 
-              onChange={e => setUserAccountName(e.target.value)} 
+            <Form.Control
+              type="text"
+              value={userAccountName}
+              onChange={e => setUserAccountName(e.target.value)}
               placeholder="예금주 성명"
               disabled={userInfo?.userAccountNumber && !accountDetails}
               className="custom-input"
@@ -294,10 +316,10 @@ const MyPage = () => {
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">계좌번호 (숫자만)</Form.Label>
             <div className="d-flex gap-2">
-              <Form.Control 
-                type="text" 
-                value={userAccountNumber} 
-                onChange={e => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))} 
+              <Form.Control
+                type="text"
+                value={userAccountNumber}
+                onChange={e => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="계좌번호 입력"
                 disabled={userInfo?.userAccountNumber && !accountDetails}
                 className="custom-input flex-grow-1"
@@ -324,7 +346,7 @@ const MyPage = () => {
                   <strong className="text-dark">동의 거부권 및 불이익</strong>: 귀하는 위 개인정보 수집에 대한 동의를 거부할 권리가 있습니다. 단, 동의 거부 시 급여 이체 및 정산 처리가 불가능합니다.
                 </li>
               </ul>
-              <Form.Check 
+              <Form.Check
                 type="checkbox"
                 id="bankConsent"
                 label={<span className="fw-bold small text-primary">[필수] 위 개인정보 수집 및 이용에 동의합니다.</span>}
@@ -334,10 +356,10 @@ const MyPage = () => {
             </div>
           )}
 
-          <Button 
-            variant="success" 
-            className="w-100 fw-bold py-2 rounded-3 shadow-sm" 
-            onClick={handleUpdateBankInfo} 
+          <Button
+            variant="success"
+            className="w-100 fw-bold py-2 rounded-3 shadow-sm"
+            onClick={handleUpdateBankInfo}
             disabled={bankSaving || (userInfo?.userAccountNumber && !accountDetails) || (!userInfo?.userAccountNumber || accountDetails) && !bankConsentAgreed}
           >
             {bankSaving ? <Spinner as="span" animation="border" size="sm" /> : '은행 정보 저장'}
@@ -370,6 +392,40 @@ const MyPage = () => {
           <Button variant="primary" onClick={handleChangePassword} disabled={pwSaving} className="w-100 py-2 fw-bold rounded-3">
             {pwSaving ? <Spinner as="span" animation="border" size="sm" /> : "비밀번호 변경하기"}
           </Button>
+        </Modal.Body>
+      </Modal>
+
+      {/* 회원 탈퇴 영역 */}
+      <div className="text-end mt-4">
+        <Button variant="outline-danger" size="sm" className="fw-bold px-3 py-2" onClick={() => setShowWithdrawModal(true)}>
+          회원 탈퇴
+        </Button>
+      </div>
+
+      {/* 회원 탈퇴 모달 */}
+      <Modal show={showWithdrawModal} onHide={() => setShowWithdrawModal(false)} centered>
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold text-danger fs-5">
+            회원 탈퇴
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          {withdrawError && <Alert variant="danger" className="rounded-3 py-2 text-center">{withdrawError}</Alert>}
+          <p className="fw-bold text-dark mb-2">정말로 해당 서비스를 탈퇴하시겠습니까?</p>
+          <ul className="text-muted small ps-3 mb-4">
+            <li>탈퇴 시 계정은 즉시 비활성화되어 로그인할 수 없습니다.</li>
+            <li>근로기준법 및 관련 법령에 따라 급여 정산 및 근태 기록은 법정 기간(3년) 동안 보관 후 파기됩니다.</li>
+            <li>이 작업은 되돌릴 수 없습니다.</li>
+          </ul>
+
+          <div className="d-flex gap-2">
+            <Button variant="secondary" onClick={() => setShowWithdrawModal(false)} className="flex-grow-1 py-2 fw-bold rounded-3">
+              취소
+            </Button>
+            <Button variant="danger" onClick={handleWithdraw} disabled={withdrawSaving} className="flex-grow-1 py-2 fw-bold rounded-3">
+              {withdrawSaving ? <Spinner as="span" animation="border" size="sm" /> : "탈퇴하기"}
+            </Button>
+          </div>
         </Modal.Body>
       </Modal>
     </Container>

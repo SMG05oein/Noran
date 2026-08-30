@@ -1,10 +1,10 @@
-  import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Card, Form, Button, Badge, Modal, Table } from 'react-bootstrap';
-import { format, startOfWeek, addDays } from 'date-fns';
+import { format, startOfWeek, addDays, subMonths } from 'date-fns';
 import { RiCalendarTodoLine, RiFileList3Line, RiCheckboxCircleLine, RiEyeLine, RiTimeLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { fetchWorkRequests, createWorkRequest } from '../api/workApi';
+import { getMonthlyWorkApplyWorks, createWorkRequest } from '../api/workApi';
 import './Main.css';
 
 
@@ -21,13 +21,13 @@ const DAY_CONFIG = [
 const Requests = () => {
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
-  
+
   // 기본 신청일을 '다음 주 월요일'로 설정
   const defaultNextMonday = format(startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const [reqDate, setReqDate] = useState(defaultNextMonday);
-  
+
   const [remarks, setRemarks] = useState('');
-  
+
   const [days, setDays] = useState({
     Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false
   });
@@ -36,16 +36,19 @@ const Requests = () => {
   const [loading, setLoading] = useState(false);
   const [viewingRequest, setViewingRequest] = useState(null);
 
-  const loadRequests = async () => {
-    const res = await fetchWorkRequests();
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+
+  const loadRequests = async (monthStr) => {
+    const [year, month] = monthStr.split('-');
+    const res = await getMonthlyWorkApplyWorks(parseInt(year, 10), parseInt(month, 10));
     if (res.success) {
       setRequestList(res.data || []);
     }
   };
 
   useEffect(() => {
-    loadRequests();
-  }, []);
+    loadRequests(selectedMonth);
+  }, [selectedMonth]);
 
   const handleDayToggle = (day) => {
     setDays(prev => ({ ...prev, [day]: !prev[day] }));
@@ -57,7 +60,7 @@ const Requests = () => {
 
   const handleWeekdaysOnly = () => {
     setDays({ Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false });
-  }; 
+  };
 
   const handleWeekendsOnly = () => {
     setDays({ Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: true, Sun: true });
@@ -88,12 +91,12 @@ const Requests = () => {
 
     const res = await createWorkRequest(requestData);
     setLoading(false);
-    
+
     if (res.success) {
       alert('근무 신청이 완료되었습니다.');
       setDays({ Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false });
       setRemarks('');
-      loadRequests();
+      loadRequests(selectedMonth);
     } else {
       alert(res.error || '근무 신청에 실패했습니다.');
     }
@@ -104,7 +107,7 @@ const Requests = () => {
   const formatDateTime = (dt) => {
     if (!dt) return '-';
     if (Array.isArray(dt)) {
-      return `${dt[0]}-${String(dt[1]).padStart(2, '0')}-${String(dt[2]).padStart(2, '0')} ${String(dt[3]||0).padStart(2, '0')}:${String(dt[4]||0).padStart(2, '0')}`;
+      return `${dt[0]}-${String(dt[1]).padStart(2, '0')}-${String(dt[2]).padStart(2, '0')} ${String(dt[3] || 0).padStart(2, '0')}:${String(dt[4] || 0).padStart(2, '0')}`;
     }
     return new Date(dt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
@@ -115,7 +118,7 @@ const Requests = () => {
         <h2 className="fw-bold text-dark mb-1">근무 신청</h2>
         <p className="text-muted small mb-0">희망하는 근무 요일을 선택하여 신청서를 제출합니다.</p>
       </div>
-      
+
       <Card className="border-0 shadow-sm rounded-4 mb-5">
         <Card.Body className="p-4 p-md-5">
           <div className="d-flex align-items-center gap-2 mb-4 fw-bold fs-5" style={{ color: '#A85A47' }}>
@@ -124,9 +127,9 @@ const Requests = () => {
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-4">
               <Form.Label className="fw-bold text-muted small">신청 기준일 (월요일)</Form.Label>
-              <Form.Control 
-                type="date" 
-                value={reqDate} 
+              <Form.Control
+                type="date"
+                value={reqDate}
                 className="custom-input fw-bold text-muted"
                 style={{ cursor: 'not-allowed' }}
                 readOnly
@@ -135,17 +138,17 @@ const Requests = () => {
 
             <Form.Group className="mb-4">
               <Form.Label className="fw-bold text-muted small d-block mb-2">신청 요일 선택 (한 줄로 터치/드래그하여 선택)</Form.Label>
-              <div 
+              <div
                 className="d-flex gap-2 pb-2 overflow-x-auto flex-nowrap user-select-none"
                 style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {Object.keys(days).map(day => (
-                  <Button 
+                  <Button
                     key={day}
                     className={`rounded-circle fw-bold d-flex align-items-center justify-content-center flex-shrink-0 ${days[day] ? 'day-btn-on' : 'day-btn-off'}`}
-                    style={{ 
-                      width: '48px', 
-                      height: '48px', 
+                    style={{
+                      width: '48px',
+                      height: '48px',
                       fontSize: '0.95rem',
                       padding: 0,
                       color: days[day] ? '#ffffff' : (day === 'Sun' ? '#C94C48' : day === 'Sat' ? '#2B6CB0' : 'var(--color-text-main)'),
@@ -165,11 +168,11 @@ const Requests = () => {
 
             <Form.Group className="mb-4">
               <Form.Label className="fw-bold text-muted small">비고 (선택)</Form.Label>
-              <Form.Control 
-                type="text" 
+              <Form.Control
+                type="text"
                 placeholder="추가 요청사항이 있다면 입력하세요"
-                value={remarks} 
-                onChange={(e) => setRemarks(e.target.value)} 
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
                 className="custom-input"
               />
             </Form.Group>
@@ -182,10 +185,27 @@ const Requests = () => {
         </Card.Body>
       </Card>
 
-      <div className="d-flex align-items-center gap-2 mb-3 text-dark fw-bold fs-5">
-        <RiFileList3Line className="text-primary" /> 내 신청 내역
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex align-items-center gap-2 text-dark fw-bold fs-5">
+          <RiFileList3Line className="text-primary" /> 내 신청 내역
+        </div>
+        <Form.Select
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="custom-month-select fw-bold"
+          style={{ width: 'auto', minWidth: '140px', borderColor: '#C8957A', color: '#A85A47' }}
+        >
+          {[...Array(12)].map((_, i) => {
+            // 과거 6개월 ~ 미래 5개월 정도 보여주기 (신청은 미래도 중요하므로)
+            const d = addDays(subMonths(new Date(), 6), 0); // 일단 현재 달력 기준으로 앞뒤로 배치
+            const baseMonthDate = addDays(new Date(), 0);
+            const optDate = addDays(subMonths(baseMonthDate, 6 - i), 0);
+            const val = format(optDate, 'yyyy-MM');
+            return <option key={val} value={val}>{format(optDate, 'yyyy년 M월')}</option>;
+          })}
+        </Form.Select>
       </div>
-      
+
       <div className="d-flex flex-column gap-3">
         {requestList.length === 0 ? (
           <div className="text-center py-5 rounded-4 border" style={{ color: 'var(--color-text-muted)' }}>
@@ -260,10 +280,10 @@ const Requests = () => {
       </div>
 
       {/* 주간 근무 상세 보기 모달 */}
-      <Modal 
-        show={!!viewingRequest} 
-        onHide={() => setViewingRequest(null)} 
-        centered 
+      <Modal
+        show={!!viewingRequest}
+        onHide={() => setViewingRequest(null)}
+        centered
         size="lg"
       >
         <Modal.Header closeButton className="border-bottom">
@@ -306,7 +326,7 @@ const Requests = () => {
                       const status = viewingRequest[d.key] || '미신청';
                       const time = viewingRequest[d.timeKey] ? String(viewingRequest[d.timeKey]).substring(0, 5) : null;
                       const wpName = viewingRequest[d.wpNameKey] || viewingRequest.workPlaceName || '노란돼지';
-                      
+
                       let dayDateStr = '';
                       try {
                         const baseMon = new Date(viewingRequest.wawDate);

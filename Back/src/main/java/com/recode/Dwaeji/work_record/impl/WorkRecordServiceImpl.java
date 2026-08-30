@@ -5,6 +5,9 @@ import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.work_record.database.WorkRecord;
 import com.recode.Dwaeji.work_record.dto.WorkRecordRequestDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordResponseDto;
+import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
+import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
+import com.recode.Dwaeji.work_record.database.WorkRecordHistory;
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +20,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.recode.Dwaeji.work_apply_work.database.WorkApplyWork;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyWorkRepository;
+import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
+
+import java.time.DayOfWeek;
+import java.time.temporal.TemporalAdjusters;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +39,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
     private final WorkRecordRepository workRecordRepository;
     private final UserRepository userRepository;
+    private final WorkRecordHistoryRepository workRecordHistoryRepository;
     private final WorkApplyWorkRepository workApplyWorkRepository;
 
     private User getRequester(String requesterId) {
@@ -64,6 +77,22 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 .build();
 
         workRecordRepository.save(workRecord);
+
+        if (isAdmin(requester)) {
+            WorkRecordHistory history = WorkRecordHistory.builder()
+                    .wrIdx(workRecord.getWrIdx())
+                    .adminUser(requester)
+                    .targetUser(targetUser)
+                    .wrDate(workRecord.getWrDate())
+                    .beforeStartTime(null)
+                    .beforeEndTime(null)
+                    .beforeRestTime(null)
+                    .afterStartTime(workRecord.getWrStartTime())
+                    .afterEndTime(workRecord.getWrEndTime())
+                    .afterRestTime(workRecord.getWrRestTime())
+                    .build();
+            workRecordHistoryRepository.save(history);
+        }
     }
 
     @Override
@@ -94,30 +123,88 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         if (isAdmin(requester)) {
             if (startDate != null) {
                 if (workPlaceIdx != null && userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByWrDateBetweenAndUser_WorkPlace_WpIdxAndUser_UserNameContaining(startDate, endDate, workPlaceIdx, userName, pageable);
+                    records = workRecordRepository.findByDateBetweenAndWorkPlaceAndUserNameFetch(startDate, endDate, workPlaceIdx, userName, pageable);
                 } else if (workPlaceIdx != null) {
-                    records = workRecordRepository.findByWrDateBetweenAndUser_WorkPlace_WpIdx(startDate, endDate, workPlaceIdx, pageable);
+                    records = workRecordRepository.findByDateBetweenAndWorkPlaceFetch(startDate, endDate, workPlaceIdx, pageable);
                 } else if (userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByWrDateBetweenAndUser_UserNameContaining(startDate, endDate, userName, pageable);
+                    records = workRecordRepository.findByDateBetweenAndUserNameFetch(startDate, endDate, userName, pageable);
                 } else {
-                    records = workRecordRepository.findByWrDateBetween(startDate, endDate, pageable);
+                    records = workRecordRepository.findByDateBetweenFetch(startDate, endDate, pageable);
                 }
             } else {
                 if (workPlaceIdx != null && userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByUser_WorkPlace_WpIdxAndUser_UserNameContaining(workPlaceIdx, userName, pageable);
+                    records = workRecordRepository.findByWorkPlaceIdxAndUserNameFetch(workPlaceIdx, userName, pageable);
                 } else if (workPlaceIdx != null) {
-                    records = workRecordRepository.findByUser_WorkPlace_WpIdx(workPlaceIdx, pageable);
+                    records = workRecordRepository.findByWorkPlaceIdxFetch(workPlaceIdx, pageable);
                 } else if (userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByUser_UserNameContaining(userName, pageable);
+                    records = workRecordRepository.findByUserNameFetch(userName, pageable);
                 } else {
-                    records = workRecordRepository.findAll(pageable);
+                    records = workRecordRepository.findByDateBetweenFetch(
+                            LocalDate.now().minusYears(1), LocalDate.now().plusMonths(1), pageable);
                 }
             }
         } else {
-            records = workRecordRepository.findByUser_UserIdx(requester.getUserIdx(), pageable);
+            records = workRecordRepository.findByUserIdxFetch(requester.getUserIdx(), pageable);
         }
 
-        return records.map(this::mapToDto);
+        // 배치로 WorkApplyWork 한 번에 조회 (N+1 방지)
+        List<Long> userIdxList = records.getContent().stream()
+                .map(r -> r.getUser().getUserIdx()).distinct().collect(Collectors.toList());
+        Set<LocalDate> mondaySet = records.getContent().stream()
+                .map(r -> r.getWrDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+                .collect(java.util.stream.Collectors.toSet());
+
+        Map<String, WorkApplyWork> applyMap = new HashMap<>();
+        if (!userIdxList.isEmpty() && !mondaySet.isEmpty()) {
+            mondaySet.forEach(monday -> 
+                workApplyWorkRepository.findByUserIdxInAndWawDate(userIdxList, monday)
+                        .forEach(a -> applyMap.put(a.getUser().getUserIdx() + "-" + monday, a))
+            );
+        }
+
+        return records.map(record -> {
+            LocalDate wrDate = record.getWrDate();
+            LocalDate monday = wrDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            WorkApplyWork apply = applyMap.get(record.getUser().getUserIdx() + "-" + monday);
+            String applyStatus = resolveApplyStatus(apply, wrDate);
+            return WorkRecordResponseDto.fromEntity(record, applyStatus);
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkRecordResponseDto> getMonthlyWorkRecords(String requesterId, int year, int month) {
+        User requester = getRequester(requesterId);
+        
+        java.time.YearMonth yearMonth = java.time.YearMonth.of(year, month);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
+        
+        List<WorkRecord> records = workRecordRepository.findByUserIdxAndDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
+        
+        // 배치로 WorkApplyWork 한 번에 조회 (N+1 방지)
+        Set<LocalDate> mondaySet = records.stream()
+                .map(r -> r.getWrDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
+                .collect(Collectors.toSet());
+
+        Map<String, WorkApplyWork> applyMap = new HashMap<>();
+        if (!mondaySet.isEmpty()) {
+            mondaySet.forEach(monday -> 
+                workApplyWorkRepository.findByUserIdxInAndWawDate(List.of(requester.getUserIdx()), monday)
+                        .forEach(a -> applyMap.put(a.getUser().getUserIdx() + "-" + monday, a))
+            );
+        }
+
+        return records.stream().map(record -> {
+            LocalDate recordMonday = record.getWrDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            WorkApplyWork apply = applyMap.get(record.getUser().getUserIdx() + "-" + recordMonday);
+            
+            String applyStatusStr = "미신청";
+            if (apply != null) {
+                applyStatusStr = resolveApplyStatus(apply, record.getWrDate());
+            }
+            return WorkRecordResponseDto.fromEntity(record, applyStatusStr);
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -152,12 +239,45 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             record.setWrDate(requestDto.getWrDate());
         }
         
-        if (requestDto.getWrStartTime() != null) record.setWrStartTime(requestDto.getWrStartTime());
-        if (requestDto.getWrEndTime() != null) record.setWrEndTime(requestDto.getWrEndTime());
-        if (requestDto.getWrRestTime() != null) record.setWrRestTime(requestDto.getWrRestTime());
-        if (requestDto.getWrRemarks() != null) record.setWrRemarks(requestDto.getWrRemarks());
+        boolean isTimeChanged = false;
+        LocalTime beforeStartTime = record.getWrStartTime();
+        LocalTime beforeEndTime = record.getWrEndTime();
+        LocalTime beforeRestTime = record.getWrRestTime();
+
+        if (requestDto.getWrStartTime() != null && !requestDto.getWrStartTime().equals(record.getWrStartTime())) {
+            record.setWrStartTime(requestDto.getWrStartTime());
+            isTimeChanged = true;
+        }
+        if (requestDto.getWrEndTime() != null && !requestDto.getWrEndTime().equals(record.getWrEndTime())) {
+            record.setWrEndTime(requestDto.getWrEndTime());
+            isTimeChanged = true;
+        }
+        if (requestDto.getWrRestTime() != null && !requestDto.getWrRestTime().equals(record.getWrRestTime())) {
+            record.setWrRestTime(requestDto.getWrRestTime());
+            isTimeChanged = true;
+        }
+        if (requestDto.getWrRemarks() != null) {
+            record.setWrRemarks(requestDto.getWrRemarks());
+        }
 
         workRecordRepository.save(record);
+
+        // 관리자가 시간을 수정한 경우 Audit Log 남기기
+        if (isAdmin(requester) && isTimeChanged) {
+            WorkRecordHistory history = WorkRecordHistory.builder()
+                    .wrIdx(record.getWrIdx())
+                    .adminUser(requester)
+                    .targetUser(record.getUser())
+                    .wrDate(record.getWrDate())
+                    .beforeStartTime(beforeStartTime)
+                    .beforeEndTime(beforeEndTime)
+                    .beforeRestTime(beforeRestTime)
+                    .afterStartTime(record.getWrStartTime())
+                    .afterEndTime(record.getWrEndTime())
+                    .afterRestTime(record.getWrRestTime())
+                    .build();
+            workRecordHistoryRepository.save(history);
+        }
     }
 
     @Override
@@ -172,7 +292,116 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         WorkRecord record = workRecordRepository.findById(wrIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "삭제할 근무 기록을 찾을 수 없습니다."));
 
+        if (isAdmin(requester)) {
+            WorkRecordHistory history = WorkRecordHistory.builder()
+                    .wrIdx(record.getWrIdx())
+                    .adminUser(requester)
+                    .targetUser(record.getUser())
+                    .wrDate(record.getWrDate())
+                    .beforeStartTime(record.getWrStartTime())
+                    .beforeEndTime(record.getWrEndTime())
+                    .beforeRestTime(record.getWrRestTime())
+                    .afterStartTime(null)
+                    .afterEndTime(null)
+                    .afterRestTime(null)
+                    .build();
+            workRecordHistoryRepository.save(history);
+        }
+
         workRecordRepository.delete(record);
+    }
+
+    @Override
+    @Transactional
+    public void restoreWorkRecord(String requesterId, Long wrhIdx) {
+        User requester = getRequester(requesterId);
+
+        if (!isAdmin(requester)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 근무 기록을 복구할 수 있습니다.");
+        }
+
+        WorkRecordHistory history = workRecordHistoryRepository.findById(wrhIdx)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "수정 이력을 찾을 수 없습니다."));
+
+        // 삭제 이력인지 확인 (삭제 이력은 after 시간이 모두 null임)
+        if (history.getAfterStartTime() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해당 이력은 삭제 기록이 아닙니다.");
+        }
+
+        if (workRecordRepository.existsByUser_UserIdxAndWrDate(history.getTargetUser().getUserIdx(), history.getWrDate())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 유저는 이 날짜에 이미 근무 기록이 존재하여 복구할 수 없습니다.");
+        }
+
+        WorkRecord restoredRecord = WorkRecord.builder()
+                .user(history.getTargetUser())
+                .wrDate(history.getWrDate())
+                .wrStartTime(history.getBeforeStartTime())
+                .wrEndTime(history.getBeforeEndTime())
+                .wrRestTime(history.getBeforeRestTime())
+                .wrRemarks("삭제된 기록 복구됨")
+                .build();
+
+        workRecordRepository.save(restoredRecord);
+
+        // 복구 이력 저장
+        WorkRecordHistory newHistory = WorkRecordHistory.builder()
+                .wrIdx(restoredRecord.getWrIdx())
+                .adminUser(requester)
+                .targetUser(restoredRecord.getUser())
+                .wrDate(restoredRecord.getWrDate())
+                .beforeStartTime(null)
+                .beforeEndTime(null)
+                .beforeRestTime(null)
+                .afterStartTime(restoredRecord.getWrStartTime())
+                .afterEndTime(restoredRecord.getWrEndTime())
+                .afterRestTime(restoredRecord.getWrRestTime())
+                .build();
+
+        workRecordHistoryRepository.save(newHistory);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WorkRecordHistoryResponseDto> getWorkRecordHistory(String requesterId, Integer year, Integer month, String keyword, org.springframework.data.domain.Pageable pageable) {
+        User requester = getRequester(requesterId);
+        
+        if (!isAdmin(requester)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 수정 이력을 조회할 수 있습니다.");
+        }
+
+        org.springframework.data.domain.Page<WorkRecordHistory> historyPage = workRecordHistoryRepository.searchHistory(year, month, keyword, pageable);
+
+        return historyPage.map(h -> WorkRecordHistoryResponseDto.builder()
+                .wrhIdx(h.getWrhIdx())
+                .wrIdx(h.getWrIdx())
+                .adminName(h.getAdminUser().getUserName())
+                .targetUserName(h.getTargetUser().getUserName())
+                .workPlaceName(h.getTargetUser().getWorkPlace() != null ? h.getTargetUser().getWorkPlace().getWpName() : null)
+                .wrDate(h.getWrDate())
+                .beforeStartTime(h.getBeforeStartTime())
+                .beforeEndTime(h.getBeforeEndTime())
+                .beforeRestTime(h.getBeforeRestTime())
+                .afterStartTime(h.getAfterStartTime())
+                .afterEndTime(h.getAfterEndTime())
+                .afterRestTime(h.getAfterRestTime())
+                .wrhCreatedAt(h.getWrhCreatedAt())
+                .build());
+    }
+
+    private String resolveApplyStatus(WorkApplyWork apply, LocalDate wrDate) {
+        if (apply == null) return "신청없음";
+        com.recode.Dwaeji.work_apply_work.database.ApplyStatus status;
+        switch (wrDate.getDayOfWeek()) {
+            case MONDAY:    status = apply.getWawIsMon(); break;
+            case TUESDAY:   status = apply.getWawIsTue(); break;
+            case WEDNESDAY: status = apply.getWawIsWed(); break;
+            case THURSDAY:  status = apply.getWawIsThu(); break;
+            case FRIDAY:    status = apply.getWawIsFri(); break;
+            case SATURDAY:  status = apply.getWawIsSat(); break;
+            case SUNDAY:    status = apply.getWawIsSun(); break;
+            default:        status = com.recode.Dwaeji.work_apply_work.database.ApplyStatus.미신청;
+        }
+        return status != null ? status.name() : "미신청";
     }
 
     private WorkRecordResponseDto mapToDto(WorkRecord record) {

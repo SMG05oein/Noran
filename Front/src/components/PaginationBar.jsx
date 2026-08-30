@@ -2,8 +2,6 @@ import React from 'react';
 import { Button, Form } from 'react-bootstrap';
 
 const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) => {
-  if (totalPages <= 1) return null;
-
   return (
     <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
       <Button

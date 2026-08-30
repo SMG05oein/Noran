@@ -131,6 +131,53 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public void adminRegisterUser(String requesterId, com.recode.Dwaeji.user.dto.AdminRegisterRequestDto dto) {
+        // 1. 요청자 권한 확인
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        if (requester.getUserType() == null || requester.getUserType().getUtIsAdmin() == null
+                || requester.getUserType().getUtIsAdmin() != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 직원을 등록할 수 있습니다.");
+        }
+
+        // 2. 아이디 중복 확인
+        String lowerUserId = dto.getUserId().toLowerCase();
+        if (userRepository.findByUserId(lowerUserId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
+        }
+
+        // 3. 소속 지점 조회
+        com.recode.Dwaeji.user.database.WorkPlace workPlace = workPlaceRepository.findById(dto.getFkWorkPlaceIdx())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다."));
+
+        // 4. UserType 결정 (WORKER: ID=5 고정, ADMIN: fkUtIdx 사용 기본값=1)
+        com.recode.Dwaeji.user.database.UserType userType;
+        if ("ADMIN".equalsIgnoreCase(dto.getRole())) {
+            Long utIdx = dto.getFkUtIdx() != null ? dto.getFkUtIdx() : 1L;
+            userType = userTypeRepository.findById(utIdx)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 직급 ID입니다."));
+        } else {
+            // WORKER: 알바생 기본 UserType (ID=5)
+            userType = userTypeRepository.findById(5L)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "기본 근무 형태를 찾을 수 없습니다."));
+        }
+
+        // 5. 유저 엔티티 생성 및 저장
+        User newUser = User.builder()
+                .userId(lowerUserId)
+                .userPw(passwordEncoder.encode(dto.getUserPw()))
+                .userName(dto.getUserName())
+                .userPhone(dto.getUserPhone())
+                .userType(userType)
+                .workPlace(workPlace)
+                .userIsActive(1)
+                .build();
+
+        userRepository.save(newUser);
+    }
+
+    @Override
+    @Transactional
     public void updateUser(String requesterId, Long targetUserIdx, UserUpdateDto userUpdateDto) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
@@ -209,6 +256,16 @@ public class UserServiceImpl implements UserService {
 
         // 논리적 삭제
         targetUser.setUserIsActive(0);
+    }
+
+    @Override
+    @Transactional
+    public void withdrawUser(String requesterId) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        // 논리적 삭제
+        requester.setUserIsActive(0);
     }
 
     @Override
@@ -396,7 +453,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, boolean showInactive) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -412,7 +469,8 @@ public class UserServiceImpl implements UserService {
         org.springframework.data.domain.Page<User> users;
         boolean hasName = userName != null && !userName.trim().isEmpty();
 
-        if (showInactive) {
+        if (isActive == null) {
+            // isActive == null: 전체 조회 (재직 + 퇴사 모두)
             if (workPlaceIdx != null && hasName) {
                 users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdxAndUserNameContaining(0, workPlaceIdx, userName, pageable);
             } else if (workPlaceIdx != null) {
@@ -420,17 +478,17 @@ public class UserServiceImpl implements UserService {
             } else if (hasName) {
                 users = userRepository.findByUserType_UtIsAdminAndUserNameContaining(0, userName, pageable);
             } else {
-                users = userRepository.findByUserType_UtIsAdmin(0, pageable);
+                users = userRepository.findAllWorkersFetch(0, pageable);
             }
         } else {
             if (workPlaceIdx != null && hasName) {
-                users = userRepository.findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdxAndUserNameContaining(0, 1, workPlaceIdx, userName, pageable);
+                users = userRepository.findWorkersByWorkPlaceAndNameFetch(0, isActive, workPlaceIdx, userName, pageable);
             } else if (workPlaceIdx != null) {
-                users = userRepository.findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdx(0, 1, workPlaceIdx, pageable);
+                users = userRepository.findWorkersByWorkPlaceFetch(0, isActive, workPlaceIdx, pageable);
             } else if (hasName) {
-                users = userRepository.findByUserType_UtIsAdminAndUserIsActiveAndUserNameContaining(0, 1, userName, pageable);
+                users = userRepository.findWorkersByNameFetch(0, isActive, userName, pageable);
             } else {
-                users = userRepository.findByUserType_UtIsAdminAndUserIsActive(0, 1, pageable);
+                users = userRepository.findWorkersFetch(0, isActive, pageable);
             }
         }
 
@@ -439,7 +497,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, boolean showInactive) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -453,10 +511,10 @@ public class UserServiceImpl implements UserService {
                         org.springframework.data.domain.Sort.Order.asc("userIdx")));
 
         org.springframework.data.domain.Page<User> users;
-        if (showInactive) {
-            users = userRepository.findByUserType_UtIsAdmin(1, pageable);
+        if (isActive == null) {
+            users = userRepository.findAllWorkersFetch(1, pageable);
         } else {
-            users = userRepository.findByUserType_UtIsAdminAndUserIsActive(1, 1, pageable);
+            users = userRepository.findWorkersFetch(1, isActive, pageable);
         }
         return users.map(com.recode.Dwaeji.user.dto.UserInfoDto::fromEntity);
     }

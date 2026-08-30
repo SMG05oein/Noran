@@ -2,12 +2,11 @@ package com.recode.Dwaeji.work_record.controller;
 
 import com.recode.Dwaeji.work_record.dto.WorkRecordRequestDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordResponseDto;
+import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @Tag(name = "근무 기록 API", description = "근무 기록(출퇴근) 생성, 조회, 수정, 삭제 API")
 @RestController
@@ -46,6 +46,15 @@ public class WorkRecordController {
             @RequestParam(defaultValue = "date") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         return ResponseEntity.ok(workRecordService.getAllWorkRecords(userDetails.getUsername(), workPlaceIdx, userName, year, month, page, size, sortBy, sortDir));
+    }
+
+    @Operation(summary = "알바생 월별 근무 기록 조회", description = "알바생(일반 유저)이 캘린더에서 특정 연/월의 본인 근무 기록을 리스트로 조회합니다.")
+    @GetMapping("/monthly")
+    public ResponseEntity<List<WorkRecordResponseDto>> getMonthlyWorkRecords(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam int year,
+            @RequestParam int month) {
+        return ResponseEntity.ok(workRecordService.getMonthlyWorkRecords(userDetails.getUsername(), year, month));
     }
 
     @Operation(summary = "근무 기록 엑셀 다운로드", description = "특정 월(년/월)의 전체 또는 특정 지점 근무 기록을 엑셀 파일로 다운로드합니다. 관리자 전용.")
@@ -91,5 +100,30 @@ public class WorkRecordController {
             @PathVariable Long wrIdx) {
         workRecordService.deleteWorkRecord(userDetails.getUsername(), wrIdx);
         return ResponseEntity.ok("근무 기록이 삭제되었습니다.");
+    }
+
+    @Operation(summary = "삭제된 근무 기록 복구", description = "수정 이력 식별자(wrhIdx)를 통해 삭제된 근무 기록을 복구합니다. 관리자 전용.")
+    @PostMapping("/history/{wrhIdx}/restore")
+    public ResponseEntity<String> restoreWorkRecord(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long wrhIdx) {
+        workRecordService.restoreWorkRecord(userDetails.getUsername(), wrhIdx);
+        return ResponseEntity.ok("삭제된 근무 기록이 복구되었습니다.");
+    }
+
+    @Operation(summary = "근무 기록 수정 이력 조회", description = "관리자가 변경한 근무 기록 수정 이력을 조회합니다. 관리자 전용. 연/월 및 키워드 검색 가능.")
+    @GetMapping("/history")
+    public ResponseEntity<org.springframework.data.domain.Page<WorkRecordHistoryResponseDto>> getWorkRecordHistory(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Order.desc("wrhCreatedAt")));
+        
+        return ResponseEntity.ok(workRecordService.getWorkRecordHistory(userDetails.getUsername(), year, month, keyword, pageable));
     }
 }

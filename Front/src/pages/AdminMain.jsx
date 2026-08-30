@@ -14,7 +14,7 @@ const AdminMain = () => {
   const navigate = useNavigate();
   const [selectedWpIdx, setSelectedWpIdx] = useState(user?.workPlaceIdx || null);
   const [branches, setBranches] = useState([]);
-  
+
   const [workRecords, setWorkRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +41,7 @@ const AdminMain = () => {
       setBranches(branchRes.data);
       // 로그인한 관리자의 소속 지점(workPlaceName 또는 workPlaceIdx)과 일치하는 지점 우선 선택
       const userWpName = user?.workPlaceName || user?.branch;
-      const myBranch = branchRes.data.find(b => 
+      const myBranch = branchRes.data.find(b =>
         (user?.workPlaceIdx && Number(b.wpIdx) === Number(user.workPlaceIdx)) ||
         (userWpName && (b.wpName === userWpName || userWpName.includes(b.wpName) || b.wpName.includes(userWpName)))
       );
@@ -98,17 +98,17 @@ const AdminMain = () => {
             </div>
 
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <Button 
-                variant="primary" 
-                className="rounded-pill fw-bold px-3 py-2 shadow-xs d-flex align-items-center gap-1" 
+              <Button
+                variant="primary"
+                className="rounded-pill fw-bold px-3 py-2 shadow-xs d-flex align-items-center gap-1"
                 onClick={() => navigate('/admin/weekly-assign')}
               >
                 <RiCalendarCheckLine size={18} />
                 <span>주간 배정 관리</span>
               </Button>
-              <Button 
-                variant="outline-secondary" 
-                className="rounded-pill fw-bold px-3 py-2 d-flex align-items-center gap-1" 
+              <Button
+                variant="outline-secondary"
+                className="rounded-pill fw-bold px-3 py-2 d-flex align-items-center gap-1"
                 onClick={() => navigate('/admin/records')}
               >
                 <RiGroupLine size={18} />
@@ -144,11 +144,11 @@ const AdminMain = () => {
         ) : (
           <>
             <div style={{ minHeight: '500px', marginBottom: '2rem' }}>
-              <AdminCalendar 
-                selectedBranch={selectedBranchName} 
-                selectedBranchIdx={selectedBranchIdx} 
+              <AdminCalendar
+                selectedBranch={selectedBranchName}
+                selectedBranchIdx={selectedBranchIdx}
                 selectedDate={selectedDate}
-                onDateClick={(date) => setSelectedDate(date)} 
+                onDateClick={(date) => setSelectedDate(date)}
               />
             </div>
 

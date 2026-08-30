@@ -164,17 +164,13 @@ body::-webkit-scrollbar,
   height: 0 !important;
 }
 
-/* 불필요한 텍스트 드래그/선택 방지 (입력창 제외) */
-body {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
+
 
 input,
 textarea,
-[contenteditable="true"] {
+[contenteditable="true"],
+.dev-container,
+.dev-container * {
   user-select: text !important;
   -webkit-user-select: text !important;
   -moz-user-select: text !important;

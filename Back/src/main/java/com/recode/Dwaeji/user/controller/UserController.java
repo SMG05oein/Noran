@@ -108,6 +108,19 @@ public class UserController {
         return ResponseEntity.ok("회원 계정이 성공적으로 복구되었습니다.");
     }
 
+    @Operation(summary = "알바생 본인 계정 탈퇴", description = "알바생 본인이 스스로 계정을 탈퇴(Soft Delete) 처리합니다.")
+    @DeleteMapping("/me/withdraw")
+    public ResponseEntity<String> withdrawUser(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body("로그인이 필요합니다.");
+        }
+        String requesterId = userDetails.getUsername();
+        userService.withdrawUser(requesterId);
+        return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
+    }
+
     @Operation(summary = "내 정보 조회", description = "현재 로그인된 사용자의 상세 정보를 조회합니다.")
     @GetMapping("/me")
     public ResponseEntity<com.recode.Dwaeji.user.dto.UserInfoDto> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
@@ -155,9 +168,9 @@ public class UserController {
             @RequestParam(required = false) Long workPlaceIdx,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "false") boolean showInactive) {
+            @RequestParam(required = false, defaultValue = "1") Integer isActive) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.searchWorkers(userDetails.getUsername(), userName, workPlaceIdx, page, size, showInactive));
+        return ResponseEntity.ok(userService.searchWorkers(userDetails.getUsername(), userName, workPlaceIdx, page, size, isActive));
     }
 
     @Operation(summary = "관리자 목록 조회", description = "관리자 전용. 관리자 계정만 10명 단위로 페이징하여 조회합니다.")
@@ -166,9 +179,9 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "false") boolean showInactive) {
+            @RequestParam(required = false, defaultValue = "1") Integer isActive) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.getManagers(userDetails.getUsername(), page, size, showInactive));
+        return ResponseEntity.ok(userService.getManagers(userDetails.getUsername(), page, size, isActive));
     }
 
     @Operation(summary = "임시 비밀번호 설정", description = "관리자 전용. 특정 유저의 임시 비밀번호를 설정합니다.")
@@ -244,6 +257,17 @@ public class UserController {
         String requesterId = userDetails.getUsername();
         userService.updateSensitiveInfo(requesterId, userIdx, dto);
         return ResponseEntity.ok("유저 민감 정보가 성공적으로 업데이트되었습니다.");
+    }
+    @Operation(summary = "직원 등록 (관리자 전용)", description = "관리자가 새로운 관리자 또는 알바생 계정을 직접 생성합니다. 관리자 전용.")
+    @PostMapping("/admin/register")
+    public ResponseEntity<java.util.Map<String, Object>> adminRegisterUser(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody com.recode.Dwaeji.user.dto.AdminRegisterRequestDto dto) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body(java.util.Map.of("success", false, "msg", "로그인이 필요합니다."));
+        }
+        userService.adminRegisterUser(userDetails.getUsername(), dto);
+        return ResponseEntity.status(201).body(java.util.Map.of("success", true, "data", "직원이 성공적으로 등록되었습니다."));
     }
 }
 

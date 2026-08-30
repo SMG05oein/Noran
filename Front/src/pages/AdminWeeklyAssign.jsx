@@ -56,7 +56,7 @@ const AdminWeeklyAssign = () => {
     setLoading(true);
     const dateStr = format(currentWeekStart, 'yyyy-MM-dd');
     const [reqRes, branchRes, workerRes] = await Promise.all([
-      fetchWorkRequests(dateStr),
+      fetchWorkRequests(dateStr, currentWorkPlaceIdx),
       fetchWorkPlaces(),
       fetchAdminWorkers({ size: 100, page: 0, showInactive: false })
     ]);
@@ -350,6 +350,21 @@ const AdminWeeklyAssign = () => {
     setSaving(false);
   };
 
+  const getAssignedCount = (d) => {
+    let count = 0;
+    weeklyRequests.forEach(req => {
+      const status = req[d.key];
+      const time = formatTimeValue(req[d.timeKey]);
+      const isOtherBranchShift = (status === '타지점근무' && Number(req[d.wpIdxKey]) !== Number(currentWorkPlaceIdx)) || 
+                                 (req[d.wpIdxKey] && Number(req[d.wpIdxKey]) !== Number(currentWorkPlaceIdx) && (time || status === '배정'));
+      
+      if (!isOtherBranchShift && time) {
+        count++;
+      }
+    });
+    return count;
+  };
+
   const handleDownloadImage = () => {
     if (weeklyRequests.length === 0) {
       alert('저장할 근무 배정 데이터가 없습니다.');
@@ -361,7 +376,8 @@ const AdminWeeklyAssign = () => {
     const rowHeight = 44;
     const headerHeight = 130;
     const tableTop = headerHeight + 20;
-    const tableHeight = 40 + (weeklyRequests.length * rowHeight);
+    const tableHeaderH = 72;
+    const tableHeight = tableHeaderH + (weeklyRequests.length * rowHeight);
     const height = tableTop + tableHeight + 60;
     canvas.width = width * scale;
     canvas.height = height * scale;
@@ -386,17 +402,17 @@ const AdminWeeklyAssign = () => {
     ctx.fillText(`📅 기간: ${weekPeriod}`, 50, 90);
     ctx.textAlign = 'right';
     ctx.fillText(`생성일시: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, width - 50, 90);
-    const colX = [45, 185, 300, 415, 530, 645, 760, 875, 990, width - 45];
+    const colX = [45, 185, 309, 433, 557, 681, 805, 929, width - 45];
     
     // 테이블 배경 채우기 (헤더)
     ctx.fillStyle = '#332A25';
-    ctx.fillRect(45, tableTop, width - 90, 56);
+    ctx.fillRect(45, tableTop, width - 90, tableHeaderH);
     
     // 이름 헤더
     ctx.fillStyle = '#E8E3DF';
     ctx.font = 'bold 14px Pretendard, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('이름', colX[0] + 15, tableTop + 33);
+    ctx.fillText('이름', colX[0] + 15, tableTop + tableHeaderH / 2 + 5);
     
     ctx.textAlign = 'center';
     DAY_KEYS.forEach((d, i) => {
@@ -405,17 +421,20 @@ const AdminWeeklyAssign = () => {
       const dateLabel = `${dayDate.getMonth() + 1}/${dayDate.getDate()}`;
       ctx.fillStyle = d.name === '일' ? '#E57373' : d.name === '토' ? '#64B5F6' : '#E8E3DF';
       ctx.font = '11px Pretendard, sans-serif';
-      ctx.fillText(dateLabel, cx, tableTop + 22);
+      ctx.fillText(dateLabel, cx, tableTop + 20);
       ctx.font = 'bold 14px Pretendard, sans-serif';
-      ctx.fillText(`(${d.name})`, cx, tableTop + 42);
+      ctx.fillText(`(${d.name})`, cx, tableTop + 38);
+      
+      const count = getAssignedCount(d);
+      ctx.fillStyle = '#E8A38E';
+      ctx.font = 'bold 11px Pretendard, sans-serif';
+      ctx.fillText(`${count}명`, cx, tableTop + 56);
     });
-    ctx.fillStyle = '#E8E3DF';
-    ctx.font = 'bold 14px Pretendard, sans-serif';
-    ctx.fillText('비고', (colX[8] + colX[9]) / 2, tableTop + 33);
+
 
     // 테이블 배경 채우기 (행)
     weeklyRequests.forEach((req, rIdx) => {
-      const y = tableTop + 56 + (rIdx * rowHeight);
+      const y = tableTop + tableHeaderH + (rIdx * rowHeight);
       ctx.fillStyle = rIdx % 2 === 0 ? '#231D1A' : '#2C2521';
       ctx.fillRect(45, y, width - 90, rowHeight);
     });
@@ -426,11 +445,11 @@ const AdminWeeklyAssign = () => {
     ctx.beginPath();
     // 외곽선 및 헤더 가로선
     ctx.rect(45, tableTop, width - 90, tableHeight);
-    ctx.moveTo(45, tableTop + 56);
-    ctx.lineTo(width - 45, tableTop + 56);
+    ctx.moveTo(45, tableTop + tableHeaderH);
+    ctx.lineTo(width - 45, tableTop + tableHeaderH);
     // 각 행 가로선
     weeklyRequests.forEach((req, rIdx) => {
-      const y = tableTop + 56 + (rIdx * rowHeight);
+      const y = tableTop + tableHeaderH + (rIdx * rowHeight);
       ctx.moveTo(45, y);
       ctx.lineTo(width - 45, y);
     });
@@ -443,7 +462,7 @@ const AdminWeeklyAssign = () => {
 
     // 행별 데이터 그리기
     weeklyRequests.forEach((req, rIdx) => {
-      const y = tableTop + 56 + (rIdx * rowHeight);
+      const y = tableTop + tableHeaderH + (rIdx * rowHeight);
       
       // 이름 (좌측 정렬)
       ctx.fillStyle = '#E8E3DF';
@@ -457,15 +476,31 @@ const AdminWeeklyAssign = () => {
         const cellW = colX[cIdx + 2] - cellX;
         const time = formatTimeValue(req[d.timeKey]);
         const status = req[d.key];
-        const isOther = status === '타지점근무';
-        if (isOther) {
-          ctx.fillStyle = 'rgba(142, 68, 173, 0.25)';
-          ctx.beginPath();
-          ctx.roundRect(cellX + 10, y + 8, cellW - 20, 28, 6);
-          ctx.fill();
-          ctx.fillStyle = '#C39BD3';
-          ctx.font = 'bold 11px Pretendard, sans-serif';
-          ctx.fillText(req[d.wpNameKey] || '타지점', cellX + (cellW / 2), y + 26);
+        const isGuestWorker = req.workPlaceIdx != null 
+          ? Number(req.workPlaceIdx) !== Number(currentWorkPlaceIdx)
+          : (req.workPlaceName && req.workPlaceName !== selectedBranchName);
+
+        const isOtherBranchShift = (status === '타지점근무' && Number(req[d.wpIdxKey]) !== Number(currentWorkPlaceIdx)) || 
+                                   (req[d.wpIdxKey] && Number(req[d.wpIdxKey]) !== Number(currentWorkPlaceIdx) && (time || status === '배정'));
+        
+        if (isOtherBranchShift) {
+          if (!isGuestWorker) {
+            ctx.fillStyle = 'rgba(142, 68, 173, 0.25)';
+            ctx.beginPath();
+            ctx.roundRect(cellX + 10, y + 8, cellW - 20, 28, 6);
+            ctx.fill();
+            ctx.fillStyle = '#C39BD3';
+            
+            if (time) {
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillText(req[d.wpNameKey] || '타지점', cellX + (cellW / 2), y + 21);
+              ctx.font = 'bold 12px Pretendard, sans-serif';
+              ctx.fillText(time, cellX + (cellW / 2), y + 34);
+            } else {
+              ctx.font = 'bold 11px Pretendard, sans-serif';
+              ctx.fillText(req[d.wpNameKey] || '타지점', cellX + (cellW / 2), y + 26);
+            }
+          }
         } else if (time) {
           ctx.fillStyle = 'rgba(168, 90, 71, 0.25)';
           ctx.beginPath();
@@ -477,10 +512,6 @@ const AdminWeeklyAssign = () => {
         }
         // 미배정, 미신청, 신청은 PNG에서 표시하지 않음 (빈 칸)
       });
-      ctx.fillStyle = '#A89F97';
-      ctx.font = '12px Pretendard, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(req.wawRemarks ? (req.wawRemarks.length > 7 ? req.wawRemarks.substring(0, 7) + '...' : req.wawRemarks) : '-', colX[8] + 15, y + 27);
     });
     const link = document.createElement('a');
     link.download = `${selectedBranchName}_${format(currentWeekStart, 'yyyyMMdd')}_주간근무배정표.png`;
@@ -537,12 +568,18 @@ const AdminWeeklyAssign = () => {
                 <thead>
                   <tr>
                     <th style={{ width: '160px' }} className="py-3">이름</th>
-                    {DAY_KEYS.map(d => (
-                      <th key={d.key} className="py-3" style={{ width: '125px' }}>
-                        <div>{format(addDays(currentWeekStart, d.offset), 'MM/dd')}</div>
-                        <div className={d.name === '일' ? 'text-danger' : d.name === '토' ? 'text-primary' : 'text-muted'}>({d.name})</div>
-                      </th>
-                    ))}
+                    {DAY_KEYS.map(d => {
+                      const count = getAssignedCount(d);
+                      return (
+                        <th key={d.key} className="py-2" style={{ width: '125px' }}>
+                          <div style={{ fontSize: '0.9rem' }}>{format(addDays(currentWeekStart, d.offset), 'MM/dd')}</div>
+                          <div className={d.name === '일' ? 'text-danger mb-1' : d.name === '토' ? 'text-primary mb-1' : 'text-muted mb-1'}>({d.name})</div>
+                          <Badge bg="success" className="bg-opacity-10 text-success border border-success rounded-pill px-2">
+                            {count}명
+                          </Badge>
+                        </th>
+                      );
+                    })}
                     <th style={{ width: '180px' }} className="py-3">비고</th>
                   </tr>
                 </thead>
@@ -595,7 +632,7 @@ const AdminWeeklyAssign = () => {
                                     className="badge-other-branch"
                                     title={`${otherWpName || '타지점'}에 배정된 요일입니다.`}
                                   >
-                                    <span className="other-branch-tag">타지점근무</span>
+                                    <span className="other-branch-tag">{time ? time : '타지점근무'}</span>
                                     {otherWpName && <span className="other-branch-name">{otherWpName}</span>}
                                   </div>
                                 </td>

@@ -3,7 +3,7 @@ import { Container, Row, Col, Badge, Button } from 'react-bootstrap';
 import { parseISO, addDays, isSameDay, isBefore, startOfDay, format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import WorkCalendar from '../components/WorkCalendar';
-import { fetchWorkRecords, fetchWorkRequests } from '../api/workApi';
+import { getMonthlyWorkRecords, getMonthlyWorkApplyWorks } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
 import { RiCalendarCheckLine, RiTimeLine, RiAddLine, RiStore2Line } from 'react-icons/ri';
 import './Main.css';
@@ -13,18 +13,25 @@ const Main = () => {
   const navigate = useNavigate();
   const [workRecords, setWorkRecords] = useState([]);
   const [workRequests, setWorkRequests] = useState([]);
+  const [viewMonth, setViewMonth] = useState(new Date());
+
+  const loadData = async (newMonth = null) => {
+    // 달이 바뀔 때는 무조건 최신 데이터를 불러오기 위해 skipCache(캐시 무시) 플래그를 true로 넘깁니다.
+    const skipCache = !!newMonth;
+    const targetDate = newMonth || viewMonth;
+    if (newMonth) setViewMonth(newMonth);
+    
+    const recRes = await getMonthlyWorkRecords(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache);
+    if (recRes.success) setWorkRecords(recRes.data?.content || (Array.isArray(recRes.data) ? recRes.data : []));
+    
+    const reqRes = await getMonthlyWorkApplyWorks(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache);
+    if (reqRes.success) {
+      const list = reqRes.data?.content || (Array.isArray(reqRes.data) ? reqRes.data : []);
+      setWorkRequests(list);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      const recRes = await fetchWorkRecords({ size: 100 });
-      if (recRes.success) setWorkRecords(recRes.data?.content || (Array.isArray(recRes.data) ? recRes.data : []));
-      
-      const reqRes = await fetchWorkRequests();
-      if (reqRes.success) {
-        const list = reqRes.data?.content || (Array.isArray(reqRes.data) ? reqRes.data : []);
-        setWorkRequests(list);
-      }
-    };
     loadData();
   }, []);
 
@@ -70,11 +77,11 @@ const Main = () => {
     return Math.max(0, endNum - startNum - restNum);
   };
 
-  // 이번 달 근무 요약 지표 계산
-  const currentMonthStr = format(new Date(), 'yyyy-MM');
+  // 조회 중인 달의 근무 요약 지표 계산
+  const viewMonthStr = format(viewMonth, 'yyyy-MM');
   const thisMonthRecords = useMemo(() => {
-    return (workRecords || []).filter(r => r.wrDate && (typeof r.wrDate === 'string' ? r.wrDate.startsWith(currentMonthStr) : true));
-  }, [workRecords, currentMonthStr]);
+    return (workRecords || []).filter(r => r.wrDate && (typeof r.wrDate === 'string' ? r.wrDate.startsWith(viewMonthStr) : true));
+  }, [workRecords, viewMonthStr]);
 
   const thisMonthDays = thisMonthRecords.length;
   const thisMonthHours = useMemo(() => {
@@ -201,7 +208,7 @@ const Main = () => {
           <Col xs={6}>
             <div className="worker-stat-card">
               <div className="stat-label">
-                <RiCalendarCheckLine className="text-primary" /> 이번 달 근무일
+                <RiCalendarCheckLine className="text-primary" /> {viewMonth.getMonth() + 1}월 근무일
               </div>
               <div className="stat-value text-primary">
                 {thisMonthDays}<span className="stat-unit">일</span>
@@ -223,7 +230,7 @@ const Main = () => {
         {/* 메인 캘린더 단독 전체 폭 배치 */}
         <Row>
           <Col xs={12}>
-            <WorkCalendar mockRecords={calendarRecords} />
+            <WorkCalendar mockRecords={calendarRecords} onMonthChange={loadData} />
           </Col>
         </Row>
       </Container>

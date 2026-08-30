@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Badge, Modal, Form, Alert } from 'react-bootstrap';
-import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchUserTypes, fetchWorkPlaces } from '../api/authApi';
+import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchUserTypes, fetchWorkPlaces, createAdminUser } from '../api/authApi';
 import PaginationBar from '../components/PaginationBar';
 import BranchFilter from '../components/BranchFilter';
 import './AdminMain.css';
+
+const formatPhoneNumber = (value) => {
+  if (!value) return '';
+  const num = value.replace(/[^0-9]/g, '');
+  if (num.length <= 3) return num;
+  if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
+  return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
+};
 
 const AdminUsers = () => {
   const [selectedRole, setSelectedRole] = useState('알바생');
@@ -48,13 +56,25 @@ const AdminUsers = () => {
   const [sensitiveSaving, setSensitiveSaving] = useState(false);
   const [sensitiveMsg, setSensitiveMsg] = useState('');
 
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addUserId, setAddUserId] = useState('');
+  const [addUserPw, setAddUserPw] = useState('');
+  const [addUserName, setAddUserName] = useState('');
+  const [addUserPhone, setAddUserPhone] = useState('');
+  const [addWorkPlaceIdx, setAddWorkPlaceIdx] = useState(1);
+  const [addUserRole, setAddUserRole] = useState('WORKER'); // WORKER or ADMIN
+  const [addFkUtIdx, setAddFkUtIdx] = useState(''); // Only for ADMIN
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [addSuccess, setAddSuccess] = useState('');
+
   const [branches, setBranches] = useState([]);
   const [userTypes, setUserTypes] = useState([]);
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const params = { size: 10, page, showInactive };
+      const params = { size: 10, page, isActive: showInactive ? 0 : 1 };
       if (selectedBranch) {
         params.workPlaceIdx = Number(selectedBranch);
       }
@@ -93,7 +113,7 @@ const AdminUsers = () => {
     const loadData = async () => {
       const typeRes = await fetchUserTypes();
       if (typeRes.success) setUserTypes(typeRes.data);
-      
+
       const branchRes = await fetchWorkPlaces();
       if (branchRes.success) setBranches([{ wpIdx: '', wpName: '전체' }, ...branchRes.data]);
     };
@@ -216,7 +236,7 @@ const AdminUsers = () => {
   const handleSensitiveSave = async () => {
     setSensitiveSaving(true);
     setSensitiveMsg('');
-    
+
     const payload = {
       userAccountName: sensitiveAccountName,
       userAccountNumber: sensitiveAccountNo,
@@ -227,7 +247,7 @@ const AdminUsers = () => {
     const res = await updateSensitiveInfo(sensitiveUser.userIdx, payload);
     setSensitiveSaving(false);
     setSensitiveMsg(res.success ? '저장되었습니다!' : (res.error || '저장 실패'));
-    
+
     if (res.success) {
       // 수정된 데이터로 원문 보기 상태 업데이트 (수정 전 데이터가 뜨는 버그 해결)
       setSensitiveData(payload);
@@ -245,6 +265,54 @@ const AdminUsers = () => {
     return <span className="text-dark fw-bold">{val}</span>;
   };
 
+  const handleOpenAddModal = () => {
+    setAddUserId('');
+    setAddUserPw('');
+    setAddUserName('');
+    setAddUserPhone('');
+    setAddWorkPlaceIdx(branches.length > 1 ? branches[1].wpIdx : 1);
+    setAddUserRole(selectedRole === '직원' ? 'ADMIN' : 'WORKER');
+    setAddFkUtIdx('');
+    setAddError('');
+    setAddSuccess('');
+    setShowAddModal(true);
+  };
+
+  const handleAddUser = async () => {
+    setAddError('');
+    setAddSuccess('');
+    
+    if (!addUserId || !addUserPw || !addUserName || !addUserPhone) {
+      setAddError('아이디, 임시 비밀번호, 이름, 연락처는 필수입니다.');
+      return;
+    }
+
+    setAddSaving(true);
+    const payload = {
+      userId: addUserId,
+      userPw: addUserPw,
+      userName: addUserName,
+      userPhone: addUserPhone,
+      fkWorkPlaceIdx: Number(addWorkPlaceIdx),
+      role: addUserRole,
+    };
+
+    if (addUserRole === 'ADMIN' && addFkUtIdx) {
+      payload.fkUtIdx = Number(addFkUtIdx);
+    }
+
+    const res = await createAdminUser(payload);
+    setAddSaving(false);
+
+    if (res.success) {
+      setAddSuccess('직원이 성공적으로 등록되었습니다.');
+      loadUsers();
+      setTimeout(() => setShowAddModal(false), 1000);
+    } else {
+      setAddError(res.error || '직원 등록에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
@@ -254,20 +322,42 @@ const AdminUsers = () => {
               <h2 className="fw-bold text-dark mb-1">직원 관리</h2>
               <p className="text-muted small mb-0">알바생 및 직원의 시급, 계좌 등 민감정보와 근무 상태를 관리합니다.</p>
             </div>
-            
+
             <div className="d-flex gap-2 align-items-center flex-wrap">
-              <Form.Check
-                type="switch"
-                id="show-inactive-switch"
-                label="퇴사자 포함"
-                checked={showInactive}
-                onChange={e => {
-                  setShowInactive(e.target.checked);
-                  setPage(0);
-                  setPageInput('1');
-                }}
-                className="fw-bold me-2"
-              />
+              <ButtonGroup className="shadow-xs me-2">
+                <ToggleButton
+                  id="tab-active"
+                  type="radio"
+                  variant={!showInactive ? "success" : "outline-success"}
+                  name="activeRadio"
+                  value="active"
+                  checked={!showInactive}
+                  onChange={() => {
+                    setShowInactive(false);
+                    setPage(0);
+                    setPageInput('1');
+                  }}
+                  className="px-3 fw-bold"
+                >
+                  재직자
+                </ToggleButton>
+                <ToggleButton
+                  id="tab-resigned"
+                  type="radio"
+                  variant={showInactive ? "danger" : "outline-danger"}
+                  name="activeRadio"
+                  value="resigned"
+                  checked={showInactive}
+                  onChange={() => {
+                    setShowInactive(true);
+                    setPage(0);
+                    setPageInput('1');
+                  }}
+                  className="px-3 fw-bold"
+                >
+                  퇴사자
+                </ToggleButton>
+              </ButtonGroup>
               <ButtonGroup className="shadow-xs">
                 <ToggleButton
                   id="role-worker"
@@ -303,6 +393,10 @@ const AdminUsers = () => {
                   직원(관리자)
                 </ToggleButton>
               </ButtonGroup>
+
+              <Button variant="primary" className="fw-bold px-3 rounded-pill shadow-sm" onClick={handleOpenAddModal}>
+                + 직원 추가
+              </Button>
             </div>
           </div>
 
@@ -324,14 +418,14 @@ const AdminUsers = () => {
               </Button>
             </Form>
 
-            <BranchFilter 
-              selectedBranch={selectedBranch} 
+            <BranchFilter
+              selectedBranch={selectedBranch}
               onlyAll={selectedRole === '직원'}
               onChange={(val) => {
                 setSelectedBranch(val);
                 setPage(0);
                 setPageInput('1');
-              }} 
+              }}
             />
           </div>
         </div>
@@ -348,9 +442,8 @@ const AdminUsers = () => {
                       <thead className="table-light">
                         <tr>
                           <th>No</th>
-                          <th>이름</th>
+                          <th>이름(소속)</th>
                           <th>아이디</th>
-                          <th>소속</th>
                           <th>직급</th>
                           <th>시급</th>
                           <th>연락처</th>
@@ -362,9 +455,9 @@ const AdminUsers = () => {
                         {users.map((u, idx) => (
                           <tr key={u.userIdx} className={u.userIsActive !== 1 ? 'table-secondary text-muted' : ''}>
                             <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
-                            <td className="fw-bold">{u.userName}</td>
+                            <td className="fw-bold">{u.userName}{u.workPlaceName ? ` (${u.workPlaceName})` : ''}</td>
                             <td className="text-muted small">{u.userId}</td>
-                            <td>{u.workPlaceName || '-'}</td>
+
                             <td><Badge bg="danger">{u.userTypeName || '관리자'}</Badge></td>
                             <td className="small">{u.userHourlyWage ? `${u.userHourlyWage.toLocaleString()}원` : '-'}</td>
                             <td className="small">{u.userPhone || '-'}</td>
@@ -377,7 +470,7 @@ const AdminUsers = () => {
                                 <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setSensitiveUser(u); setSensitiveData(null); setSensitiveMsg(''); setEditSensitive(false); }}>민감정보</Button>
                                 <Button size="sm" variant="outline-warning" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setTempPwUser(u); setTempPwValue(''); setTempPwMsg(''); }}>임시PW</Button>
                                 <Button size="sm" variant={u.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleToggleActive(u)}>
-                                  {u.userIsActive === 1 ? '비활성화' : '복구'}
+                                  {u.userIsActive === 1 ? '퇴사 처리' : '복직 처리'}
                                 </Button>
                                 <Button size="sm" variant="danger" className="rounded-pill fw-bold text-white px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleHardDelete(u)}>영구삭제</Button>
                               </div>
@@ -404,9 +497,8 @@ const AdminUsers = () => {
                       <thead className="table-light">
                         <tr>
                           <th>No</th>
-                          <th>이름</th>
+                          <th>이름(소속)</th>
                           <th>아이디</th>
-                          <th>소속</th>
                           <th>직급</th>
                           <th>시급</th>
                           <th>연락처</th>
@@ -418,9 +510,8 @@ const AdminUsers = () => {
                         {users.map((u, idx) => (
                           <tr key={u.userIdx} className={u.userIsActive !== 1 ? 'table-secondary text-muted' : ''}>
                             <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
-                            <td className="fw-bold">{u.userName}</td>
+                            <td className="fw-bold">{u.userName}({u.workPlaceName || '-'})</td>
                             <td className="text-muted small">{u.userId}</td>
-                            <td>{u.workPlaceName || '-'}</td>
                             <td><Badge bg="secondary">{u.userTypeName || '알바생'}</Badge></td>
                             <td className="small">{u.userHourlyWage ? `${u.userHourlyWage.toLocaleString()}원` : '-'}</td>
                             <td className="small">{u.userPhone || '-'}</td>
@@ -433,7 +524,7 @@ const AdminUsers = () => {
                                 <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setSensitiveUser(u); setSensitiveData(null); setSensitiveMsg(''); setEditSensitive(false); }}>민감정보</Button>
                                 <Button size="sm" variant="outline-warning" className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => { setTempPwUser(u); setTempPwValue(''); setTempPwMsg(''); }}>임시PW</Button>
                                 <Button size="sm" variant={u.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="rounded-pill fw-bold px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleToggleActive(u)}>
-                                  {u.userIsActive === 1 ? '비활성화' : '복구'}
+                                  {u.userIsActive === 1 ? '퇴사 처리' : '복직 처리'}
                                 </Button>
                                 <Button size="sm" variant="danger" className="rounded-pill fw-bold text-white px-2 py-1" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }} onClick={() => handleHardDelete(u)}>영구삭제</Button>
                               </div>
@@ -483,15 +574,15 @@ const AdminUsers = () => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">전화번호</Form.Label>
-            <Form.Control value={editPhone} onChange={e => setEditPhone(e.target.value)} />
+            <Form.Control value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))} />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
-              <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))}>
-                {branches.filter(b => b.wpIdx !== '').map(b => (
-                  <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
-                ))}
-              </Form.Select>
+            <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))}>
+              {branches.filter(b => b.wpIdx !== '').map(b => (
+                <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
+              ))}
+            </Form.Select>
           </Form.Group>
           <Form.Group>
             <Form.Label className="fw-bold text-muted small">직급 변경 (관리자 전용, 비워두면 유지)</Form.Label>
@@ -622,6 +713,75 @@ const AdminUsers = () => {
           <Button variant="secondary" onClick={() => setTempPwUser(null)}>닫기</Button>
           <Button variant="warning" onClick={handleSetTempPw} disabled={tempPwSaving} className="fw-bold">
             {tempPwSaving ? <Spinner as="span" animation="border" size="sm" /> : '설정'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 직원 추가 모달 */}
+      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">➕ 새로운 직원 추가</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {addError && <Alert variant="danger" className="py-2">{addError}</Alert>}
+          {addSuccess && <Alert variant="success" className="py-2">{addSuccess}</Alert>}
+          
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">역할</Form.Label>
+            <Form.Select value={addUserRole} onChange={e => {
+              setAddUserRole(e.target.value);
+              if (e.target.value === 'WORKER') setAddFkUtIdx('');
+            }}>
+              <option value="WORKER">알바생</option>
+              <option value="ADMIN">직원(관리자)</option>
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
+            <Form.Select value={addWorkPlaceIdx} onChange={e => setAddWorkPlaceIdx(e.target.value)}>
+              {branches.filter(b => b.wpIdx !== '').map(b => (
+                <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          {addUserRole === 'ADMIN' && (
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">직급 (선택)</Form.Label>
+              <Form.Select value={addFkUtIdx} onChange={e => setAddFkUtIdx(e.target.value)}>
+                <option value="">-- 직급 선택 --</option>
+                {userTypes.map(ut => (
+                  <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          )}
+
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">아이디 (로그인용) *</Form.Label>
+            <Form.Control value={addUserId} onChange={e => setAddUserId(e.target.value)} placeholder="아이디 입력" />
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">임시 비밀번호 *</Form.Label>
+            <Form.Control type="text" value={addUserPw} onChange={e => setAddUserPw(e.target.value)} placeholder="직원에게 알려줄 임시 비밀번호 입력" />
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">이름 *</Form.Label>
+            <Form.Control value={addUserName} onChange={e => setAddUserName(e.target.value)} placeholder="이름 입력" />
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold text-muted small">연락처 *</Form.Label>
+            <Form.Control value={addUserPhone} onChange={e => setAddUserPhone(formatPhoneNumber(e.target.value))} placeholder="예: 010-1234-5678" />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAddModal(false)}>닫기</Button>
+          <Button variant="primary" onClick={handleAddUser} disabled={addSaving} className="fw-bold">
+            {addSaving ? <Spinner as="span" animation="border" size="sm" /> : '등록'}
           </Button>
         </Modal.Footer>
       </Modal>

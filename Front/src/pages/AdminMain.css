@@ -199,3 +199,12 @@
     padding: 0.65rem 0.75rem;
   }
 }
+
+/* 다크모드 테이블 퇴사자 로우 스타일 최적화 */
+[data-bs-theme="dark"] .table-secondary {
+  --bs-table-bg: rgba(255, 255, 255, 0.05) !important;
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.07) !important;
+  --bs-table-active-bg: rgba(255, 255, 255, 0.09) !important;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.09) !important;
+  color: var(--color-text-muted) !important;
+}

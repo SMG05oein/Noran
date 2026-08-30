@@ -46,6 +46,12 @@ export const fetchMyInfo = async (token) => {
 export const updateUserInfo = async (userIdx, updateData) => {
   try {
     const response = await apiClient.put(`${addUrl}/${userIdx}`, updateData);
+    // 캐시 무효화
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '회원 정보 수정에 실패했습니다.';
@@ -63,9 +69,26 @@ export const fetchAllUsers = async () => {
   }
 };
 
-export const fetchAdminWorkers = async (params = {}) => {
+export const fetchAdminWorkers = async (params = {}, skipCache = false) => {
   try {
+    const cacheKey = `adminWorkersCache_${JSON.stringify(params)}`;
+    if (!skipCache) {
+      const cachedStr = sessionStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cache = JSON.parse(cachedStr);
+        // 10분(600,000ms) 유효기간
+        if (Date.now() - cache.timestamp < 600000) {
+          return { success: true, data: cache.data };
+        }
+      }
+    }
+
     const response = await apiClient.get(`${addUrl}/admin/workers`, { params });
+    sessionStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      data: response.data
+    }));
+
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '직원 목록을 불러오는데 실패했습니다.';
@@ -136,6 +159,11 @@ export const updateSensitiveInfo = async (userIdx, dto) => {
 export const deleteUser = async (userIdx) => {
   try {
     const response = await apiClient.delete(`${addUrl}/${userIdx}`);
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
+        sessionStorage.removeItem(key);
+      }
+    });
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '비활성화에 실패했습니다.';
@@ -143,9 +171,25 @@ export const deleteUser = async (userIdx) => {
   }
 };
 
+export const withdrawUser = async () => {
+  try {
+    const response = await apiClient.delete(`${addUrl}/me/withdraw`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '회원 탈퇴에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
 export const hardDeleteUser = async (userIdx) => {
   try {
     const response = await apiClient.delete(`${addUrl}/${userIdx}/hard`);
+    // 캐시 무효화
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '영구 삭제에 실패했습니다.';
@@ -155,17 +199,39 @@ export const hardDeleteUser = async (userIdx) => {
 
 export const restoreUser = async (userIdx) => {
   try {
-    const response = await apiClient.post(`${addUrl}/${userIdx}/restore`);
+    const response = await apiClient.post(`${addUrl}/admin/users/${userIdx}/restore`);
+    // 캐시 무효화
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
     return { success: true, data: response.data };
   } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '복구에 실패했습니다.';
-    return { success: false, error: errMsg };
+    return { success: false, error: '사용자 복구에 실패했습니다.' };
   }
 };
 
-export const fetchWorkPlaces = async () => {
+export const fetchWorkPlaces = async (skipCache = false) => {
   try {
+    const cacheKey = 'workPlacesAllCache';
+    if (!skipCache) {
+      const cachedStr = sessionStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cache = JSON.parse(cachedStr);
+        // 10분(600,000ms) 유효기간
+        if (Date.now() - cache.timestamp < 600000) {
+          return { success: true, data: cache.data };
+        }
+      }
+    }
+
     const response = await apiClient.get('/api/work-place/all');
+    sessionStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      data: response.data
+    }));
+
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: '근무지 목록을 불러오는데 실패했습니다.' };
@@ -175,6 +241,8 @@ export const fetchWorkPlaces = async () => {
 export const createWorkPlace = async (wpData) => {
   try {
     const response = await apiClient.post('/api/work-place', wpData);
+    // 근무지 캐시 무효화
+    sessionStorage.removeItem('workPlacesAllCache');
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '근무지 추가에 실패했습니다.';
@@ -185,6 +253,8 @@ export const createWorkPlace = async (wpData) => {
 export const updateWorkPlace = async (wpIdx, wpData) => {
   try {
     const response = await apiClient.put(`/api/work-place/${wpIdx}`, wpData);
+    // 근무지 캐시 무효화
+    sessionStorage.removeItem('workPlacesAllCache');
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '근무지 수정에 실패했습니다.';
@@ -195,6 +265,8 @@ export const updateWorkPlace = async (wpIdx, wpData) => {
 export const deleteWorkPlace = async (wpIdx) => {
   try {
     const response = await apiClient.delete(`/api/work-place/${wpIdx}`);
+    // 근무지 캐시 무효화
+    sessionStorage.removeItem('workPlacesAllCache');
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '근무지 삭제에 실패했습니다.';
@@ -239,6 +311,22 @@ export const updateUserType = async (utIdx, data) => {
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '직급 수정에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+export const createAdminUser = async (userData) => {
+  try {
+    const response = await apiClient.post(`${addUrl}/admin/register`, userData);
+    // 캐시 무효화
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '직원 등록에 실패했습니다.';
     return { success: false, error: errMsg };
   }
 };

@@ -8,7 +8,10 @@ const useAuthStore = create(
       user: null, // { userId, userName, userPhone, userTypeName, workPlaceName, tokens: { accessToken, refreshToken } }
 
       login: (userData) => set({ isAuthenticated: true, user: userData }),
-      logout: () => set({ isAuthenticated: false, user: null }),
+      logout: () => {
+        sessionStorage.clear();
+        set({ isAuthenticated: false, user: null });
+      },
       signup: (userData) => set({ isAuthenticated: true, user: userData }),
     }),
     {

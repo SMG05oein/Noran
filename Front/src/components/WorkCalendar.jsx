@@ -29,14 +29,22 @@ import './WorkCalendar.css';
 
 const hd = new Holidays('KR');
 
-const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, onDateClick }) => {
+const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, onDateClick, onMonthChange }) => {
   const { user } = useAuthStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [internalSelectedDate, setInternalSelectedDate] = useState(new Date());
   const selectedDate = externalSelectedDate !== undefined ? externalSelectedDate : internalSelectedDate;
 
-  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const nextMonth = () => {
+    const d = addMonths(currentMonth, 1);
+    setCurrentMonth(d);
+    if (onMonthChange) onMonthChange(d);
+  };
+  const prevMonth = () => {
+    const d = subMonths(currentMonth, 1);
+    setCurrentMonth(d);
+    if (onMonthChange) onMonthChange(d);
+  };
 
   const renderHeader = () => {
     return (
@@ -58,7 +66,13 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, on
             <Dropdown.Menu className="calendar-dropdown-menu">
               {[...Array(10)].map((_, i) => {
                 const year = new Date().getFullYear() - 3 + i;
-                return <Dropdown.Item key={year} onClick={() => setCurrentMonth(setYear(currentMonth, year))}>{year}년</Dropdown.Item>;
+                return (
+                  <Dropdown.Item key={year} onClick={() => {
+                    const d = setYear(currentMonth, year);
+                    setCurrentMonth(d);
+                    if (onMonthChange) onMonthChange(d);
+                  }}>{year}년</Dropdown.Item>
+                );
               })}
             </Dropdown.Menu>
           </Dropdown>
@@ -69,7 +83,11 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, on
             </Dropdown.Toggle>
             <Dropdown.Menu className="calendar-dropdown-menu">
               {[...Array(12)].map((_, i) => (
-                <Dropdown.Item key={i} onClick={() => setCurrentMonth(setMonth(currentMonth, i))}>{i + 1}월</Dropdown.Item>
+                <Dropdown.Item key={i} onClick={() => {
+                  const d = setMonth(currentMonth, i);
+                  setCurrentMonth(d);
+                  if (onMonthChange) onMonthChange(d);
+                }}>{i + 1}월</Dropdown.Item>
               ))}
             </Dropdown.Menu>
           </Dropdown>
@@ -82,6 +100,7 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, on
               setCurrentMonth(today);
               setInternalSelectedDate(today);
               if (onDateClick) onDateClick(today);
+              if (onMonthChange) onMonthChange(today);
             }}
             title="오늘 날짜로 이동"
           >
@@ -175,6 +194,7 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, on
               const targetDate = new Date(cloneDay.getTime());
               if (!isCurrentMonth) {
                 setCurrentMonth(targetDate);
+                if (onMonthChange) onMonthChange(targetDate);
               }
               setInternalSelectedDate(targetDate);
               if (onDateClick) onDateClick(targetDate);

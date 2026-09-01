@@ -6,6 +6,7 @@ import useAuthStore from '../store/authStore';
 import { parseISO, addDays, format, getWeekOfMonth } from 'date-fns';
 import { RiStore2Line, RiFileList3Line } from 'react-icons/ri';
 import './AdminMain.css';
+import Loading from '../components/Loading';
 
 const parseDateString = (dateObj) => {
   if (!dateObj) return new Date();
@@ -153,9 +154,7 @@ const AdminRequests = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-        ) : (
+        {loading ? <Loading /> : (
           <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
             <Card.Body className="p-0">
               {filteredRequests.length === 0 ? (

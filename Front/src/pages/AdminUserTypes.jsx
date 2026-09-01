@@ -3,6 +3,7 @@ import { Container, Card, Table, Button, Spinner, Modal, Form, Badge, Alert } fr
 import { fetchUserTypes, createUserType, updateUserType, deleteUserType } from '../api/authApi';
 import { RiAddLine, RiUserStarLine } from 'react-icons/ri';
 import './AdminMain.css';
+import Loading from '../components/Loading';
 
 const AdminUserTypes = () => {
   const [userTypes, setUserTypes] = useState([]);
@@ -117,9 +118,7 @@ const AdminUserTypes = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-        ) : (
+        {loading ? <Loading /> : (
           <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
             <Card.Body className="p-0">
               <div className="table-responsive">

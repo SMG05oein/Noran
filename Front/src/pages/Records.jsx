@@ -5,6 +5,7 @@ import { RiTimeLine, RiCalendarCheckLine, RiAddLine, RiArrowDownSLine, RiArrowUp
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { getMonthlyWorkRecords, createWorkRecord } from '../api/workApi';
+import Loading from '../components/Loading';
 import PaginationBar from '../components/PaginationBar';
 import './Main.css';
 
@@ -13,6 +14,7 @@ const Records = () => {
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [records, setRecords] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,10 +34,15 @@ const Records = () => {
   const [remarks, setRemarks] = useState('');
 
   const loadRecords = async (monthStr) => {
+    setDataLoading(true);
     const [year, month] = monthStr.split('-');
-    const res = await getMonthlyWorkRecords(parseInt(year, 10), parseInt(month, 10));
-    if (res.success) {
-      setRecords(res.data.content || res.data || []);
+    try {
+      const res = await getMonthlyWorkRecords(parseInt(year, 10), parseInt(month, 10));
+      if (res.success) {
+        setRecords(res.data.content || res.data || []);
+      }
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -155,6 +162,7 @@ const Records = () => {
         </div>
       </div>
 
+      {dataLoading ? <Loading /> : <>
       <Row className="g-3 mb-4">
         <Col xs={6}>
           <Card className="border-0 shadow-sm rounded-4 text-center p-3 h-100" style={{ backgroundColor: 'var(--color-surface)' }}>
@@ -284,6 +292,8 @@ const Records = () => {
           </>
         )}
       </div>
+
+      </>}
 
       {/* 새 기록 추가 모달 */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>

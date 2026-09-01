@@ -24,7 +24,9 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyWork;
+import com.recode.Dwaeji.work_apply_work.database.WorkApply;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyWorkRepository;
+import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 
 import java.time.DayOfWeek;
@@ -41,6 +43,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private final UserRepository userRepository;
     private final WorkRecordHistoryRepository workRecordHistoryRepository;
     private final WorkApplyWorkRepository workApplyWorkRepository;
+    private final WorkApplyRepository workApplyRepository;
 
     private User getRequester(String requesterId) {
         return userRepository.findByUserId(requesterId)
@@ -154,19 +157,23 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 .map(r -> r.getWrDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
                 .collect(java.util.stream.Collectors.toSet());
 
-        Map<String, WorkApplyWork> applyMap = new HashMap<>();
+        Map<String, WorkApplyWork> scheduleMap = new HashMap<>();
+        Map<String, WorkApply> applyMap = new HashMap<>();
         if (!userIdxList.isEmpty() && !mondaySet.isEmpty()) {
-            mondaySet.forEach(monday -> 
+            mondaySet.forEach(monday -> {
                 workApplyWorkRepository.findByUserIdxInAndWawDate(userIdxList, monday)
-                        .forEach(a -> applyMap.put(a.getUser().getUserIdx() + "-" + monday, a))
-            );
+                        .forEach(s -> scheduleMap.put(s.getUser().getUserIdx() + "-" + monday, s));
+                workApplyRepository.findByUserIdxInAndWaDate(userIdxList, monday)
+                        .forEach(a -> applyMap.put(a.getUser().getUserIdx() + "-" + monday, a));
+            });
         }
 
         return records.map(record -> {
             LocalDate wrDate = record.getWrDate();
             LocalDate monday = wrDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            WorkApplyWork apply = applyMap.get(record.getUser().getUserIdx() + "-" + monday);
-            String applyStatus = resolveApplyStatus(apply, wrDate);
+            WorkApplyWork schedule = scheduleMap.get(record.getUser().getUserIdx() + "-" + monday);
+            WorkApply apply = applyMap.get(record.getUser().getUserIdx() + "-" + monday);
+            String applyStatus = resolveApplyStatus(schedule, apply, wrDate);
             return WorkRecordResponseDto.fromEntity(record, applyStatus);
         });
     }
@@ -182,27 +189,26 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         
         List<WorkRecord> records = workRecordRepository.findByUserIdxAndDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
         
-        // 배치로 WorkApplyWork 한 번에 조회 (N+1 방지)
         Set<LocalDate> mondaySet = records.stream()
                 .map(r -> r.getWrDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)))
                 .collect(Collectors.toSet());
 
-        Map<String, WorkApplyWork> applyMap = new HashMap<>();
+        Map<String, WorkApplyWork> scheduleMap = new HashMap<>();
+        Map<String, WorkApply> applyMap = new HashMap<>();
         if (!mondaySet.isEmpty()) {
-            mondaySet.forEach(monday -> 
+            mondaySet.forEach(monday -> {
                 workApplyWorkRepository.findByUserIdxInAndWawDate(List.of(requester.getUserIdx()), monday)
-                        .forEach(a -> applyMap.put(a.getUser().getUserIdx() + "-" + monday, a))
-            );
+                        .forEach(s -> scheduleMap.put(s.getUser().getUserIdx() + "-" + monday, s));
+                workApplyRepository.findByUserIdxInAndWaDate(List.of(requester.getUserIdx()), monday)
+                        .forEach(a -> applyMap.put(a.getUser().getUserIdx() + "-" + monday, a));
+            });
         }
 
         return records.stream().map(record -> {
             LocalDate recordMonday = record.getWrDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            WorkApplyWork apply = applyMap.get(record.getUser().getUserIdx() + "-" + recordMonday);
-            
-            String applyStatusStr = "미신청";
-            if (apply != null) {
-                applyStatusStr = resolveApplyStatus(apply, record.getWrDate());
-            }
+            WorkApplyWork schedule = scheduleMap.get(record.getUser().getUserIdx() + "-" + recordMonday);
+            WorkApply apply = applyMap.get(record.getUser().getUserIdx() + "-" + recordMonday);
+            String applyStatusStr = resolveApplyStatus(schedule, apply, record.getWrDate());
             return WorkRecordResponseDto.fromEntity(record, applyStatusStr);
         }).collect(Collectors.toList());
     }
@@ -388,45 +394,55 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 .build());
     }
 
-    private String resolveApplyStatus(WorkApplyWork apply, LocalDate wrDate) {
-        if (apply == null) return "신청없음";
-        com.recode.Dwaeji.work_apply_work.database.ApplyStatus status;
-        switch (wrDate.getDayOfWeek()) {
-            case MONDAY:    status = apply.getWawIsMon(); break;
-            case TUESDAY:   status = apply.getWawIsTue(); break;
-            case WEDNESDAY: status = apply.getWawIsWed(); break;
-            case THURSDAY:  status = apply.getWawIsThu(); break;
-            case FRIDAY:    status = apply.getWawIsFri(); break;
-            case SATURDAY:  status = apply.getWawIsSat(); break;
-            case SUNDAY:    status = apply.getWawIsSun(); break;
-            default:        status = com.recode.Dwaeji.work_apply_work.database.ApplyStatus.미신청;
+    private String resolveApplyStatus(WorkApplyWork schedule, WorkApply apply, LocalDate wrDate) {
+        if (schedule != null && schedule.getWawIsConfirmed()) {
+            com.recode.Dwaeji.work_apply_work.database.ApplyStatus status;
+            switch (wrDate.getDayOfWeek()) {
+                case MONDAY:    status = schedule.getWawIsMon(); break;
+                case TUESDAY:   status = schedule.getWawIsTue(); break;
+                case WEDNESDAY: status = schedule.getWawIsWed(); break;
+                case THURSDAY:  status = schedule.getWawIsThu(); break;
+                case FRIDAY:    status = schedule.getWawIsFri(); break;
+                case SATURDAY:  status = schedule.getWawIsSat(); break;
+                case SUNDAY:    status = schedule.getWawIsSun(); break;
+                default:        status = com.recode.Dwaeji.work_apply_work.database.ApplyStatus.미신청;
+            }
+            if (status == com.recode.Dwaeji.work_apply_work.database.ApplyStatus.배정 || status == com.recode.Dwaeji.work_apply_work.database.ApplyStatus.타지점근무) {
+                return status.name();
+            }
         }
-        return status != null ? status.name() : "미신청";
+        
+        if (apply != null) {
+            boolean requested;
+            switch (wrDate.getDayOfWeek()) {
+                case MONDAY:    requested = apply.isWaIsMon(); break;
+                case TUESDAY:   requested = apply.isWaIsTue(); break;
+                case WEDNESDAY: requested = apply.isWaIsWed(); break;
+                case THURSDAY:  requested = apply.isWaIsThu(); break;
+                case FRIDAY:    requested = apply.isWaIsFri(); break;
+                case SATURDAY:  requested = apply.isWaIsSat(); break;
+                case SUNDAY:    requested = apply.isWaIsSun(); break;
+                default:        requested = false;
+            }
+            return requested ? "신청" : "미신청";
+        }
+        
+        return "미신청";
     }
 
     private WorkRecordResponseDto mapToDto(WorkRecord record) {
-        // 해당 유저/날짜의 근무 신청 상태 조인
         java.time.LocalDate wrDate = record.getWrDate();
         java.time.LocalDate monday = wrDate.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
         
-        String applyStatus = workApplyWorkRepository
+        WorkApplyWork schedule = workApplyWorkRepository
                 .findByUser_UserIdxAndWawDate(record.getUser().getUserIdx(), monday)
-                .map(apply -> {
-                    com.recode.Dwaeji.work_apply_work.database.ApplyStatus status;
-                    switch (wrDate.getDayOfWeek()) {
-                        case MONDAY:    status = apply.getWawIsMon(); break;
-                        case TUESDAY:   status = apply.getWawIsTue(); break;
-                        case WEDNESDAY: status = apply.getWawIsWed(); break;
-                        case THURSDAY:  status = apply.getWawIsThu(); break;
-                        case FRIDAY:    status = apply.getWawIsFri(); break;
-                        case SATURDAY:  status = apply.getWawIsSat(); break;
-                        case SUNDAY:    status = apply.getWawIsSun(); break;
-                        default:        status = com.recode.Dwaeji.work_apply_work.database.ApplyStatus.미신청;
-                    }
-                    return status != null ? status.name() : "미신청";
-                })
-                .orElse("신청없음"); // 신청서 자체가 없음
+                .orElse(null);
 
+        WorkApply apply = workApplyRepository
+                .findByUser_UserIdxAndWaDate(record.getUser().getUserIdx(), monday)
+                .orElse(null);
+
+        String applyStatus = resolveApplyStatus(schedule, apply, wrDate);
         return WorkRecordResponseDto.fromEntity(record, applyStatus);
     }
 

@@ -7,6 +7,7 @@ import { fetchWorkPlaces } from '../api/authApi';
 import { parseISO, format } from 'date-fns';
 import { RiCalendarCheckLine, RiStore2Line, RiUserStarLine, RiGroupLine, RiTimeLine } from 'react-icons/ri';
 import AdminCalendar from '../components/AdminCalendar';
+import Loading from '../components/Loading';
 import './AdminMain.css';
 
 const AdminMain = () => {
@@ -137,11 +138,7 @@ const AdminMain = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="primary" />
-          </div>
-        ) : (
+        {loading ? <Loading /> : (
           <>
             <div style={{ minHeight: '500px', marginBottom: '2rem' }}>
               <AdminCalendar

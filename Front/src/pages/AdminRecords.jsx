@@ -5,6 +5,7 @@ import { fetchWorkPlaces, fetchAdminWorkers } from '../api/authApi';
 import { format } from 'date-fns';
 import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiStore2Line, RiRefreshLine, RiArrowRightSLine } from 'react-icons/ri';
 import PaginationBar from '../components/PaginationBar';
+import Loading from '../components/Loading';
 import './AdminMain.css';
 
 const AdminRecords = () => {
@@ -248,7 +249,10 @@ const AdminRecords = () => {
 
     const res = await fetchWorkRecordHistory(params);
     if (res.success) {
-      setHistoryData(Array.isArray(res.data) ? res.data : (res.data.content || []));
+      let data = Array.isArray(res.data) ? res.data : (res.data.content || []);
+      // 최신순(역정렬) 보장
+      data = [...data].sort((a, b) => (b.wrhIdx || 0) - (a.wrhIdx || 0));
+      setHistoryData(data);
     } else {
       alert(res.error || '수정 이력을 불러오지 못했습니다.');
     }
@@ -450,9 +454,7 @@ const AdminRecords = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-        ) : (
+        {loading ? <Loading /> : (
           <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
             <Card.Body className="p-0">
               {filteredRecords.length === 0 ? (

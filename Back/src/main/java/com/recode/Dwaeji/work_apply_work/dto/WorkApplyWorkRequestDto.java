@@ -42,4 +42,5 @@ public class WorkApplyWorkRequestDto {
     private String wawRemarks;
     // 관리자가 특정 유저의 신청을 대리 작성/수정할 경우를 위해
     private Long userIdx; 
+    private Boolean wawIsConfirmed; 
 }

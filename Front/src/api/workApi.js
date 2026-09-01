@@ -268,6 +268,23 @@ export const createWorkRequest = async (requestData) => {
   }
 };
 
+// 알바생 근무 신청 등록 (신청 전용 엔드포인트)
+export const createWorkApply = async (requestData) => {
+  try {
+    const response = await globalApiClient.post('/api/work-apply', requestData);
+    // 신청 등록 시 캐시 무효화
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
 // 단일 근무 신청 조회
 export const fetchWorkRequestById = async (wawIdx) => {
   try {
@@ -279,10 +296,38 @@ export const fetchWorkRequestById = async (wawIdx) => {
   }
 };
 
+// 알바생 신청 원본 단건 조회 (수정 화면용)
+export const fetchWorkApplyById = async (waIdx) => {
+  try {
+    const response = await globalApiClient.get(`/api/work-apply/${waIdx}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '신청 내역을 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
 // 근무 신청 수정
 export const updateWorkRequest = async (wawIdx, requestData) => {
   try {
     const response = await globalApiClient.put(`/api/work-apply-work/${wawIdx}`, requestData);
+    // 신청 수정 시 캐시 무효화
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청 수정에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 알바생 근무 신청 수정 (신청 전용 엔드포인트)
+export const updateWorkApply = async (wawIdx, requestData) => {
+  try {
+    const response = await globalApiClient.put(`/api/work-apply/${wawIdx}`, requestData);
     // 신청 수정 시 캐시 무효화
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {

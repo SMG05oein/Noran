@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Spinner, Card } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchWorkRequestById, updateWorkRequest } from '../api/workApi';
+import { fetchWorkApplyById, updateWorkApply } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
 import { RiArrowLeftSLine, RiSave3Line } from 'react-icons/ri';
 import { format, startOfWeek } from 'date-fns';
+import Loading from '../components/Loading';
 
 const RequestEdit = () => {
   const { id } = useParams();
@@ -25,7 +26,7 @@ const RequestEdit = () => {
 
   useEffect(() => {
     const loadRequest = async () => {
-      const res = await fetchWorkRequestById(id);
+      const res = await fetchWorkApplyById(id);
       if (res.success && res.data) {
         setReqDate(res.data.wawDate || '');
         setDays({
@@ -88,11 +89,10 @@ const RequestEdit = () => {
       wawIsFri: days.Fri ? '신청' : '미신청',
       wawIsSat: days.Sat ? '신청' : '미신청',
       wawIsSun: days.Sun ? '신청' : '미신청',
-      wawRemarks: remarks,
-      userIdx: user?.userIdx || 1
+      wawRemarks: remarks
     };
 
-    const res = await updateWorkRequest(id, requestData);
+    const res = await updateWorkApply(id, requestData);
     if (res.success) {
       alert('근무 신청이 수정되었습니다.');
       navigate('/requests');
@@ -103,9 +103,7 @@ const RequestEdit = () => {
 
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-        <Spinner animation="border" variant="primary" />
-      </Container>
+      <Container style={{ minHeight: '60vh' }}><Loading /></Container>
     );
   }
 

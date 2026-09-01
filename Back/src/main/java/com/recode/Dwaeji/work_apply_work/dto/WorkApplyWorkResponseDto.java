@@ -3,6 +3,7 @@ package com.recode.Dwaeji.work_apply_work.dto;
 import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyWork;
+import com.recode.Dwaeji.work_apply_work.database.WorkApply;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +21,8 @@ import java.time.LocalTime;
 @Builder
 public class WorkApplyWorkResponseDto {
     private Long wawIdx;
+    // 원본 알바생 신청 식별자 (배정 스케줄 식별자와 구분)
+    private Long waIdx;
     private Long userIdx;
     private String userName; // 뷰어용 유저 이름
     private String workPlaceName; // 소속 지점 필터링 용도
@@ -31,6 +34,14 @@ public class WorkApplyWorkResponseDto {
     private ApplyStatus wawIsFri;
     private ApplyStatus wawIsSat;
     private ApplyStatus wawIsSun;
+
+    private ApplyStatus waIsMon;
+    private ApplyStatus waIsTue;
+    private ApplyStatus waIsWed;
+    private ApplyStatus waIsThu;
+    private ApplyStatus waIsFri;
+    private ApplyStatus waIsSat;
+    private ApplyStatus waIsSun;
 
     private LocalTime wawMonStartTime;
     private LocalTime wawTueStartTime;
@@ -55,6 +66,7 @@ public class WorkApplyWorkResponseDto {
     private Long wawSunWorkPlaceIdx;
     private String wawSunWorkPlaceName;
 
+    private Boolean wawIsConfirmed;
     private String wawRemarks;
     private LocalDateTime wawCreatedAt;
     private LocalDateTime wawUpdatedAt;
@@ -63,6 +75,7 @@ public class WorkApplyWorkResponseDto {
         if (entity == null) return null;
         return WorkApplyWorkResponseDto.builder()
                 .wawIdx(entity.getWawIdx())
+                .waIdx(null)
                 .userIdx(entity.getUser() != null ? entity.getUser().getUserIdx() : null)
                 .userName(entity.getUser() != null ? entity.getUser().getUserName() : null)
                 .workPlaceName(entity.getUser() != null && entity.getUser().getWorkPlace() != null ? entity.getUser().getWorkPlace().getWpName() : null)
@@ -95,9 +108,33 @@ public class WorkApplyWorkResponseDto {
                 .wawSatWorkPlaceName(entity.getWawSatWorkPlace() != null ? entity.getWawSatWorkPlace().getWpName() : null)
                 .wawSunWorkPlaceIdx(entity.getWawSunWorkPlace() != null ? entity.getWawSunWorkPlace().getWpIdx() : null)
                 .wawSunWorkPlaceName(entity.getWawSunWorkPlace() != null ? entity.getWawSunWorkPlace().getWpName() : null)
+                .wawIsConfirmed(entity.getWawIsConfirmed())
                 .wawRemarks(entity.getWawRemarks())
                 .wawCreatedAt(entity.getWawCreatedAt())
                 .wawUpdatedAt(entity.getWawUpdatedAt())
+                .build();
+    }
+
+    public static WorkApplyWorkResponseDto fromApplyEntity(WorkApply entity) {
+        if (entity == null) return null;
+        return WorkApplyWorkResponseDto.builder()
+                .wawIdx(entity.getWaIdx())
+                .waIdx(entity.getWaIdx())
+                .userIdx(entity.getUser() != null ? entity.getUser().getUserIdx() : null)
+                .userName(entity.getUser() != null ? entity.getUser().getUserName() : null)
+                .workPlaceName(entity.getUser() != null && entity.getUser().getWorkPlace() != null ? entity.getUser().getWorkPlace().getWpName() : null)
+                .wawDate(entity.getWaDate())
+                .wawIsMon(entity.isWaIsMon() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsTue(entity.isWaIsTue() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsWed(entity.isWaIsWed() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsThu(entity.isWaIsThu() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsFri(entity.isWaIsFri() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsSat(entity.isWaIsSat() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsSun(entity.isWaIsSun() ? ApplyStatus.신청 : ApplyStatus.미신청)
+                .wawIsConfirmed(false)
+                .wawRemarks(entity.getWaRemarks())
+                .wawCreatedAt(entity.getWaCreatedAt())
+                .wawUpdatedAt(entity.getWaUpdatedAt())
                 .build();
     }
 
@@ -135,6 +172,7 @@ public class WorkApplyWorkResponseDto {
                 .wawSatWorkPlaceName(homeWpName)
                 .wawSunWorkPlaceIdx(homeWpIdx)
                 .wawSunWorkPlaceName(homeWpName)
+                .wawIsConfirmed(false)
                 .build();
     }
 }

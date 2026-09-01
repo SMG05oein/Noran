@@ -4,18 +4,19 @@ import { format, startOfWeek, addDays, subMonths } from 'date-fns';
 import { RiCalendarTodoLine, RiFileList3Line, RiCheckboxCircleLine, RiEyeLine, RiTimeLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { getMonthlyWorkApplyWorks, createWorkRequest } from '../api/workApi';
+import { getMonthlyWorkApplyWorks, createWorkApply } from '../api/workApi';
 import './Main.css';
+import Loading from '../components/Loading';
 
 
 const DAY_CONFIG = [
-  { key: 'wawIsMon', name: '월', offset: 0, timeKey: 'wawMonStartTime', wpNameKey: 'wawMonWorkPlaceName', isSun: false, isSat: false },
-  { key: 'wawIsTue', name: '화', offset: 1, timeKey: 'wawTueStartTime', wpNameKey: 'wawTueWorkPlaceName', isSun: false, isSat: false },
-  { key: 'wawIsWed', name: '수', offset: 2, timeKey: 'wawWedStartTime', wpNameKey: 'wawWedWorkPlaceName', isSun: false, isSat: false },
-  { key: 'wawIsThu', name: '목', offset: 3, timeKey: 'wawThuStartTime', wpNameKey: 'wawThuWorkPlaceName', isSun: false, isSat: false },
-  { key: 'wawIsFri', name: '금', offset: 4, timeKey: 'wawFriStartTime', wpNameKey: 'wawFriWorkPlaceName', isSun: false, isSat: false },
-  { key: 'wawIsSat', name: '토', offset: 5, timeKey: 'wawSatStartTime', wpNameKey: 'wawSatWorkPlaceName', isSun: false, isSat: true },
-  { key: 'wawIsSun', name: '일', offset: 6, timeKey: 'wawSunStartTime', wpNameKey: 'wawSunWorkPlaceName', isSun: true, isSat: false },
+  { key: 'wawIsMon', applyKey: 'waIsMon', name: '월', offset: 0, timeKey: 'wawMonStartTime', wpNameKey: 'wawMonWorkPlaceName', wpIdxKey: 'wawMonWorkPlaceIdx', isSun: false, isSat: false },
+  { key: 'wawIsTue', applyKey: 'waIsTue', name: '화', offset: 1, timeKey: 'wawTueStartTime', wpNameKey: 'wawTueWorkPlaceName', wpIdxKey: 'wawTueWorkPlaceIdx', isSun: false, isSat: false },
+  { key: 'wawIsWed', applyKey: 'waIsWed', name: '수', offset: 2, timeKey: 'wawWedStartTime', wpNameKey: 'wawWedWorkPlaceName', wpIdxKey: 'wawWedWorkPlaceIdx', isSun: false, isSat: false },
+  { key: 'wawIsThu', applyKey: 'waIsThu', name: '목', offset: 3, timeKey: 'wawThuStartTime', wpNameKey: 'wawThuWorkPlaceName', wpIdxKey: 'wawThuWorkPlaceIdx', isSun: false, isSat: false },
+  { key: 'wawIsFri', applyKey: 'waIsFri', name: '금', offset: 4, timeKey: 'wawFriStartTime', wpNameKey: 'wawFriWorkPlaceName', wpIdxKey: 'wawFriWorkPlaceIdx', isSun: false, isSat: false },
+  { key: 'wawIsSat', applyKey: 'waIsSat', name: '토', offset: 5, timeKey: 'wawSatStartTime', wpNameKey: 'wawSatWorkPlaceName', wpIdxKey: 'wawSatWorkPlaceIdx', isSun: false, isSat: true },
+  { key: 'wawIsSun', applyKey: 'waIsSun', name: '일', offset: 6, timeKey: 'wawSunStartTime', wpNameKey: 'wawSunWorkPlaceName', wpIdxKey: 'wawSunWorkPlaceIdx', isSun: true, isSat: false },
 ];
 
 const Requests = () => {
@@ -33,16 +34,22 @@ const Requests = () => {
   });
 
   const [requestList, setRequestList] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [viewingRequest, setViewingRequest] = useState(null);
 
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   const loadRequests = async (monthStr) => {
+    setDataLoading(true);
     const [year, month] = monthStr.split('-');
-    const res = await getMonthlyWorkApplyWorks(parseInt(year, 10), parseInt(month, 10));
-    if (res.success) {
-      setRequestList(res.data || []);
+    try {
+      const res = await getMonthlyWorkApplyWorks(parseInt(year, 10), parseInt(month, 10));
+      if (res.success) {
+        setRequestList(res.data || []);
+      }
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -85,11 +92,10 @@ const Requests = () => {
       wawIsFri: days.Fri ? '신청' : '미신청',
       wawIsSat: days.Sat ? '신청' : '미신청',
       wawIsSun: days.Sun ? '신청' : '미신청',
-      wawRemarks: remarks,
-      userIdx: user?.userIdx || 1
+      wawRemarks: remarks
     };
 
-    const res = await createWorkRequest(requestData);
+    const res = await createWorkApply(requestData);
     setLoading(false);
 
     if (res.success) {
@@ -137,7 +143,7 @@ const Requests = () => {
             </Form.Group>
 
             <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small d-block mb-2">신청 요일 선택 (한 줄로 터치/드래그하여 선택)</Form.Label>
+              <Form.Label className="fw-bold text-muted small d-block mb-2">신청 요일 선택</Form.Label>
               <div
                 className="d-flex gap-2 pb-2 overflow-x-auto flex-nowrap user-select-none"
                 style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -196,8 +202,6 @@ const Requests = () => {
           style={{ width: 'auto', minWidth: '140px', borderColor: '#C8957A', color: '#A85A47' }}
         >
           {[...Array(12)].map((_, i) => {
-            // 과거 6개월 ~ 미래 5개월 정도 보여주기 (신청은 미래도 중요하므로)
-            const d = addDays(subMonths(new Date(), 6), 0); // 일단 현재 달력 기준으로 앞뒤로 배치
             const baseMonthDate = addDays(new Date(), 0);
             const optDate = addDays(subMonths(baseMonthDate, 6 - i), 0);
             const val = format(optDate, 'yyyy-MM');
@@ -206,7 +210,7 @@ const Requests = () => {
         </Form.Select>
       </div>
 
-      <div className="d-flex flex-column gap-3">
+      {dataLoading ? <Loading /> : <div className="d-flex flex-column gap-3">
         {requestList.length === 0 ? (
           <div className="text-center py-5 rounded-4 border" style={{ color: 'var(--color-text-muted)' }}>
             <RiFileList3Line size={40} className="mb-2" style={{ opacity: 0.4, color: '#A85A47' }} />
@@ -214,12 +218,12 @@ const Requests = () => {
           </div>
         ) : (
           requestList.map(req => {
-            const hasAnyAssignedDay = DAY_CONFIG.some(d => ['배정', '타지점근무'].includes(req[d.key]));
+            const hasAnyAppliedDay = DAY_CONFIG.some(d => req[d.applyKey] === '신청');
 
             return (
               <Card key={req.wawIdx} className="border-0 shadow-sm rounded-4">
                 <Card.Body className="p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                  <div style={{ flex: '1 1 300px' }}>
+                  <div style={{ flex: '1 1 300px', minWidth: 0 }}>
                     <div className="fw-bold fs-5 mb-1" style={{ color: '#A85A47' }}>신청 주차: {req.wawDate} (월)</div>
                     <div className="text-muted small mb-2">
                       <div>신청일시: {formatDateTime(req.wawCreatedAt)}</div>
@@ -230,27 +234,65 @@ const Requests = () => {
                     {req.wawRemarks && (
                       <div className="small mb-2 p-2 rounded-3" style={{ background: '#F5EFE6', color: '#8D6E63' }}>비고: {req.wawRemarks}</div>
                     )}
-                    <div className="d-flex gap-1 flex-wrap align-items-center mt-2">
-                      {!hasAnyAssignedDay ? (
-                        <span className="small" style={{ color: '#A89F97' }}>배정된 요일 없음</span>
-                      ) : (
-                        DAY_CONFIG.map(d => {
-                          const status = req[d.key];
-                          if (status !== '배정' && status !== '타지점근무') return null;
-                          const bgColor = d.isSun ? 'rgb(255 209 209 / 0)' : d.isSat ? 'rgb(200 228 255 / 0)' : 'rgb(237 228 216 / 0)';
-                          const textColor = d.isSun ? '#C94C48' : d.isSat ? '#2B6CB0' : '#937f79';
-                          return (
-                            <span
-                              key={d.key}
-                              className="px-2 py-1 rounded-pill fw-bold"
-                              style={{ fontSize: '0.82rem', background: bgColor, color: textColor }}
-                              title={`${d.name}요일: ${status}${req[d.timeKey] ? ` (${String(req[d.timeKey]).substring(0, 5)} 출근)` : ''}`}
-                            >
-                              {d.name}
-                            </span>
-                          );
-                        })
-                      )}
+                    <div className="d-flex flex-column gap-3 mt-3">
+                      <div>
+                        <div className="fw-bold small text-muted mb-1">
+                          내 신청 요일 {!hasAnyAppliedDay ? '' : `(${DAY_CONFIG.filter(d => req[d.applyKey] === '신청').length}일)`}
+                        </div>
+                        <div className="d-flex gap-1 align-items-center overflow-x-auto flex-nowrap pb-2" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          {!hasAnyAppliedDay ? (
+                            <span className="small" style={{ color: '#A89F97' }}>신청 내역 없음</span>
+                          ) : (
+                            DAY_CONFIG.filter(d => req[d.applyKey] === '신청').map(d => (
+                              <span key={d.key} className="px-2 py-1 rounded-pill fw-bold text-nowrap flex-shrink-0" style={{ fontSize: '0.82rem', background: '#FEF3C7', color: '#D97706', border: '1px solid #FCD34D' }}>
+                                {d.name}
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="fw-bold small text-muted mb-1">
+                          배정 요일 {req.wawIsConfirmed ? `(확정, ${DAY_CONFIG.filter(d => ['배정', '타지점근무'].includes(req[d.key])).length}일)` : '(대기 중)'}
+                        </div>
+                        <div className="d-flex gap-1 align-items-center overflow-x-auto flex-nowrap pb-2" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          {!req.wawIsConfirmed ? (
+                            <span className="small text-nowrap" style={{ color: '#A89F97' }}>아직 배정이 확정되지 않았습니다.</span>
+                          ) : (() => {
+                            const assignedDays = DAY_CONFIG.filter(d => ['배정', '타지점근무'].includes(req[d.key]));
+                            if (assignedDays.length === 0) {
+                              return <span className="small text-nowrap" style={{ color: '#DC2626' }}>이번 주 배정된 근무가 없습니다.</span>;
+                            }
+                            return assignedDays.map(d => {
+                              const displayWpName = req[d.wpNameKey];
+                              const isOtherByName = Boolean(
+                                displayWpName && user?.workPlaceName &&
+                                displayWpName !== user.workPlaceName
+                              );
+                              const isOtherByIdx = req[d.wpIdxKey] != null && user?.workPlaceIdx != null &&
+                                Number(req[d.wpIdxKey]) !== Number(user.workPlaceIdx);
+                              const isOther = isOtherByName || isOtherByIdx;
+                              const status = isOther ? '타지점근무' : '배정';
+                              const shownWpName = displayWpName || (isOther ? '타지점 근무지' : user?.workPlaceName);
+                              
+                              const bgColor = '#D1FAE5';
+                              const textColor = '#059669';
+                              const borderColor = '#34D399';
+
+                              return (
+                                <span
+                                  key={d.key}
+                                  className="px-2 py-1 rounded-pill fw-bold d-flex align-items-center gap-1 text-nowrap flex-shrink-0"
+                                  style={{ fontSize: '0.82rem', background: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
+                                >
+                                  {d.name} {isOther ? `(${shownWpName})` : ''} {req[d.timeKey] ? `${String(req[d.timeKey]).substring(0, 5)}` : ''}
+                                </span>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
@@ -267,7 +309,7 @@ const Requests = () => {
                       size="sm"
                       className="rounded-pill fw-bold px-3 d-flex align-items-center gap-1"
                       style={{ height: '36px', background: 'transparent', border: '1.5px solid #EDE4D8', color: '#8D6E63' }}
-                      onClick={() => navigate(`/requests/edit/${req.wawIdx}`)}
+                      onClick={() => navigate(`/requests/edit/${req.waIdx || req.wawIdx}`)}
                     >
                       수정하기
                     </Button>
@@ -277,7 +319,7 @@ const Requests = () => {
             );
           })
         )}
-      </div>
+      </div>}
 
       {/* 주간 근무 상세 보기 모달 */}
       <Modal
@@ -306,7 +348,7 @@ const Requests = () => {
                 </div>
                 {viewingRequest.workPlaceName && (
                   <Badge bg="primary" className="px-2.5 py-1.5 rounded-pill">
-                    소속: {viewingRequest.workPlaceName}
+                    기본 소속: {viewingRequest.workPlaceName}
                   </Badge>
                 )}
               </div>
@@ -323,9 +365,17 @@ const Requests = () => {
                   </thead>
                   <tbody>
                     {DAY_CONFIG.map(d => {
-                      const status = viewingRequest[d.key] || '미신청';
+                      const rawStatus = viewingRequest[d.key] || '미신청';
                       const time = viewingRequest[d.timeKey] ? String(viewingRequest[d.timeKey]).substring(0, 5) : null;
-                      const wpName = viewingRequest[d.wpNameKey] || viewingRequest.workPlaceName || '노란돼지';
+                      const wpName = viewingRequest[d.wpNameKey];
+                      const isAssigned = rawStatus === '배정' || rawStatus === '타지점근무';
+                      const isOther = isAssigned && Boolean(
+                        (wpName && viewingRequest.workPlaceName && wpName !== viewingRequest.workPlaceName) ||
+                        (viewingRequest[d.wpIdxKey] != null && user?.workPlaceIdx != null &&
+                          Number(viewingRequest[d.wpIdxKey]) !== Number(user.workPlaceIdx))
+                      );
+                      const status = isAssigned ? (isOther ? '타지점근무' : '배정') : rawStatus;
+                      const displayWpName = wpName || (isOther ? '타지점 근무지 정보 없음' : viewingRequest.workPlaceName) || '근무지 정보 없음';
 
                       let dayDateStr = '';
                       try {
@@ -357,7 +407,7 @@ const Requests = () => {
                           <td>
                             {time ? (
                               <span className="badge bg-primary bg-opacity-10 text-primary border border-primary px-2.5 py-1.5 rounded-pill fw-bold">
-                                <RiTimeLine className="me-1" />{time} 출근
+                                <RiTimeLine className="me-1" />{time}
                               </span>
                             ) : status === '신청' ? (
                               <span className="text-muted small">관리자 배정 대기</span>
@@ -367,7 +417,7 @@ const Requests = () => {
                           </td>
                           <td>
                             {status === '배정' || status === '타지점근무' ? (
-                              <span className="fw-bold text-dark small">{wpName}</span>
+                              <span className="fw-bold text-dark small">{displayWpName}</span>
                             ) : (
                               <span className="text-muted">-</span>
                             )}

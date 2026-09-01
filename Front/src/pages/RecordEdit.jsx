@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWorkRecordById, updateWorkRecord } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
 import { RiArrowLeftSLine, RiSave3Line } from 'react-icons/ri';
+import Loading from '../components/Loading';
 
 const RecordEdit = () => {
   const { id } = useParams();
@@ -94,9 +95,7 @@ const RecordEdit = () => {
 
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-        <Spinner animation="border" variant="primary" />
-      </Container>
+      <Container style={{ minHeight: '60vh' }}><Loading /></Container>
     );
   }
 

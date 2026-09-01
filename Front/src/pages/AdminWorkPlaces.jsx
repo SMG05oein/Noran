@@ -4,6 +4,7 @@ import { fetchWorkPlaces, createWorkPlace, updateWorkPlace, deleteWorkPlace } fr
 import DaumPostcode from 'react-daum-postcode';
 import { RiAddLine, RiStore2Line, RiMapPinLine } from 'react-icons/ri';
 import './AdminMain.css';
+import Loading from '../components/Loading';
 
 const AdminWorkPlaces = () => {
   const [workPlaces, setWorkPlaces] = useState([]);
@@ -120,9 +121,7 @@ const AdminWorkPlaces = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-        ) : (
+        {loading ? <Loading /> : (
           <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
             <Card.Body className="p-0">
               {workPlaces.length === 0 ? (

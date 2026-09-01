@@ -20,4 +20,11 @@ public interface WorkApplyWorkService {
     Map<String, Integer> getCalendarAssignmentCounts(String requesterId, int year, int month, Long workPlaceIdx);
     
     List<com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto> getDailySchedule(String requesterId, LocalDate date, Long workPlaceIdx);
+
+    // --- 알바생 근무 신청 (WorkApply) API ---
+    void createWorkApply(String requesterId, WorkApplyWorkRequestDto requestDto);
+    List<WorkApplyWorkResponseDto> getWorkApplies(String requesterId, LocalDate waDate);
+    WorkApplyWorkResponseDto getWorkApplyById(String requesterId, Long waIdx);
+    void updateWorkApply(String requesterId, Long waIdx, WorkApplyWorkRequestDto requestDto);
+    void deleteWorkApply(String requesterId, Long waIdx);
 }

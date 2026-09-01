@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Row, Col, Badge, Button } from 'react-bootstrap';
-import { parseISO, addDays, isSameDay, isBefore, startOfDay, format } from 'date-fns';
+import { parseISO, addDays, isSameDay, isBefore, startOfDay, format, subMonths, addMonths } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import WorkCalendar from '../components/WorkCalendar';
+import Loading from '../components/Loading';
 import { getMonthlyWorkRecords, getMonthlyWorkApplyWorks } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
 import { RiCalendarCheckLine, RiTimeLine, RiAddLine, RiStore2Line } from 'react-icons/ri';
@@ -13,6 +14,7 @@ const Main = () => {
   const navigate = useNavigate();
   const [workRecords, setWorkRecords] = useState([]);
   const [workRequests, setWorkRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewMonth, setViewMonth] = useState(new Date());
 
   const loadData = async (newMonth = null) => {
@@ -21,13 +23,32 @@ const Main = () => {
     const targetDate = newMonth || viewMonth;
     if (newMonth) setViewMonth(newMonth);
     
-    const recRes = await getMonthlyWorkRecords(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache);
-    if (recRes.success) setWorkRecords(recRes.data?.content || (Array.isArray(recRes.data) ? recRes.data : []));
-    
-    const reqRes = await getMonthlyWorkApplyWorks(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache);
-    if (reqRes.success) {
-      const list = reqRes.data?.content || (Array.isArray(reqRes.data) ? reqRes.data : []);
-      setWorkRequests(list);
+    setLoading(true);
+    try {
+      // 달력의 이전 달/다음 달 며칠(Spillover)도 완벽히 커버하기 위해 앞뒤 달도 함께 조회
+      const prevDate = subMonths(targetDate, 1);
+      const nextDate = addMonths(targetDate, 1);
+
+      const [prevRes, currRes, nextRes, reqRes] = await Promise.all([
+        getMonthlyWorkRecords(prevDate.getFullYear(), prevDate.getMonth() + 1, skipCache),
+        getMonthlyWorkRecords(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache),
+        getMonthlyWorkRecords(nextDate.getFullYear(), nextDate.getMonth() + 1, skipCache),
+        getMonthlyWorkApplyWorks(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache)
+      ]);
+
+      let mergedRecords = [];
+      if (prevRes.success) mergedRecords = mergedRecords.concat(prevRes.data?.content || prevRes.data || []);
+      if (currRes.success) mergedRecords = mergedRecords.concat(currRes.data?.content || currRes.data || []);
+      if (nextRes.success) mergedRecords = mergedRecords.concat(nextRes.data?.content || nextRes.data || []);
+      
+      setWorkRecords(mergedRecords);
+
+      if (reqRes.success) {
+        const list = reqRes.data?.content || (Array.isArray(reqRes.data) ? reqRes.data : []);
+        setWorkRequests(list);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,6 +174,7 @@ const Main = () => {
   return (
     <div className="main-container">
       <Container className="py-4 py-md-5">
+        {loading ? <Loading /> : <>
         {/* 상단 웰컴 & 오늘의 근무 상태 배너 */}
         <div className="worker-hero-card">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -218,7 +240,7 @@ const Main = () => {
           <Col xs={6}>
             <div className="worker-stat-card">
               <div className="stat-label">
-                <RiTimeLine className="text-success" /> 총 근무시간
+                <RiTimeLine className="text-success" />{viewMonth.getMonth() + 1}월 근무시간
               </div>
               <div className="stat-value text-success">
                 {thisMonthHours.toFixed(1)}<span className="stat-unit">시간</span>
@@ -230,9 +252,10 @@ const Main = () => {
         {/* 메인 캘린더 단독 전체 폭 배치 */}
         <Row>
           <Col xs={12}>
-            <WorkCalendar mockRecords={calendarRecords} onMonthChange={loadData} />
+            <WorkCalendar mockRecords={calendarRecords} onMonthChange={loadData} initialMonth={viewMonth} />
           </Col>
         </Row>
+        </>}
       </Container>
     </div>
   );

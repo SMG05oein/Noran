@@ -34,6 +34,10 @@ public class WorkApplyWork {
     @Column(name = "waw_date", nullable = false)
     private LocalDate wawDate;
 
+    @Column(name = "waw_is_confirmed", nullable = false)
+    @Builder.Default
+    private Boolean wawIsConfirmed = false;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "waw_is_mon", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
     private ApplyStatus wawIsMon;

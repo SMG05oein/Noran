@@ -6,6 +6,7 @@ import { addDays, format, startOfWeek, endOfWeek, subWeeks, addWeeks, getWeekOfM
 import useAuthStore from '../store/useAuthStore';
 import { RiArrowLeftSLine, RiArrowRightSLine, RiDownload2Line, RiUserAddLine, RiDeleteBinLine, RiSearchLine } from 'react-icons/ri';
 import './AdminMain.css';
+import Loading from '../components/Loading';
 
 const DAY_KEYS = [
   { key: 'wawIsMon', name: '월', offset: 0, timeKey: 'wawMonStartTime', wpIdxKey: 'wawMonWorkPlaceIdx', wpNameKey: 'wawMonWorkPlaceName' },
@@ -75,7 +76,23 @@ const AdminWeeklyAssign = () => {
       }
     }
 
-    if (reqRes.success) setWorkRequests(reqRes.data || []);
+    if (reqRes.success) {
+      const fixedData = (reqRes.data || []).map(r => {
+        const isConf = r.wawIsConfirmed;
+        const fixStatus = (s) => (isConf && s === '신청') ? '미배정' : s;
+        return {
+          ...r,
+          wawIsMon: fixStatus(r.wawIsMon),
+          wawIsTue: fixStatus(r.wawIsTue),
+          wawIsWed: fixStatus(r.wawIsWed),
+          wawIsThu: fixStatus(r.wawIsThu),
+          wawIsFri: fixStatus(r.wawIsFri),
+          wawIsSat: fixStatus(r.wawIsSat),
+          wawIsSun: fixStatus(r.wawIsSun)
+        };
+      });
+      setWorkRequests(fixedData);
+    }
     if (workerRes.success) {
       const list = workerRes.data?.content || (Array.isArray(workerRes.data) ? workerRes.data : []);
       setAllUsers(list);
@@ -287,7 +304,8 @@ const AdminWeeklyAssign = () => {
         wawThuWorkPlaceIdx: null, wawFriWorkPlaceIdx: null, wawSatWorkPlaceIdx: null,
         wawSunWorkPlaceIdx: null,
         wawRemarks: req.wawRemarks || '', 
-        userIdx: req.userIdx || 1
+        userIdx: req.userIdx || 1,
+        wawIsConfirmed: isConfirm
       };
 
       let activeDaysCount = 0;
@@ -561,7 +579,7 @@ const AdminWeeklyAssign = () => {
             <Button variant="link" className="text-dark p-0" onClick={handleNextWeek}><RiArrowRightSLine size={24} /></Button>
           </Card.Body>
         </Card>
-        {loading ? <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div> : (
+        {loading ? <Loading /> : (
           <Card className="border-0 rounded-4 shadow-sm overflow-hidden">
             <div className="table-responsive">
               <Table bordered hover className="custom-table mb-0 text-center align-middle" style={{ minWidth: '1000px' }}>

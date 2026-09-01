@@ -29,9 +29,9 @@ import './WorkCalendar.css';
 
 const hd = new Holidays('KR');
 
-const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, onDateClick, onMonthChange }) => {
+const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, initialMonth, onDateClick, onMonthChange }) => {
   const { user } = useAuthStore();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(initialMonth || new Date());
   const [internalSelectedDate, setInternalSelectedDate] = useState(new Date());
   const selectedDate = externalSelectedDate !== undefined ? externalSelectedDate : internalSelectedDate;
 

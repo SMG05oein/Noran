@@ -3,6 +3,7 @@ import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Bad
 import { fetchAdminWorkers, fetchAdminManagers, updateUserInfo, setTempPassword, deleteUser, restoreUser, getSensitiveInfo, updateSensitiveInfo, hardDeleteUser, fetchUserTypes, fetchWorkPlaces, createAdminUser } from '../api/authApi';
 import PaginationBar from '../components/PaginationBar';
 import BranchFilter from '../components/BranchFilter';
+import Loading from '../components/Loading';
 import './AdminMain.css';
 
 const formatPhoneNumber = (value) => {
@@ -430,9 +431,7 @@ const AdminUsers = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-        ) : (
+        {loading ? <Loading /> : (
           <>
             {selectedRole === '직원' && (
               <Card className="border-0 shadow-sm rounded-4 overflow-hidden mb-4">

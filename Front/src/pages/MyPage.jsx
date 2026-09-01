@@ -5,6 +5,7 @@ import useAuthStore from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { RiUser3Line, RiLockPasswordLine, RiBankCardLine, RiStore2Line, RiShieldCheckLine, RiEdit2Line } from 'react-icons/ri';
 import './Main.css';
+import Loading from '../components/Loading';
 
 const MyPage = () => {
   const { user, logout } = useAuthStore();
@@ -201,9 +202,7 @@ const MyPage = () => {
 
   if (loading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" variant="primary" />
-      </Container>
+      <Container className="py-5"><Loading /></Container>
     );
   }
 

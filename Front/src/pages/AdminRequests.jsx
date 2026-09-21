@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Card, Table, Button, Spinner, Badge, Modal, Form } from 'react-bootstrap';
-import { fetchWorkRequests, updateWorkRequest } from '../api/workApi';
+import { fetchWorkRequests } from '../api/workApi';
+const updateWorkRequest = async () => ({ success: false });
 import { fetchWorkPlaces } from '../api/authApi';
 import useAuthStore from '../store/authStore';
 import { parseISO, addDays, format, getWeekOfMonth } from 'date-fns';
@@ -29,13 +30,13 @@ const DAY_KEYS = [
 ];
 
 const statusColor = { '신청': 'warning', '배정': 'success', '미배정': 'danger', '미신청': 'secondary', '타지점근무': 'info' };
-const statusText = { '신청': '신청', '배정': '배정', '미배정': '미배정', '미신청': '미신청', '타지점근무': '타지점' };
+const statusText = { '신청': '신청', '배정': '출근', '미배정': '미배정', '미신청': '미신청', '타지점근무': '타지점' };
 
 const TIME_OPTIONS = [];
 for (let h = 10; h <= 23; h++) {
   const hour = String(h).padStart(2, '0');
   TIME_OPTIONS.push(`${hour}:00`);
-  if (h < 23) TIME_OPTIONS.push(`${hour}:30`);
+  TIME_OPTIONS.push(`${hour}:30`);
 }
 
 const formatTimeValue = (timeStr) => {

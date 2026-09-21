@@ -11,6 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [autoLogin, setAutoLogin] = useState(true);
 
   // 실시간 유효성 상태 (아이디 정규식 필터링 제거)
   const [userIdError, setUserIdError] = useState('');
@@ -38,6 +39,8 @@ const Login = () => {
     setError('');
 
     try {
+      localStorage.setItem('isAutoLogin', autoLogin ? 'true' : 'false');
+      
       const response = await authLogin(userId, password);
       if (response.success) {
         const token = response.data.accessToken;
@@ -46,12 +49,15 @@ const Login = () => {
         let userInfo = {};
         if (infoRes.success && infoRes.data) {
           userInfo = {
+            userIdx: infoRes.data.userIdx,
             userId: infoRes.data.userId,
             name: infoRes.data.userName,
             email: infoRes.data.userEmail,
             phone: infoRes.data.userPhone,
             branch: infoRes.data.workPlaceName,
+            workPlaceIdx: infoRes.data.workPlaceIdx,
             userType: infoRes.data.userTypeName,
+            userHourlyWage: infoRes.data.userHourlyWage,
             isAdmin: infoRes.data.is_admin
           };
         }
@@ -124,9 +130,19 @@ const Login = () => {
                   />
                 </Form.Group>
 
+                <Form.Group className="mb-4 d-flex align-items-center">
+                  <Form.Check
+                    type="checkbox"
+                    id="autoLogin"
+                    label={<span className="text-muted small fw-bold ms-1" style={{ cursor: 'pointer' }}>자동 로그인</span>}
+                    checked={autoLogin}
+                    onChange={(e) => setAutoLogin(e.target.checked)}
+                  />
+                </Form.Group>
+
                 <Button
-                  disabled={loading || !!userIdError}
-                  className="w-100 mb-2 custom-btn d-flex align-items-center justify-content-center"
+                  disabled={loading}
+                  className="w-100 mb-3 custom-btn d-flex align-items-center justify-content-center"
                   type="submit"
                   size="lg"
                 >

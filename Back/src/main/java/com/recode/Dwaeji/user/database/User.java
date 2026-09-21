@@ -80,6 +80,13 @@ public class User {
     @Column(name = "bank_consent_date")
     private LocalDateTime bankConsentDate;
 
+    @Builder.Default
+    @Column(name = "email_consent_agreed", nullable = false, columnDefinition = "TINYINT(1)")
+    private Boolean emailConsentAgreed = false;
+
+    @Column(name = "email_consent_date")
+    private LocalDateTime emailConsentDate;
+
     @CreatedDate
     @Column(name = "user_created_at", nullable = false, updatable = false)
     private LocalDateTime userCreatedAt;
@@ -87,4 +94,14 @@ public class User {
     @LastModifiedDate
     @Column(name = "user_updated_at", nullable = false)
     private LocalDateTime userUpdatedAt;
+
+    @Column(name = "user_withdrawn_at")
+    private LocalDateTime userWithdrawnAt;
+
+    public String getDisplayName() {
+        if (this.userPhone != null && this.userPhone.length() >= 4) {
+            return this.userName + "(" + this.userPhone.substring(this.userPhone.length() - 4) + ")";
+        }
+        return this.userName;
+    }
 }

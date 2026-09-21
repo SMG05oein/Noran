@@ -213,7 +213,7 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, in
                     <RiCheckboxCircleLine className="cal-icon-success" size={19} title="근무 완료" />
                   )}
                   {record.status === 'APPROVED' && (
-                    <RiCalendarCheckLine className="cal-icon-primary" size={19} title="근무 배정" />
+                    <RiCalendarCheckLine className="cal-icon-primary" size={19} title="출근" />
                   )}
                   {record.status === 'MISSING' && (
                     <RiErrorWarningLine className="cal-icon-danger" size={19} title="미기재 (경고)" />
@@ -256,7 +256,7 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, in
           <RiCheckboxCircleLine className="cal-icon-success" size={18} /> 근무 완료
         </span>
         <span className="cal-legend-item">
-          <RiCalendarCheckLine className="cal-icon-primary" size={18} /> 배정
+          <RiCalendarCheckLine className="cal-icon-primary" size={18} /> 출근
         </span>
         <span className="cal-legend-item">
           <RiErrorWarningLine className="cal-icon-danger" size={18} /> 미기재

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Spinner, Card } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
-import { fetchWorkApplyById, updateWorkApply } from '../api/workApi';
+import { useLocation, useNavigate } from 'react-router-dom';
+const fetchWorkApplyById = async () => ({ success: false });
+const updateWorkApply = async () => ({ success: false });
 import useAuthStore from '../store/useAuthStore';
 import { RiArrowLeftSLine, RiSave3Line } from 'react-icons/ri';
 import { format, startOfWeek } from 'date-fns';
 import Loading from '../components/Loading';
 
 const RequestEdit = () => {
-  const { id } = useParams();
+  const location = useLocation();
+  const id = location.state?.id;
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -25,6 +27,11 @@ const RequestEdit = () => {
   const dayLabels = { Mon: '월', Tue: '화', Wed: '수', Thu: '목', Fri: '금', Sat: '토', Sun: '일' };
 
   useEffect(() => {
+    if (!id) {
+      alert('잘못된 접근입니다.');
+      navigate('/requests');
+      return;
+    }
     const loadRequest = async () => {
       const res = await fetchWorkApplyById(id);
       if (res.success && res.data) {
@@ -137,7 +144,7 @@ const RequestEdit = () => {
             </div>
 
             <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small">신청 기준 주차 (월요일)</Form.Label>
+              <Form.Label className="fw-bold text-muted small">신청 주차 (월요일)</Form.Label>
               <Form.Control
                 type="date"
                 value={reqDate}
@@ -145,7 +152,7 @@ const RequestEdit = () => {
                 style={{ cursor: 'not-allowed' }}
                 readOnly
               />
-              <Form.Text className="text-muted small">신청 기준 주차는 변경할 수 없습니다.</Form.Text>
+              <Form.Text className="text-muted small">신청 주차는 변경할 수 없습니다.</Form.Text>
             </Form.Group>
 
             <Form.Group className="mb-4">

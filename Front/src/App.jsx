@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from './store/useAuthStore';
 import useThemeStore from './store/useThemeStore';
@@ -6,8 +6,12 @@ import { fetchMyInfo, refreshAccessToken } from './api/authApi';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Main from './pages/Main';
+import useVerifyUser from './hooks/useVerifyUser';
 import Records from './pages/Records';
 import Requests from './pages/Requests';
+import ConsentPolicy from './pages/ConsentPolicy';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import SystemUsagePolicy from './pages/SystemUsagePolicy';
 import GNB from './components/GNB';
 import AdminGNB from './components/AdminGNB';
 import BottomNav from './components/BottomNav';
@@ -27,7 +31,9 @@ import DevLogin from './pages/DevLogin';
 import DevMain from './pages/DevMain';
 import DevRoute from './components/DevRoute';
 import NoticeModal from './components/NoticeModal';
+import Loading from './components/Loading';
 import './App.css';
+import Joke from "./pages/Joke.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
@@ -78,44 +84,16 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useThemeStore();
+  const { isInitializing } = useVerifyUser();
 
   // HTML의 data-bs-theme 속성을 테마 상태와 동기화
   useEffect(() => {
     document.documentElement.setAttribute('data-bs-theme', theme);
   }, [theme]);
 
-  // 페이지 이동 시마다 내 정보(토큰 유효성) 검증 및 정보 갱신
-  useEffect(() => {
-    const verifyUser = async () => {
-      if (isAuthenticated) {
-        // 인터셉터가 알아서 토큰 만료 시 리프레시를 수행하므로 내 정보 조회만 호출하면 됨
-        const infoRes = await fetchMyInfo();
-        if (infoRes.success && infoRes.data) {
-          const userInfo = {
-            userId: infoRes.data.userId,
-            name: infoRes.data.userName,
-            email: infoRes.data.userEmail,
-            phone: infoRes.data.userPhone,
-            branch: infoRes.data.workPlaceName,
-            userType: infoRes.data.userTypeName,
-            isAdmin: infoRes.data.is_admin
-          };
-          // 최신 정보로 스토어 업데이트 (토큰은 인터셉터 갱신 로직을 타기 때문에 상태 유지)
-          const currentTokens = useAuthStore.getState().user?.tokens;
-          login({ ...userInfo, tokens: currentTokens });
-        } else {
-          // 정보 조회 실패 시(리프레시 토큰 만료 등) 강제 로그아웃
-          logout();
-          navigate('/login');
-        }
-      }
-    };
-
-    // 로그인/회원가입 페이지가 아닐 때만 조회
-    if (location.pathname !== '/login' && location.pathname !== '/signup') {
-      verifyUser();
-    }
-  }, [location.pathname, isAuthenticated]);
+  if (isInitializing) {
+    return <div className="d-flex justify-content-center align-items-center vh-100"><Loading /></div>;
+  }
 
   return (
     <>
@@ -123,6 +101,11 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/consent" element={<ConsentPolicy />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<SystemUsagePolicy />} />
+        <Route path="/eee" element={<Joke />} />
+
         <Route
           path="/"
           element={
@@ -140,9 +123,9 @@ function App() {
           }
         />
         <Route path="/records" element={<ProtectedRoute><Records /></ProtectedRoute>} />
-        <Route path="/records/edit/:id" element={<ProtectedRoute><RecordEdit /></ProtectedRoute>} />
+        <Route path="/records/edit" element={<ProtectedRoute><RecordEdit /></ProtectedRoute>} />
         <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-        <Route path="/requests/edit/:id" element={<ProtectedRoute><RequestEdit /></ProtectedRoute>} />
+        <Route path="/requests/edit" element={<ProtectedRoute><RequestEdit /></ProtectedRoute>} />
         <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
         <Route path="/admin/weekly-assign" element={<AdminRoute><AdminWeeklyAssign /></AdminRoute>} />
         <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />

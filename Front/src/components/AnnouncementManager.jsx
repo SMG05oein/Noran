@@ -17,6 +17,8 @@ const AnnouncementManager = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -62,11 +64,13 @@ const AnnouncementManager = () => {
 
     setActionLoading(true);
     setErrorMsg('');
-    const res = await createAnnouncement(title, content, isActive);
+    const res = await createAnnouncement(title, content, isActive, startDate, endDate);
     if (res.success) {
       setShowAddModal(false);
       setTitle('');
       setContent('');
+      setStartDate('');
+      setEndDate('');
       setIsActive(true);
       loadData();
     } else {
@@ -157,8 +161,9 @@ const AnnouncementManager = () => {
                       <th style={{ width: '70px' }} className="text-center">ID</th>
                       <th style={{ width: '220px' }}>제목</th>
                       <th>내용</th>
+                      <th style={{ width: '150px' }}>게시 기간</th>
                       <th style={{ width: '100px' }} className="text-center">상태</th>
-                      <th style={{ width: '160px' }}>작성일시</th>
+                      <th style={{ width: '120px' }}>작성일시</th>
                       <th style={{ width: '150px' }} className="text-center">관리</th>
                     </tr>
                   </thead>
@@ -169,6 +174,17 @@ const AnnouncementManager = () => {
                         <td className="fw-bold text-info">{notice.title}</td>
                         <td className="text-light text-truncate" style={{ maxWidth: '300px' }}>
                           {notice.content}
+                        </td>
+                        <td className="text-muted small">
+                          {notice.startDate || notice.endDate ? (
+                            <>
+                              {notice.startDate ? notice.startDate.substring(0, 10).replace(/-/g, '.') : ''}
+                              {' ~ '}
+                              {notice.endDate ? notice.endDate.substring(0, 10).replace(/-/g, '.') : ''}
+                            </>
+                          ) : (
+                            '-'
+                          )}
                         </td>
                         <td className="text-center">
                           {notice.isActive ? (
@@ -241,6 +257,30 @@ const AnnouncementManager = () => {
                 style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a' }}
               />
             </Form.Group>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">게시 시작일 (선택)</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a', colorScheme: 'dark' }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">게시 종료일 (선택)</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a', colorScheme: 'dark' }}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
             <Form.Group className="mb-4">
               <Form.Check
                 type="checkbox"

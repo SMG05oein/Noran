@@ -89,19 +89,35 @@ const NoticeModal = () => {
     checkAndLoadNotices();
   }, [location.pathname]);
 
-  const [dontShowTodayMap, setDontShowTodayMap] = useState({});
-
   const handleClose = () => {
-    // 팝업 모달의 모든 공지에 대해 세션 닫기 적용 & 체크된 공지는 24시간 보지 않기 적용
+    // 팝업 모달의 모든 공지에 대해 세션 닫기 적용
     notices.forEach((notice) => {
-      if (dontShowTodayMap[notice.id]) {
-        const expireTime = Date.now() + 24 * 60 * 60 * 1000;
-        localStorage.setItem(`hide_notice_${notice.id}`, expireTime.toString());
-      }
       sessionStorage.setItem(`session_hide_notice_${notice.id}`, 'true');
     });
-
     setShow(false);
+  };
+
+  const handleHide = (type) => {
+    const currentNotice = notices[currentIndex];
+    if (type === 'today') {
+      localStorage.setItem(`hide_notice_${currentNotice.id}`, Date.now() + 24 * 60 * 60 * 1000);
+    } else if (type === 'period') {
+      let expire = Date.now() + 365 * 24 * 60 * 60 * 1000; // 기본 1년
+      if (currentNotice.endDate) {
+        const end = new Date(currentNotice.endDate);
+        end.setHours(23, 59, 59, 999);
+        expire = end.getTime();
+      }
+      localStorage.setItem(`hide_notice_${currentNotice.id}`, expire);
+    }
+    
+    sessionStorage.setItem(`session_hide_notice_${currentNotice.id}`, 'true');
+
+    if (currentIndex < notices.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      handleClose();
+    }
   };
 
   const handlePrev = () => {
@@ -116,12 +132,7 @@ const NoticeModal = () => {
     }
   };
 
-  const handleCheckboxChange = (noticeId, checked) => {
-    setDontShowTodayMap((prev) => ({
-      ...prev,
-      [noticeId]: checked
-    }));
-  };
+
 
   if (isMaintenance) {
     return <MaintenanceOverlay onRecheck={checkAndLoadNotices} checking={checking} />;
@@ -173,14 +184,14 @@ const NoticeModal = () => {
         className="d-flex justify-content-between align-items-center"
         style={{ backgroundColor: 'var(--color-surface-hover)', borderTop: '1px solid var(--color-border)' }}
       >
-        <Form.Check
-          type="checkbox"
-          id={`dont-show-today-${currentNotice.id}`}
-          label="오늘 하루 동안 보지 않기"
-          checked={!!dontShowTodayMap[currentNotice.id]}
-          onChange={(e) => handleCheckboxChange(currentNotice.id, e.target.checked)}
-          className="small text-secondary fw-semibold"
-        />
+        <div className="d-flex gap-2">
+          <Button variant="outline-secondary" size="sm" className="fw-bold px-3 py-2 rounded-pill" onClick={() => handleHide('today')}>
+            오늘 하루 안 보기
+          </Button>
+          <Button variant="outline-secondary" size="sm" className="fw-bold px-3 py-2 rounded-pill" onClick={() => handleHide('period')}>
+            기간 내 안 보기
+          </Button>
+        </div>
 
         <div className="d-flex align-items-center gap-2">
           {notices.length > 1 && (

@@ -189,7 +189,7 @@ const AdminMain = () => {
                               </span>
                             </td>
                             <td>
-                              <Badge bg="secondary" className="px-2 py-1">배정 완료</Badge>
+                              <Badge bg="secondary" className="px-2 py-1">출근</Badge>
                             </td>
                           </tr>
                         ))}

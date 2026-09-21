@@ -157,15 +157,15 @@ export const restoreWorkRecord = async (wrhIdx) => {
 };
 
 
-// 근무 신청 내역 조회 (캐시 적용)
-export const fetchWorkRequests = async (wawDate = null, workPlaceIdx = null, skipCache = false) => {
+// 근무 신청/배정 주간 내역 조회 (캐시 적용)
+export const fetchWorkRequests = async (date = null, workPlaceIdx = null, skipCache = false) => {
   try {
     const authData = JSON.parse(localStorage.getItem('auth-storage') || '{}');
     const userTypeName = authData?.state?.user?.userTypeName;
     const userKey = authData?.state?.user?.userId || authData?.state?.user?.userIdx || 'unknown';
-    const cacheKey = `workRequestsCache_${userKey}_${wawDate}_${workPlaceIdx}`;
+    const cacheKey = `workRequestsCache_${userKey}_${date}_${workPlaceIdx}`;
     
-    if (!skipCache && userTypeName !== '관리자') {
+    if (!skipCache && userTypeName !== '관리자' && workPlaceIdx == null) {
       const cachedStr = sessionStorage.getItem(cacheKey);
       if (cachedStr) {
         const cache = JSON.parse(cachedStr);
@@ -176,9 +176,11 @@ export const fetchWorkRequests = async (wawDate = null, workPlaceIdx = null, ski
       }
     }
 
-    let url = `/api/work-apply-work?size=50`;
-    if (wawDate) url += `&wawDate=${wawDate}`;
-    if (workPlaceIdx) url += `&workPlaceIdx=${workPlaceIdx}`;
+    let url = `/api/work-schedule/weekly`;
+    const params = [];
+    if (workPlaceIdx) params.push(`workPlaceIdx=${workPlaceIdx}`);
+    if (date) params.push(`date=${date}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
     const response = await globalApiClient.get(url);
     const data = response.data?.content !== undefined ? response.data.content : response.data;
     
@@ -189,7 +191,7 @@ export const fetchWorkRequests = async (wawDate = null, workPlaceIdx = null, ski
 
     return { success: true, data: data };
   } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청 내역을 불러오는데 실패했습니다.';
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '주간 배정 내역을 불러오는데 실패했습니다.';
     return { success: false, error: errMsg };
   }
 };
@@ -210,7 +212,7 @@ export const getMonthlyWorkApplyWorks = async (year, month, skipCache = false) =
       }
     }
 
-    const response = await globalApiClient.get('/api/work-apply-work/monthly', { params: { year, month } });
+    const response = await globalApiClient.get('/api/work-schedule/monthly', { params: { year, month } });
     const data = response.data?.content !== undefined ? response.data.content : response.data;
     
     sessionStorage.setItem(cacheKey, JSON.stringify({
@@ -228,7 +230,7 @@ export const getMonthlyWorkApplyWorks = async (year, month, skipCache = false) =
 // 캘린더 일별 배정 인원 집계 조회
 export const fetchCalendarCounts = async (year, month, workPlaceIdx = null) => {
   try {
-    let url = `/api/work-apply-work/calendar?year=${year}&month=${month}`;
+    let url = `/api/work-schedule/calendar-counts?year=${year}&month=${month}`;
     if (workPlaceIdx) url += `&workPlaceIdx=${workPlaceIdx}`;
     const response = await globalApiClient.get(url);
     return { success: true, data: response.data };
@@ -241,7 +243,7 @@ export const fetchCalendarCounts = async (year, month, workPlaceIdx = null) => {
 // 일별 스케줄 조회
 export const fetchDailySchedule = async (dateStr, workPlaceIdx = null) => {
   try {
-    let url = `/api/work-apply-work/daily?date=${dateStr}`;
+    let url = `/api/work-schedule/daily?date=${dateStr}`;
     if (workPlaceIdx) url += `&workPlaceIdx=${workPlaceIdx}`;
     const response = await globalApiClient.get(url);
     return { success: true, data: response.data };
@@ -251,11 +253,46 @@ export const fetchDailySchedule = async (dateStr, workPlaceIdx = null) => {
   }
 };
 
-// 근무 신청 등록
-export const createWorkRequest = async (requestData) => {
+// 근무 기록 엑셀 대조 (업로드)
+export const compareWorkRecordExcel = async (file) => {
   try {
-    const response = await globalApiClient.post('/api/work-apply-work', requestData);
-    // 신청 등록 시 캐시 무효화
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await globalApiClient.post('/api/work-record/excel-compare', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '엑셀 대조 및 업로드에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 배열 구조 스케줄 등록/수정 (통합) - 관리자 전용
+export const saveWorkSchedules = async (requestDataArray, startDate, endDate, workPlaceIdx) => {
+  try {
+    const response = await globalApiClient.post('/api/work-schedule/schedule', requestDataArray, {
+      params: { startDate, endDate, workPlaceIdx }
+    });
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '스케줄 저장에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 알바생 근무 신청/수정 - POST /api/work-schedule/apply
+export const saveWorkApply = async (startDate, endDate, applyDataArray) => {
+  try {
+    const response = await globalApiClient.post(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}`, applyDataArray);
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
         sessionStorage.removeItem(key);
@@ -268,78 +305,6 @@ export const createWorkRequest = async (requestData) => {
   }
 };
 
-// 알바생 근무 신청 등록 (신청 전용 엔드포인트)
-export const createWorkApply = async (requestData) => {
-  try {
-    const response = await globalApiClient.post('/api/work-apply', requestData);
-    // 신청 등록 시 캐시 무효화
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-    return { success: true, data: response.data };
-  } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청에 실패했습니다.';
-    return { success: false, error: errMsg };
-  }
-};
-
-// 단일 근무 신청 조회
-export const fetchWorkRequestById = async (wawIdx) => {
-  try {
-    const response = await globalApiClient.get(`/api/work-apply-work/${wawIdx}`);
-    return { success: true, data: response.data };
-  } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '신청 내역을 불러오는데 실패했습니다.';
-    return { success: false, error: errMsg };
-  }
-};
-
-// 알바생 신청 원본 단건 조회 (수정 화면용)
-export const fetchWorkApplyById = async (waIdx) => {
-  try {
-    const response = await globalApiClient.get(`/api/work-apply/${waIdx}`);
-    return { success: true, data: response.data };
-  } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '신청 내역을 불러오는데 실패했습니다.';
-    return { success: false, error: errMsg };
-  }
-};
-
-// 근무 신청 수정
-export const updateWorkRequest = async (wawIdx, requestData) => {
-  try {
-    const response = await globalApiClient.put(`/api/work-apply-work/${wawIdx}`, requestData);
-    // 신청 수정 시 캐시 무효화
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-    return { success: true, data: response.data };
-  } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청 수정에 실패했습니다.';
-    return { success: false, error: errMsg };
-  }
-};
-
-// 알바생 근무 신청 수정 (신청 전용 엔드포인트)
-export const updateWorkApply = async (wawIdx, requestData) => {
-  try {
-    const response = await globalApiClient.put(`/api/work-apply/${wawIdx}`, requestData);
-    // 신청 수정 시 캐시 무효화
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-    return { success: true, data: response.data };
-  } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청 수정에 실패했습니다.';
-    return { success: false, error: errMsg };
-  }
-};
 
 // 근무 기록 엑셀 다운로드
 export const downloadWorkRecordExcel = async (year, month, workPlaceIdx) => {

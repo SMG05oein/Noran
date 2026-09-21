@@ -22,7 +22,7 @@ const Main = () => {
     const skipCache = !!newMonth;
     const targetDate = newMonth || viewMonth;
     if (newMonth) setViewMonth(newMonth);
-    
+
     setLoading(true);
     try {
       // 달력의 이전 달/다음 달 며칠(Spillover)도 완벽히 커버하기 위해 앞뒤 달도 함께 조회
@@ -40,7 +40,7 @@ const Main = () => {
       if (prevRes.success) mergedRecords = mergedRecords.concat(prevRes.data?.content || prevRes.data || []);
       if (currRes.success) mergedRecords = mergedRecords.concat(currRes.data?.content || currRes.data || []);
       if (nextRes.success) mergedRecords = mergedRecords.concat(nextRes.data?.content || nextRes.data || []);
-      
+
       setWorkRecords(mergedRecords);
 
       if (reqRes.success) {
@@ -121,7 +121,7 @@ const Main = () => {
 
   const calendarRecords = useMemo(() => {
     const combined = [];
-    
+
     // 1. 근무 기록 매핑 (실제 출근한 날)
     (workRecords || []).forEach(r => {
       if (r.wrDate) {
@@ -130,39 +130,27 @@ const Main = () => {
         combined.push({
           date: parseDateString(r.wrDate),
           status: 'WORKED',
-          startTime: st ? `${String(st.hour).padStart(2,'0')}:${String(st.minute).padStart(2,'0')}` : null,
-          endTime: et ? `${String(et.hour).padStart(2,'0')}:${String(et.minute).padStart(2,'0')}` : null
+          startTime: st ? `${String(st.hour).padStart(2, '0')}:${String(st.minute).padStart(2, '0')}` : null,
+          endTime: et ? `${String(et.hour).padStart(2, '0')}:${String(et.minute).padStart(2, '0')}` : null
         });
       }
     });
 
-    // 2. 근무 신청 및 배정 매핑 (각 요일별로 쪼개서 표시)
+    // 2. 근무 신청 및 배정 매핑 (단일 날짜 형식 대응)
     (workRequests || []).forEach(r => {
-      if (r.wawDate) {
-        const monday = parseDateString(r.wawDate);
-        const dayEntries = [
-          { offset: 0, status: r.wawIsMon, time: r.wawMonStartTime, wpName: r.wawMonWorkPlaceName },
-          { offset: 1, status: r.wawIsTue, time: r.wawTueStartTime, wpName: r.wawTueWorkPlaceName },
-          { offset: 2, status: r.wawIsWed, time: r.wawWedStartTime, wpName: r.wawWedWorkPlaceName },
-          { offset: 3, status: r.wawIsThu, time: r.wawThuStartTime, wpName: r.wawThuWorkPlaceName },
-          { offset: 4, status: r.wawIsFri, time: r.wawFriStartTime, wpName: r.wawFriWorkPlaceName },
-          { offset: 5, status: r.wawIsSat, time: r.wawSatStartTime, wpName: r.wawSatWorkPlaceName },
-          { offset: 6, status: r.wawIsSun, time: r.wawSunStartTime, wpName: r.wawSunWorkPlaceName },
-        ];
-
-        dayEntries.forEach(d => {
-          const targetDate = addDays(monday, d.offset);
-          if (d.status === '배정' || d.status === '타지점근무') {
-            const hasWorked = combined.some(c => c.status === 'WORKED' && isSameDay(c.date, targetDate));
-            if (!hasWorked) {
-              if (isBefore(targetDate, startOfDay(new Date()))) {
-                combined.push({ date: targetDate, status: 'MISSING', time: d.time, wpName: d.wpName });
-              } else {
-                combined.push({ date: targetDate, status: 'APPROVED', time: d.time, wpName: d.wpName });
-              }
+      if (r.date) {
+        const targetDate = parseDateString(r.date);
+        if (r.wsdStatus === '배정' || r.wsdStatus === '타지점근무') {
+          if (r.wsdIsConfirmed !== true) return;
+          const hasWorked = combined.some(c => c.status === 'WORKED' && isSameDay(c.date, targetDate));
+          if (!hasWorked) {
+            if (isBefore(targetDate, startOfDay(new Date()))) {
+              combined.push({ date: targetDate, status: 'MISSING', time: r.wsdStartTime, wpName: r.wsdWorkPlaceName });
+            } else {
+              combined.push({ date: targetDate, status: 'APPROVED', time: r.wsdStartTime, wpName: r.wsdWorkPlaceName });
             }
           }
-        });
+        }
       }
     });
 
@@ -175,86 +163,106 @@ const Main = () => {
     <div className="main-container">
       <Container className="py-4 py-md-5">
         {loading ? <Loading /> : <>
-        {/* 상단 웰컴 & 오늘의 근무 상태 배너 */}
-        <div className="worker-hero-card">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <Badge bg="secondary" className="px-3 py-1 fw-bold d-inline-flex align-items-center gap-1">
-                  <RiStore2Line /> {actualBranchName}
-                </Badge>
-                {user?.userType && (
-                  <Badge bg="primary" className="px-2 py-1">
-                    {user.userType}
+          <div className="worker-hero-card">
+            <div className="d-flex justify-content-between align-items-end gap-3">
+              <div style={{ flex: '1 1 0%', minWidth: 0 }}>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <Badge bg="secondary" className="px-3 py-1 fw-bold d-inline-flex align-items-center gap-1 rounded-pill shadow-sm">
+                    <RiStore2Line /> {actualBranchName}
                   </Badge>
-                )}
-              </div>
-              <h3 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                안녕하세요, {user?.name || '직원'}님!
-              </h3>
-              <p className="text-muted mb-0 small">
-                오늘도 {actualBranchName}에서 안전하고 즐거운 하루 보내세요.
-              </p>
-            </div>
-
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              {todayRecord ? (
-                <div className="today-status-badge bg-success text-white shadow-xs">
-                  <RiCalendarCheckLine size={18} />
-                  <span>오늘 근무 완료</span>
+                  {user?.userType && (
+                    <Badge bg="primary" className="px-2 py-1 rounded-pill shadow-sm">
+                      {user.userType}
+                    </Badge>
+                  )}
                 </div>
-              ) : (
-                <Button 
-                  variant="primary" 
-                  className="quick-action-btn"
-                  onClick={() => navigate('/records')}
+                <h3 className="worker-hero-title mb-1 text-truncate">
+                  안녕하세요, <span className="text-primary">{user?.name || '직원'}</span>님!
+                </h3>
+                <p className="text-muted mb-0 small fw-semibold text-truncate">
+                  {todayRecord
+                    ? '✨ 오늘 근무가 기록되었습니다.'
+                    : `💪 오늘도 활기찬 하루 보내세요!`}
+                </p>
+              </div>
+
+              <div className="d-flex align-items-center gap-2" style={{ flexShrink: 0 }}>
+                {todayRecord ? (
+                  <div className="today-status-badge shadow-sm">
+                    <RiCalendarCheckLine size={18} />
+                    <span className="d-none d-sm-inline ms-1">근무 완료</span>
+                    <span className="d-inline d-sm-none ms-1">완료</span>
+                  </div>
+                ) : (
+                  <Button
+                    variant="primary"
+                    className="quick-action-btn shadow-sm"
+                    onClick={() => navigate('/records')}
+                  >
+                    <RiAddLine size={20} />
+                    <span className="d-none d-sm-inline ms-1">근무 기록하기</span>
+                    <span className="d-inline d-sm-none ms-1">기록</span>
+                  </Button>
+                )}
+                <Button
+                  variant="outline-secondary"
+                  className="quick-action-btn shadow-sm d-none d-md-inline-flex"
+                  onClick={() => navigate('/requests')}
                 >
-                  <RiAddLine size={18} />
-                  <span>근무 기록하기</span>
+                  <RiCalendarCheckLine size={18} className="me-1" />
+                  <span>근무 신청</span>
                 </Button>
-              )}
-              <Button 
-                variant="outline-secondary" 
-                className="quick-action-btn"
-                onClick={() => navigate('/requests')}
-              >
-                <RiCalendarCheckLine size={18} />
-                <span>근무 신청</span>
-              </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* 월간 근무 요약 지표 카드 (근무일, 총 근무시간 2개) */}
-        <Row className="g-3 mb-4">
-          <Col xs={6}>
-            <div className="worker-stat-card">
-              <div className="stat-label">
-                <RiCalendarCheckLine className="text-primary" /> {viewMonth.getMonth() + 1}월 근무일
-              </div>
-              <div className="stat-value text-primary">
-                {thisMonthDays}<span className="stat-unit">일</span>
+          {user?.userHourlyWage != null && (
+            <div className="worker-pay-card">
+              <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <div className="stat-label mb-1">{viewMonth.getMonth() + 1}월 예상 급여</div>
+                  <div className="worker-pay-value">
+                    {Math.floor(user.userHourlyWage * thisMonthHours * 0.967).toLocaleString()}
+                    <span className="stat-unit">원</span>
+                  </div>
+                  <div className="small text-muted mt-2">
+                    시급 {Number(user.userHourlyWage).toLocaleString()}원 × {thisMonthHours.toFixed(1)}시간 − 3.3%
+                  </div>
+                </div>
+                <span className="worker-pay-note">실제 급여와 다를 수 있습니다</span>
               </div>
             </div>
-          </Col>
-          <Col xs={6}>
-            <div className="worker-stat-card">
-              <div className="stat-label">
-                <RiTimeLine className="text-success" />{viewMonth.getMonth() + 1}월 근무시간
-              </div>
-              <div className="stat-value text-success">
-                {thisMonthHours.toFixed(1)}<span className="stat-unit">시간</span>
-              </div>
-            </div>
-          </Col>
-        </Row>
+          )}
 
-        {/* 메인 캘린더 단독 전체 폭 배치 */}
-        <Row>
-          <Col xs={12}>
-            <WorkCalendar mockRecords={calendarRecords} onMonthChange={loadData} initialMonth={viewMonth} />
-          </Col>
-        </Row>
+          <Row className="g-3 mb-4">
+            <Col xs={6}>
+              <div className="worker-stat-card">
+                <div className="stat-label">
+                  <RiCalendarCheckLine /> {viewMonth.getMonth() + 1}월 근무일
+                </div>
+                <div className="stat-value">
+                  {thisMonthDays}<span className="stat-unit">일</span>
+                </div>
+              </div>
+            </Col>
+            <Col xs={6}>
+              <div className="worker-stat-card">
+                <div className="stat-label">
+                  <RiTimeLine /> {viewMonth.getMonth() + 1}월 근무시간
+                </div>
+                <div className="stat-value">
+                  {thisMonthHours.toFixed(1)}<span className="stat-unit">시간</span>
+                </div>
+              </div>
+            </Col>
+          </Row>
+
+          {/* 메인 캘린더 단독 전체 폭 배치 */}
+          <Row>
+            <Col xs={12}>
+              <WorkCalendar mockRecords={calendarRecords} onMonthChange={loadData} initialMonth={viewMonth} />
+            </Col>
+          </Row>
         </>}
       </Container>
     </div>

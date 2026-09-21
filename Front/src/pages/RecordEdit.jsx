@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Spinner, Card } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchWorkRecordById, updateWorkRecord } from '../api/workApi';
+import { fetchWorkPlaces } from '../api/authApi';
 import useAuthStore from '../store/useAuthStore';
 import { RiArrowLeftSLine, RiSave3Line } from 'react-icons/ri';
 import Loading from '../components/Loading';
 
 const RecordEdit = () => {
-  const { id } = useParams();
+  const location = useLocation();
+  const id = location.state?.id;
   const navigate = useNavigate();
   const { user } = useAuthStore();
   
@@ -20,7 +22,9 @@ const RecordEdit = () => {
   const [restHour, setRestHour] = useState('00');
   const [restMin, setRestMin] = useState('00');
   const [remarks, setRemarks] = useState('');
-  
+  const [workPlaceIdx, setWorkPlaceIdx] = useState(String(user?.workPlaceIdx || ''));
+  const [branches, setBranches] = useState([]);
+
   const parseLocalTime = (time) => {
     if (!time) return { hour: 0, minute: 0 };
     if (typeof time === 'string') {
@@ -34,9 +38,14 @@ const RecordEdit = () => {
   };
 
   useEffect(() => {
+    if (!id) {
+      alert('잘못된 접근입니다.');
+      navigate('/records');
+      return;
+    }
     const loadRecord = async () => {
       const res = await fetchWorkRecordById(id);
-      if (res.success && res.data) {
+    if (res.success && res.data) {
         setRecDate(res.data.wrDate || '');
         const st = parseLocalTime(res.data.wrStartTime);
         const et = parseLocalTime(res.data.wrEndTime);
@@ -48,6 +57,11 @@ const RecordEdit = () => {
         setRestHour(String(rt.hour).padStart(2, '0'));
         setRestMin(String(rt.minute).padStart(2, '0'));
         setRemarks(res.data.wrRemarks || '');
+        if (res.data.workPlaceIdx) {
+          setWorkPlaceIdx(String(res.data.workPlaceIdx));
+        } else if (user?.workPlaceIdx) {
+          setWorkPlaceIdx(String(user.workPlaceIdx));
+        }
       } else {
         alert(res.error || '기록을 불러오는데 실패했습니다.');
         navigate('/records');
@@ -56,6 +70,14 @@ const RecordEdit = () => {
     };
     loadRecord();
   }, [id, navigate]);
+
+  useEffect(() => {
+    fetchWorkPlaces().then(res => {
+      if (res.success && res.data) {
+        setBranches(res.data);
+      }
+    });
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -81,7 +103,8 @@ const RecordEdit = () => {
       wrEndTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`,
       wrRestTime: `${String(restHour).padStart(2, '0')}:${String(restMin).padStart(2, '0')}`,
       wrRemarks: remarks,
-      userIdx: user?.userIdx || 1
+      userIdx: user?.userIdx || 1,
+      workPlaceIdx: workPlaceIdx || user?.workPlaceIdx
     };
 
     const res = await updateWorkRecord(id, recordData);
@@ -112,6 +135,16 @@ const RecordEdit = () => {
         <Card.Body>
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
+              <div>수정 가능 일자: </div>
+              <Form.Label className="fw-bold text-muted small">근무지</Form.Label>
+              <Form.Select value={workPlaceIdx} onChange={e => setWorkPlaceIdx(e.target.value)} className="custom-input">
+                {branches.map(b => (
+                  <option key={b.wpIdx} value={String(b.wpIdx)}>{b.wpName}{String(b.wpIdx) === String(user?.workPlaceIdx) ? ' (내 지점)' : ''}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">근무 일자</Form.Label>
               <Form.Control 
                 type="date" 
@@ -122,7 +155,7 @@ const RecordEdit = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">시작 시간</Form.Label>
+              <Form.Label className="fw-bold text-muted small">출근 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
                 <Form.Select 
                   value={startHour} 
@@ -147,7 +180,7 @@ const RecordEdit = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">종료 시간</Form.Label>
+              <Form.Label className="fw-bold text-muted small">퇴근 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
                 <Form.Select 
                   value={endHour} 

@@ -1,5 +1,7 @@
 package com.recode.Dwaeji.developer.dto;
 
+import lombok.Builder;
+
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +12,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class MaintenanceToggleRequestDto {
 
     @NotNull(message = "점검 모드 설정 값(enabled)은 필수입니다.")

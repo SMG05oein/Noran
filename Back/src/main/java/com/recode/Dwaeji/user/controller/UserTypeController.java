@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,8 +24,10 @@ public class UserTypeController {
 
     @Operation(summary = "직급 생성")
     @PostMapping
-    public ResponseEntity<UserTypeDto> createUserType(@Valid @RequestBody UserTypeRequestDto requestDto) {
-        return ResponseEntity.ok(userTypeService.createUserType(requestDto));
+    public ResponseEntity<UserTypeDto> createUserType(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody UserTypeRequestDto requestDto) {
+        return ResponseEntity.ok(userTypeService.createUserType(userDetails.getUsername(), requestDto));
     }
 
     @Operation(summary = "전체 직급 조회")
@@ -41,15 +45,18 @@ public class UserTypeController {
     @Operation(summary = "직급 수정")
     @PutMapping("/{utIdx}")
     public ResponseEntity<UserTypeDto> updateUserType(
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long utIdx,
             @Valid @RequestBody UserTypeRequestDto requestDto) {
-        return ResponseEntity.ok(userTypeService.updateUserType(utIdx, requestDto));
+        return ResponseEntity.ok(userTypeService.updateUserType(userDetails.getUsername(), utIdx, requestDto));
     }
 
     @Operation(summary = "직급 삭제")
     @DeleteMapping("/{utIdx}")
-    public ResponseEntity<Void> deleteUserType(@PathVariable Long utIdx) {
-        userTypeService.deleteUserType(utIdx);
+    public ResponseEntity<Void> deleteUserType(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long utIdx) {
+        userTypeService.deleteUserType(userDetails.getUsername(), utIdx);
         return ResponseEntity.noContent().build();
     }
 }

@@ -4,6 +4,8 @@ import com.recode.Dwaeji.common.dto.ErrorResponseDto;
 import com.recode.Dwaeji.developer.service.SystemMonitorService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -17,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final SystemMonitorService systemMonitorService;
 
     private String getClientIp(HttpServletRequest request) {
@@ -63,6 +66,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ex.getStatusCode())
                 .body(new ErrorResponseDto(ex.getStatusCode().value(), errorName, ex.getReason()));
+    }
+
+    // 필수 요청 파라미터 누락 예외 처리 (400)
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponseDto> handleMissingServletRequestParameterException(org.springframework.web.bind.MissingServletRequestParameterException ex, HttpServletRequest request) {
+        systemMonitorService.addErrorLog(
+                ex.getMessage(), 
+                "MissingServletRequestParameterException", 
+                request.getRequestURL().toString(), 
+                request.getRequestURI(), 
+                getAuthIdentifier(), 
+                HttpStatus.BAD_REQUEST.value(),
+                getReferer(request),
+                getClientIp(request)
+        );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDto(
+                        HttpStatus.BAD_REQUEST.value(), 
+                        HttpStatus.BAD_REQUEST.getReasonPhrase(), 
+                        "필수 요청 파라미터가 누락되었습니다: " + ex.getParameterName()
+                ));
     }
 
     // JSON 파싱 에러(잘못된 날짜/시간 형식 등)를 잡아냅니다.
@@ -128,6 +153,8 @@ public class GlobalExceptionHandler {
                 getReferer(request),
                 getClientIp(request)
         );
+        
+        log.error("[500 Internal Error] {} - {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
         
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)

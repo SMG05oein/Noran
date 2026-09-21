@@ -1,37 +1,121 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Card, Form, Button, Badge, Modal, Table } from 'react-bootstrap';
-import { format, startOfWeek, addDays, subMonths } from 'date-fns';
-import { RiCalendarTodoLine, RiFileList3Line, RiCheckboxCircleLine, RiEyeLine, RiTimeLine } from 'react-icons/ri';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Container, Card, Form, Button, Modal, Table } from 'react-bootstrap';
+import { format, startOfWeek, addDays, subMonths, parseISO, getDay } from 'date-fns';
+import { isHoliday } from 'holiday-kr';
+import { RiFileList3Line, RiEyeLine, RiAddLine, RiDeleteBinLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { getMonthlyWorkApplyWorks, createWorkApply } from '../api/workApi';
+import { getMonthlyWorkApplyWorks, saveWorkApply } from '../api/workApi';
+import { fetchWorkPlaces } from '../api/authApi';
 import './Main.css';
 import Loading from '../components/Loading';
 
+const DAY_LABELS = { 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토', 0: '일' };
+const DAYS_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const DAY_CONFIG = [
-  { key: 'wawIsMon', applyKey: 'waIsMon', name: '월', offset: 0, timeKey: 'wawMonStartTime', wpNameKey: 'wawMonWorkPlaceName', wpIdxKey: 'wawMonWorkPlaceIdx', isSun: false, isSat: false },
-  { key: 'wawIsTue', applyKey: 'waIsTue', name: '화', offset: 1, timeKey: 'wawTueStartTime', wpNameKey: 'wawTueWorkPlaceName', wpIdxKey: 'wawTueWorkPlaceIdx', isSun: false, isSat: false },
-  { key: 'wawIsWed', applyKey: 'waIsWed', name: '수', offset: 2, timeKey: 'wawWedStartTime', wpNameKey: 'wawWedWorkPlaceName', wpIdxKey: 'wawWedWorkPlaceIdx', isSun: false, isSat: false },
-  { key: 'wawIsThu', applyKey: 'waIsThu', name: '목', offset: 3, timeKey: 'wawThuStartTime', wpNameKey: 'wawThuWorkPlaceName', wpIdxKey: 'wawThuWorkPlaceIdx', isSun: false, isSat: false },
-  { key: 'wawIsFri', applyKey: 'waIsFri', name: '금', offset: 4, timeKey: 'wawFriStartTime', wpNameKey: 'wawFriWorkPlaceName', wpIdxKey: 'wawFriWorkPlaceIdx', isSun: false, isSat: false },
-  { key: 'wawIsSat', applyKey: 'waIsSat', name: '토', offset: 5, timeKey: 'wawSatStartTime', wpNameKey: 'wawSatWorkPlaceName', wpIdxKey: 'wawSatWorkPlaceIdx', isSun: false, isSat: true },
-  { key: 'wawIsSun', applyKey: 'waIsSun', name: '일', offset: 6, timeKey: 'wawSunStartTime', wpNameKey: 'wawSunWorkPlaceName', wpIdxKey: 'wawSunWorkPlaceIdx', isSun: true, isSat: false },
-];
+const cycleDayState = (block, day) => {
+  const applied = block.days[day];
+  const isOpen = block.openShift[day];
+  if (!applied) {
+    return {
+      days: { ...block.days, [day]: true },
+      openShift: { ...block.openShift, [day]: false }
+    };
+  }
+  if (!isOpen) {
+    return {
+      days: block.days,
+      openShift: { ...block.openShift, [day]: true }
+    };
+  }
+  return {
+    days: { ...block.days, [day]: false },
+    openShift: { ...block.openShift, [day]: false }
+  };
+};
+
+const PlaceChips = ({ workPlaces, value, onChange }) => (
+  <div className="req-place-chips">
+    {workPlaces.map(wp => {
+      const selected = String(value) === String(wp.wpIdx);
+      return (
+        <button
+          key={wp.wpIdx}
+          type="button"
+          className={`req-place-chip${selected ? ' selected' : ''}`}
+          onClick={() => onChange(wp.wpIdx)}
+        >
+          {wp.wpName}
+        </button>
+      );
+    })}
+  </div>
+);
+
+const ApplyWeekGrid = ({ monday, block, onCycleDay }) => (
+  <div className="req-week-scroll">
+    <div className="req-week-grid">
+      {DAYS_ORDER.map((day, i) => {
+        const date = addDays(monday, i);
+        const dayNum = getDay(date);
+        const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
+        const isSat = dayNum === 6 && !isHoly;
+        const applied = block.days[day];
+        const isOpen = applied && block.openShift[day];
+        const cellState = !applied ? 'off' : isOpen ? 'open' : 'applied';
+        const label = !applied ? '—' : isOpen ? '오픈' : '신청';
+        return (
+          <div key={day} className="req-week-day">
+            <div className={`req-week-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
+              {DAY_LABELS[dayNum]}
+            </div>
+            <div className="req-week-day-date">{format(date, 'd')}</div>
+            <button type="button" className={`req-day-cell ${cellState}`} onClick={() => onCycleDay(day)}>
+              {label}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const isPublicAssignment = (s) =>
+  (s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') && s?.wsdIsConfirmed === true;
+
+const toDateStr = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value.split('T')[0];
+  if (Array.isArray(value) && value.length >= 3) {
+    return `${value[0]}-${String(value[1]).padStart(2, '0')}-${String(value[2]).padStart(2, '0')}`;
+  }
+  return String(value);
+};
+
+const displayStatusLabel = (s) => {
+  if (isPublicAssignment(s) || s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') return '출근';
+  return s?.wsdStatus || '';
+};
 
 const Requests = () => {
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
 
-  // 기본 신청일을 '다음 주 월요일'로 설정
-  const defaultNextMonday = format(startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-  const [reqDate, setReqDate] = useState(defaultNextMonday);
+  const nextMonday = startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 });
+  const nextSunday = addDays(nextMonday, 6);
+  const reqDate = format(nextMonday, 'yyyy-MM-dd');
+  const weekRangeLabel = `${format(nextMonday, 'M/d')} – ${format(nextSunday, 'M/d')}`;
 
-  const [remarks, setRemarks] = useState('');
-
-  const [days, setDays] = useState({
-    Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false
+  const defaultBlock = (id) => ({
+    id,
+    workPlaceIdx: user?.workPlaceIdx || '',
+    days: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
+    openShift: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
+    remarks: ''
   });
+
+  const [requestBlocks, setRequestBlocks] = useState([defaultBlock(Date.now())]);
+  const [workPlaces, setWorkPlaces] = useState([]);
 
   const [requestList, setRequestList] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -39,6 +123,18 @@ const Requests = () => {
   const [viewingRequest, setViewingRequest] = useState(null);
 
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+
+  const [editTarget, setEditTarget] = useState(null);
+  const [editBlocks, setEditBlocks] = useState([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const [globalRemarks, setGlobalRemarks] = useState('');
+  const [editGlobalRemarks, setEditGlobalRemarks] = useState('');
+
+  useEffect(() => {
+    fetchWorkPlaces(true).then(res => {
+      if (res.success) setWorkPlaces(res.data);
+    });
+  }, []);
 
   const loadRequests = async (monthStr) => {
     setDataLoading(true);
@@ -57,135 +153,280 @@ const Requests = () => {
     loadRequests(selectedMonth);
   }, [selectedMonth]);
 
-  const handleDayToggle = (day) => {
-    setDays(prev => ({ ...prev, [day]: !prev[day] }));
+  const handleAddBlock = () => {
+    setRequestBlocks(prev => [...prev, defaultBlock(Date.now())]);
   };
 
-  const handleSelectAll = () => {
-    setDays({ Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: true, Sun: true });
+  const handleRemoveBlock = (id) => {
+    if (requestBlocks.length <= 1) return;
+    setRequestBlocks(prev => prev.filter(b => b.id !== id));
   };
 
-  const handleWeekdaysOnly = () => {
-    setDays({ Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false });
+  const updateBlock = (id, field, value) => {
+    setRequestBlocks(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b));
   };
 
-  const handleWeekendsOnly = () => {
-    setDays({ Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: true, Sun: true });
+  const cycleBlockDay = (id, day) => {
+    setRequestBlocks(prev => prev.map(b => {
+      if (b.id !== id) return b;
+      return { ...b, ...cycleDayState(b, day) };
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!Object.values(days).some(v => v)) {
-      alert('신청할 요일을 하나 이상 선택해주세요.');
+    const hasAnyDay = requestBlocks.some(b => Object.values(b.days).some(v => v));
+    if (!hasAnyDay) {
+      alert('신청할 요일을 최소 하나 이상 선택해주세요.');
       return;
     }
 
     setLoading(true);
-    const mondayDate = format(startOfWeek(new Date(reqDate), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const mondayDateObj = startOfWeek(new Date(reqDate), { weekStartsOn: 1 });
+    const sundayDateObj = addDays(mondayDateObj, 6);
+    const startDateStr = format(mondayDateObj, 'yyyy-MM-dd');
+    const endDateStr = format(sundayDateObj, 'yyyy-MM-dd');
 
-    const requestData = {
-      wawDate: mondayDate,
-      wawIsMon: days.Mon ? '신청' : '미신청',
-      wawIsTue: days.Tue ? '신청' : '미신청',
-      wawIsWed: days.Wed ? '신청' : '미신청',
-      wawIsThu: days.Thu ? '신청' : '미신청',
-      wawIsFri: days.Fri ? '신청' : '미신청',
-      wawIsSat: days.Sat ? '신청' : '미신청',
-      wawIsSun: days.Sun ? '신청' : '미신청',
-      wawRemarks: remarks
-    };
+    const requestData = [];
 
-    const res = await createWorkApply(requestData);
-    setLoading(false);
+    requestBlocks.forEach(block => {
+      // Group dates by openApplied for each block
+      const openTrueDates = [];
+      const openFalseDates = [];
 
-    if (res.success) {
-      alert('근무 신청이 완료되었습니다.');
-      setDays({ Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false });
-      setRemarks('');
-      loadRequests(selectedMonth);
-    } else {
-      alert(res.error || '근무 신청에 실패했습니다.');
+      DAYS_ORDER.forEach((dayKey, idx) => {
+        if (block.days[dayKey]) {
+          const dStr = format(addDays(mondayDateObj, idx), 'yyyy-MM-dd');
+          if (block.openShift[dayKey]) {
+            openTrueDates.push(dStr);
+          } else {
+            openFalseDates.push(dStr);
+          }
+        }
+      });
+
+      if (openTrueDates.length > 0) {
+        requestData.push({
+          workPlaceIdx: Number(block.workPlaceIdx),
+          remarks: globalRemarks,
+          openApplied: true,
+          applyDates: openTrueDates
+        });
+      }
+      if (openFalseDates.length > 0) {
+        requestData.push({
+          workPlaceIdx: Number(block.workPlaceIdx),
+          remarks: globalRemarks,
+          openApplied: false,
+          applyDates: openFalseDates
+        });
+      }
+    });
+
+    try {
+      const res = await saveWorkApply(startDateStr, endDateStr, requestData);
+      setLoading(false);
+      if (res.success) {
+        alert('근무 신청이 완료되었습니다.');
+        setRequestBlocks([defaultBlock(Date.now())]);
+        setGlobalRemarks('');
+        loadRequests(selectedMonth);
+      } else {
+        alert(res.error || '근무 신청에 실패했습니다.');
+      }
+    } catch (err) {
+      setLoading(false);
+      alert('근무 신청 중 오류가 발생했습니다.');
     }
   };
 
-  const dayLabels = { Mon: '월', Tue: '화', Wed: '수', Thu: '목', Fri: '금', Sat: '토', Sun: '일' };
+  const weeklyGroups = useMemo(() => {
+    const groups = {};
+    requestList.forEach(sch => {
+      if (sch.wsdStatus === '미신청') return;
+      const d = parseISO(sch.date);
+      const monDate = format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      if (!groups[monDate]) groups[monDate] = [];
+      groups[monDate].push(sch);
+    });
+    return Object.entries(groups).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+  }, [requestList]);
 
-  const formatDateTime = (dt) => {
-    if (!dt) return '-';
-    if (Array.isArray(dt)) {
-      return `${dt[0]}-${String(dt[1]).padStart(2, '0')}-${String(dt[2]).padStart(2, '0')} ${String(dt[3] || 0).padStart(2, '0')}:${String(dt[4] || 0).padStart(2, '0')}`;
+  const displayOpenTime = (s, dateObj) => {
+    const isHoli = isHoliday(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate());
+    if (s.wsdStartTime === '오픈' || s.isOpen === true || s.openApplied === true || s.wsdIsOpen === true) {
+      const d = getDay(dateObj);
+      return (d === 0 || d === 6 || isHoli) ? '10:00 (오픈)' : '16:00 (오픈)';
     }
-    return new Date(dt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return s.wsdStartTime ? `${String(s.wsdStartTime).substring(0, 5)} 출근` : '';
+  };
+
+  const handleOpenEdit = (monDate, weekSchs) => {
+    const hasConfirmed = weekSchs.some(isPublicAssignment);
+    if (hasConfirmed) {
+      alert('이미 배정이 확정된 주차는 수정할 수 없습니다.');
+      return;
+    }
+
+    // Group existing requests by workPlaceIdx to recreate blocks
+    const branchGroups = {};
+    weekSchs.forEach(s => {
+      // 신청 당시 선택한 지점 정보를 최우선으로 사용하여 블록을 분리합니다.
+      const wpIdx = s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx || user?.workPlaceIdx;
+      if (!branchGroups[wpIdx]) {
+        branchGroups[wpIdx] = {
+          id: Math.random(),
+          workPlaceIdx: wpIdx,
+          days: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
+          openShift: { Mon: false, Tue: false, Wed: false, Thu: false, Fri: false, Sat: false, Sun: false },
+          remarks: s.wsdRemarks || ''
+        };
+      }
+      const dayOfWeek = getDay(parseISO(s.date));
+      const key = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek];
+      if (key) {
+        branchGroups[wpIdx].days[key] = true;
+        branchGroups[wpIdx].openShift[key] = s.wsdStartTime === '오픈' || s.isOpen === true || s.openApplied === true || s.wsdIsOpen === true;
+      }
+    });
+
+    setEditBlocks(Object.values(branchGroups).length > 0 ? Object.values(branchGroups) : [defaultBlock(Date.now())]);
+    const existingRemark = weekSchs.find(s => s.wsdRemarks || s.remarks)?.wsdRemarks || weekSchs.find(s => s.wsdRemarks || s.remarks)?.remarks || '';
+    setEditGlobalRemarks(existingRemark);
+    setEditTarget({ monDate, weekSchs });
+  };
+
+  const cycleEditBlockDay = (id, day) => {
+    setEditBlocks(prev => prev.map(b => {
+      if (b.id !== id) return b;
+      return { ...b, ...cycleDayState(b, day) };
+    }));
+  };
+
+  const handleEditSubmit = async () => {
+    const hasAnyDay = editBlocks.some(b => Object.values(b.days).some(v => v));
+    if (!hasAnyDay) {
+      alert('신청할 요일을 하나 이상 선택해주세요.');
+      return;
+    }
+    setEditLoading(true);
+    const mondayDateObj = parseISO(editTarget.monDate);
+    const sundayDateObj = addDays(mondayDateObj, 6);
+    const startDateStr = format(mondayDateObj, 'yyyy-MM-dd');
+    const endDateStr = format(sundayDateObj, 'yyyy-MM-dd');
+
+    const requestData = [];
+    editBlocks.forEach(block => {
+      const openTrueDates = [];
+      const openFalseDates = [];
+
+      DAYS_ORDER.forEach((dayKey, idx) => {
+        if (block.days[dayKey]) {
+          const dStr = format(addDays(mondayDateObj, idx), 'yyyy-MM-dd');
+          if (block.openShift[dayKey]) {
+            openTrueDates.push(dStr);
+          } else {
+            openFalseDates.push(dStr);
+          }
+        }
+      });
+
+      if (openTrueDates.length > 0) {
+        requestData.push({
+          workPlaceIdx: Number(block.workPlaceIdx),
+          remarks: editGlobalRemarks,
+          openApplied: true,
+          applyDates: openTrueDates
+        });
+      }
+      if (openFalseDates.length > 0) {
+        requestData.push({
+          workPlaceIdx: Number(block.workPlaceIdx),
+          remarks: editGlobalRemarks,
+          openApplied: false,
+          applyDates: openFalseDates
+        });
+      }
+    });
+
+    try {
+      const res = await saveWorkApply(startDateStr, endDateStr, requestData);
+      setEditLoading(false);
+      if (res.success) {
+        alert('근무 신청이 수정되었습니다.');
+        setEditTarget(null);
+        loadRequests(selectedMonth);
+      } else {
+        alert(res.error || '수정에 실패했습니다.');
+      }
+    } catch (err) {
+      setEditLoading(false);
+      alert('수정 중 오류가 발생했습니다.');
+    }
   };
 
   return (
     <Container className="py-4 py-md-5 mb-5">
       <div className="mb-4">
         <h2 className="fw-bold text-dark mb-1">근무 신청</h2>
-        <p className="text-muted small mb-0">희망하는 근무 요일을 선택하여 신청서를 제출합니다.</p>
+        <p className="text-muted small mb-0">칸을 눌러 신청하고, 한 번 더 누르면 오픈입니다.</p>
       </div>
 
-      <Card className="border-0 shadow-sm rounded-4 mb-5">
+      <Card className="req-apply-card border-0 shadow-sm mb-5">
         <Card.Body className="p-4 p-md-5">
-          <div className="d-flex align-items-center gap-2 mb-4 fw-bold fs-5" style={{ color: '#A85A47' }}>
-            <RiCalendarTodoLine size={22} /> 신규 근무 신청서
-          </div>
           <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small">신청 기준일 (월요일)</Form.Label>
-              <Form.Control
-                type="date"
-                value={reqDate}
-                className="custom-input fw-bold text-muted"
-                style={{ cursor: 'not-allowed' }}
-                readOnly
-              />
-            </Form.Group>
+            <div className="mb-4">
+              <div className="req-apply-week-label">다음 주 {weekRangeLabel}</div>
+              <div className="req-apply-week-hint">다음 주만 신청할 수 있습니다</div>
+            </div>
 
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small d-block mb-2">신청 요일 선택</Form.Label>
-              <div
-                className="d-flex gap-2 pb-2 overflow-x-auto flex-nowrap user-select-none"
-                style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {Object.keys(days).map(day => (
+            {requestBlocks.map((block) => (
+              <div key={block.id} className="req-apply-block mb-3">
+                {requestBlocks.length > 1 && (
                   <Button
-                    key={day}
-                    className={`rounded-circle fw-bold d-flex align-items-center justify-content-center flex-shrink-0 ${days[day] ? 'day-btn-on' : 'day-btn-off'}`}
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      fontSize: '0.95rem',
-                      padding: 0,
-                      color: days[day] ? '#ffffff' : (day === 'Sun' ? '#C94C48' : day === 'Sat' ? '#2B6CB0' : 'var(--color-text-main)'),
-                    }}
-                    onClick={() => handleDayToggle(day)}
+                    type="button"
+                    variant="link"
+                    className="position-absolute top-0 end-0 text-danger p-2"
+                    onClick={() => handleRemoveBlock(block.id)}
                   >
-                    {dayLabels[day]}
+                    <RiDeleteBinLine size={20} />
                   </Button>
-                ))}
-              </div>
-              <div className="d-flex gap-2 mt-2 flex-wrap">
-                <Button size="sm" onClick={handleSelectAll} className="rounded-pill fw-bold px-3 req-outline-btn">전체 선택</Button>
-                <Button size="sm" onClick={handleWeekdaysOnly} className="rounded-pill fw-bold px-3 req-outline-btn">평일만 (월~금)</Button>
-                <Button size="sm" onClick={handleWeekendsOnly} className="rounded-pill fw-bold px-3 req-outline-btn">주말만 (토/일)</Button>
-              </div>
-            </Form.Group>
+                )}
 
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small">비고 (선택)</Form.Label>
+                <PlaceChips
+                  workPlaces={workPlaces}
+                  value={block.workPlaceIdx}
+                  onChange={(wpIdx) => updateBlock(block.id, 'workPlaceIdx', wpIdx)}
+                />
+
+                <ApplyWeekGrid
+                  monday={nextMonday}
+                  block={block}
+                  onCycleDay={(day) => cycleBlockDay(block.id, day)}
+                />
+              </div>
+            ))}
+            <Form.Group>
+              <Form.Label className="fw-bold text-muted small">비고</Form.Label>
               <Form.Control
-                type="text"
-                placeholder="추가 요청사항이 있다면 입력하세요"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                className="custom-input"
+                  type="text"
+                  value={globalRemarks}
+                  onChange={(e) => setGlobalRemarks(e.target.value)}
+                  className="custom-input mb-4"
+                  placeholder="해당 주간에 전달할 메모"
               />
             </Form.Group>
+            <Button
+              type="button"
+              variant="outline-secondary"
+              className="w-100 mb-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
+              onClick={handleAddBlock}
+            >
+              <RiAddLine size={20} /> 타 지점 추가 신청하기
+            </Button>
 
-            <Button disabled={loading} type="submit" className="w-100 py-3 rounded-3 fw-bold fs-6"
-              style={{ backgroundColor: '#A85A47', borderColor: '#A85A47', color: '#fff' }}>
-              {loading ? '신청 중...' : '근무 신청서 제출하기'}
+            <Button disabled={loading} type="submit" className="w-100 py-3 rounded-3 fw-bold fs-6 btn-primary">
+              {loading ? '신청 중...' : '근무 신청서 일괄 제출하기'}
             </Button>
           </Form>
         </Card.Body>
@@ -195,253 +436,195 @@ const Requests = () => {
         <div className="d-flex align-items-center gap-2 text-dark fw-bold fs-5">
           <RiFileList3Line className="text-primary" /> 내 신청 내역
         </div>
-        <Form.Select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="custom-month-select fw-bold"
-          style={{ width: 'auto', minWidth: '140px', borderColor: '#C8957A', color: '#A85A47' }}
-        >
+        <Form.Select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="custom-month-select fw-bold w-auto">
           {[...Array(12)].map((_, i) => {
-            const baseMonthDate = addDays(new Date(), 0);
-            const optDate = addDays(subMonths(baseMonthDate, 6 - i), 0);
+            const optDate = addDays(subMonths(new Date(), 6 - i), 0);
             const val = format(optDate, 'yyyy-MM');
             return <option key={val} value={val}>{format(optDate, 'yyyy년 M월')}</option>;
           })}
         </Form.Select>
       </div>
 
-      {dataLoading ? <Loading /> : <div className="d-flex flex-column gap-3">
-        {requestList.length === 0 ? (
-          <div className="text-center py-5 rounded-4 border" style={{ color: 'var(--color-text-muted)' }}>
-            <RiFileList3Line size={40} className="mb-2" style={{ opacity: 0.4, color: '#A85A47' }} />
-            <p className="mb-0">신청 내역이 없습니다.</p>
-          </div>
-        ) : (
-          requestList.map(req => {
-            const hasAnyAppliedDay = DAY_CONFIG.some(d => req[d.applyKey] === '신청');
+      {dataLoading ? <Loading /> : (
+        <div className="d-flex flex-column gap-3">
+          {weeklyGroups.length === 0 ? (
+            <div className="text-center py-5 rounded-4 border text-muted">신청 내역이 없습니다.</div>
+          ) : (
+            weeklyGroups.map(([monDate, weekSchs]) => {
+              const weekEnd = addDays(parseISO(monDate), 6);
+              const uniqueApplyDates = new Set(weekSchs.map(s => toDateStr(s.date)));
+              const assignedDaysCount = new Set(weekSchs.filter(isPublicAssignment).map(s => toDateStr(s.date))).size;
+              const weekCells = Array.from({ length: 7 }, (_, i) => {
+                const date = addDays(parseISO(monDate), i);
+                const dateStr = format(date, 'yyyy-MM-dd');
+                const slots = weekSchs.filter(s => toDateStr(s.date) === dateStr && s.wsdStatus !== '미신청');
+                return { date, dateStr, slots };
+              });
 
-            return (
-              <Card key={req.wawIdx} className="border-0 shadow-sm rounded-4">
-                <Card.Body className="p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                  <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-                    <div className="fw-bold fs-5 mb-1" style={{ color: '#A85A47' }}>신청 주차: {req.wawDate} (월)</div>
-                    <div className="text-muted small mb-2">
-                      <div>신청일시: {formatDateTime(req.wawCreatedAt)}</div>
-                      {req.wawUpdatedAt && req.wawUpdatedAt !== req.wawCreatedAt && (
-                        <div>수정일시: {formatDateTime(req.wawUpdatedAt)}</div>
-                      )}
-                    </div>
-                    {req.wawRemarks && (
-                      <div className="small mb-2 p-2 rounded-3" style={{ background: '#F5EFE6', color: '#8D6E63' }}>비고: {req.wawRemarks}</div>
-                    )}
-                    <div className="d-flex flex-column gap-3 mt-3">
+              return (
+                <Card key={monDate} className="req-history-card border-0 shadow-sm">
+                  <Card.Body className="p-3 p-md-4">
+                    <div className="d-flex justify-content-between align-items-start gap-2 mb-3">
                       <div>
-                        <div className="fw-bold small text-muted mb-1">
-                          내 신청 요일 {!hasAnyAppliedDay ? '' : `(${DAY_CONFIG.filter(d => req[d.applyKey] === '신청').length}일)`}
+                        <div className="req-history-range">
+                          {format(parseISO(monDate), 'M/d')} – {format(weekEnd, 'M/d')}
                         </div>
-                        <div className="d-flex gap-1 align-items-center overflow-x-auto flex-nowrap pb-2" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {!hasAnyAppliedDay ? (
-                            <span className="small" style={{ color: '#A89F97' }}>신청 내역 없음</span>
-                          ) : (
-                            DAY_CONFIG.filter(d => req[d.applyKey] === '신청').map(d => (
-                              <span key={d.key} className="px-2 py-1 rounded-pill fw-bold text-nowrap flex-shrink-0" style={{ fontSize: '0.82rem', background: '#FEF3C7', color: '#D97706', border: '1px solid #FCD34D' }}>
-                                {d.name}
-                              </span>
-                            ))
-                          )}
+                        <div className="req-history-meta">
+                          신청 {uniqueApplyDates.size}일
+                          {assignedDaysCount > 0 ? ` · 출근 ${assignedDaysCount}일` : ' · 출근 대기'}
                         </div>
                       </div>
+                      <div className="d-flex gap-2 flex-shrink-0">
+                        <Button variant="light" className="req-icon-btn rounded-circle p-2" onClick={() => setViewingRequest({ monDate, weekSchs })}>
+                          <RiEyeLine size={20} />
+                        </Button>
+                        {!weekSchs.some(isPublicAssignment) && (
+                          <Button variant="outline-warning" size="sm" className="rounded-3 fw-bold px-3" onClick={() => handleOpenEdit(monDate, weekSchs)}>
+                            수정
+                          </Button>
+                        )}
+                      </div>
+                    </div>
 
-                      <div>
-                        <div className="fw-bold small text-muted mb-1">
-                          배정 요일 {req.wawIsConfirmed ? `(확정, ${DAY_CONFIG.filter(d => ['배정', '타지점근무'].includes(req[d.key])).length}일)` : '(대기 중)'}
-                        </div>
-                        <div className="d-flex gap-1 align-items-center overflow-x-auto flex-nowrap pb-2" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          {!req.wawIsConfirmed ? (
-                            <span className="small text-nowrap" style={{ color: '#A89F97' }}>아직 배정이 확정되지 않았습니다.</span>
-                          ) : (() => {
-                            const assignedDays = DAY_CONFIG.filter(d => ['배정', '타지점근무'].includes(req[d.key]));
-                            if (assignedDays.length === 0) {
-                              return <span className="small text-nowrap" style={{ color: '#DC2626' }}>이번 주 배정된 근무가 없습니다.</span>;
-                            }
-                            return assignedDays.map(d => {
-                              const displayWpName = req[d.wpNameKey];
-                              const isOtherByName = Boolean(
-                                displayWpName && user?.workPlaceName &&
-                                displayWpName !== user.workPlaceName
-                              );
-                              const isOtherByIdx = req[d.wpIdxKey] != null && user?.workPlaceIdx != null &&
-                                Number(req[d.wpIdxKey]) !== Number(user.workPlaceIdx);
-                              const isOther = isOtherByName || isOtherByIdx;
-                              const status = isOther ? '타지점근무' : '배정';
-                              const shownWpName = displayWpName || (isOther ? '타지점 근무지' : user?.workPlaceName);
-                              
-                              const bgColor = '#D1FAE5';
-                              const textColor = '#059669';
-                              const borderColor = '#34D399';
-
+                    <div className="req-week-scroll">
+                    <div className="req-week-grid">
+                      {weekCells.map(({ date, dateStr, slots }) => {
+                        const dayNum = getDay(date);
+                        const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
+                        const isSat = dayNum === 6 && !isHoly;
+                        return (
+                          <div key={dateStr} className="req-week-day">
+                            <div className={`req-week-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
+                              {DAY_LABELS[dayNum]}
+                            </div>
+                            <div className="req-week-day-date">{format(date, 'd')}</div>
+                            {slots.length === 0 ? (
+                              <div className="req-chip empty">—</div>
+                            ) : slots.map((s, idx) => {
+                              const assigned = isPublicAssignment(s);
+                              const isOp = s.wsdStartTime === '오픈' || s.isOpen === true || s.openApplied === true || s.wsdIsOpen === true;
+                              const wpName = s.wsdWorkPlaceName || s.applyWorkPlaceName;
+                              const slotWpIdx = assigned
+                                ? (s.wsdWorkPlaceIdx || s.applyWorkPlaceIdx)
+                                : (s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx);
+                              const showWp = slots.length > 1 || Number(slotWpIdx) !== Number(user?.workPlaceIdx);
                               return (
-                                <span
-                                  key={d.key}
-                                  className="px-2 py-1 rounded-pill fw-bold d-flex align-items-center gap-1 text-nowrap flex-shrink-0"
-                                  style={{ fontSize: '0.82rem', background: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
-                                >
-                                  {d.name} {isOther ? `(${shownWpName})` : ''} {req[d.timeKey] ? `${String(req[d.timeKey]).substring(0, 5)}` : ''}
-                                </span>
+                                <div key={`${dateStr}-${idx}`} className={`req-chip ${assigned ? 'work' : 'applied'}`}>
+                                  {assigned ? (displayOpenTime(s, date) || '출근') : (isOp ? displayOpenTime(s, date) : '신청')}
+                                  {showWp && wpName && <span className="req-chip-wp">{wpName}</span>}
+                                </div>
                               );
-                            });
-                          })()}
-                        </div>
-                      </div>
+                            })}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
-                    <Button
-                      size="sm"
-                      className="rounded-pill fw-bold px-3 d-flex align-items-center gap-1"
-                      style={{ height: '36px', background: 'transparent', border: '1.5px solid #C8957A', color: '#A85A47' }}
-                      onClick={() => setViewingRequest(req)}
-                      title="요일별 배정 상태 및 출근 시간 상세 보기"
-                    >
-                      <RiEyeLine size={16} /> 보기
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="rounded-pill fw-bold px-3 d-flex align-items-center gap-1"
-                      style={{ height: '36px', background: 'transparent', border: '1.5px solid #EDE4D8', color: '#8D6E63' }}
-                      onClick={() => navigate(`/requests/edit/${req.waIdx || req.wawIdx}`)}
-                    >
-                      수정하기
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            );
-          })
-        )}
-      </div>}
+                    </div>
+                  </Card.Body>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
 
-      {/* 주간 근무 상세 보기 모달 */}
-      <Modal
-        show={!!viewingRequest}
-        onHide={() => setViewingRequest(null)}
-        centered
-        size="lg"
-      >
+      {/* 수정 모달 */}
+      <Modal show={!!editTarget} onHide={() => setEditTarget(null)} centered size="lg">
         <Modal.Header closeButton className="border-bottom">
-          <Modal.Title className="fw-bold fs-5 d-flex align-items-center gap-2">
-            <RiCalendarTodoLine className="text-primary" />
-            <span>
-              {viewingRequest ? `${viewingRequest.wawDate} 주차 근무 배정 상세` : ''}
-            </span>
+          <Modal.Title className="fw-bold fs-5">
+            근무 신청 수정
+            {editTarget && (
+              <div className="req-apply-week-hint mt-1">
+                {format(parseISO(editTarget.monDate), 'M/d')} – {format(addDays(parseISO(editTarget.monDate), 6), 'M/d')}
+              </div>
+            )}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          {viewingRequest && (
-            <div>
-              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <div className="text-muted small">
-                  <div>신청일시: {formatDateTime(viewingRequest.wawCreatedAt)}</div>
-                  {viewingRequest.wawUpdatedAt && viewingRequest.wawUpdatedAt !== viewingRequest.wawCreatedAt && (
-                    <div>수정일시: {formatDateTime(viewingRequest.wawUpdatedAt)}</div>
-                  )}
-                </div>
-                {viewingRequest.workPlaceName && (
-                  <Badge bg="primary" className="px-2.5 py-1.5 rounded-pill">
-                    기본 소속: {viewingRequest.workPlaceName}
-                  </Badge>
-                )}
-              </div>
+          {editBlocks.map((block) => (
+            <div key={block.id} className="req-apply-block mb-3">
+              {editBlocks.length > 1 && (
+                <Button
+                  variant="link"
+                  className="position-absolute top-0 end-0 text-danger p-2"
+                  onClick={() => setEditBlocks(prev => prev.filter(b => b.id !== block.id))}
+                >
+                  <RiDeleteBinLine size={20} />
+                </Button>
+              )}
 
-              <div className="table-responsive rounded-3 border mb-3">
-                <Table className="mb-0 text-center align-middle">
-                  <thead className="bg-light">
-                    <tr>
-                      <th className="py-2.5" style={{ width: '22%' }}>요일 / 날짜</th>
-                      <th className="py-2.5" style={{ width: '22%' }}>배정 상태</th>
-                      <th className="py-2.5" style={{ width: '30%' }}>출근 시간</th>
-                      <th className="py-2.5" style={{ width: '26%' }}>근무 지점</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DAY_CONFIG.map(d => {
-                      const rawStatus = viewingRequest[d.key] || '미신청';
-                      const time = viewingRequest[d.timeKey] ? String(viewingRequest[d.timeKey]).substring(0, 5) : null;
-                      const wpName = viewingRequest[d.wpNameKey];
-                      const isAssigned = rawStatus === '배정' || rawStatus === '타지점근무';
-                      const isOther = isAssigned && Boolean(
-                        (wpName && viewingRequest.workPlaceName && wpName !== viewingRequest.workPlaceName) ||
-                        (viewingRequest[d.wpIdxKey] != null && user?.workPlaceIdx != null &&
-                          Number(viewingRequest[d.wpIdxKey]) !== Number(user.workPlaceIdx))
-                      );
-                      const status = isAssigned ? (isOther ? '타지점근무' : '배정') : rawStatus;
-                      const displayWpName = wpName || (isOther ? '타지점 근무지 정보 없음' : viewingRequest.workPlaceName) || '근무지 정보 없음';
+              <PlaceChips
+                workPlaces={workPlaces}
+                value={block.workPlaceIdx}
+                onChange={(wpIdx) => setEditBlocks(prev => prev.map(b => b.id === block.id ? { ...b, workPlaceIdx: wpIdx } : b))}
+              />
 
-                      let dayDateStr = '';
-                      try {
-                        const baseMon = new Date(viewingRequest.wawDate);
-                        dayDateStr = format(addDays(baseMon, d.offset), 'MM/dd');
-                      } catch (e) {
-                        dayDateStr = '';
-                      }
-
-                      let statusBadge = <Badge bg="secondary" className="px-2 py-1">미신청</Badge>;
-                      if (status === '배정') {
-                        statusBadge = <Badge bg="success" className="px-2.5 py-1">배정</Badge>;
-                      } else if (status === '신청') {
-                        statusBadge = <Badge bg="warning" className="text-dark px-2.5 py-1">신청 (희망)</Badge>;
-                      } else if (status === '타지점근무') {
-                        statusBadge = <Badge bg="info" className="px-2.5 py-1">타지점근무</Badge>;
-                      } else if (status === '미배정') {
-                        statusBadge = <Badge bg="danger" className="px-2.5 py-1">미배정</Badge>;
-                      }
-
-                      return (
-                        <tr key={d.key} className={status === '미신청' ? 'bg-light opacity-60' : ''}>
-                          <td className="py-2.5 fw-bold">
-                            <span className={d.isSun ? 'text-danger' : d.isSat ? 'text-primary' : 'text-dark'}>
-                              {dayDateStr ? `${dayDateStr} (${d.name})` : `${d.name}요일`}
-                            </span>
-                          </td>
-                          <td>{statusBadge}</td>
-                          <td>
-                            {time ? (
-                              <span className="badge bg-primary bg-opacity-10 text-primary border border-primary px-2.5 py-1.5 rounded-pill fw-bold">
-                                <RiTimeLine className="me-1" />{time}
-                              </span>
-                            ) : status === '신청' ? (
-                              <span className="text-muted small">관리자 배정 대기</span>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                          <td>
-                            {status === '배정' || status === '타지점근무' ? (
-                              <span className="fw-bold text-dark small">{displayWpName}</span>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
-              </div>
-
-              {viewingRequest.wawRemarks && (
-                <div className="p-3 bg-light rounded-3 text-muted small">
-                  <strong>비고 사항:</strong> {viewingRequest.wawRemarks}
-                </div>
+              {editTarget && (
+                <ApplyWeekGrid
+                  monday={parseISO(editTarget.monDate)}
+                  block={block}
+                  onCycleDay={(day) => cycleEditBlockDay(block.id, day)}
+                />
               )}
             </div>
-          )}
+          ))}
+          <Button
+            variant="outline-secondary"
+            className="w-100 py-2 mb-3 fw-bold d-flex align-items-center justify-content-center gap-2"
+            onClick={() => setEditBlocks(prev => [...prev, defaultBlock(Date.now())])}
+          >
+            <RiAddLine size={20} /> 타 지점 추가 신청하기
+          </Button>
+          <Form.Group>
+            <Form.Label className="fw-bold text-muted small">비고</Form.Label>
+            <Form.Control type="text" value={editGlobalRemarks} onChange={e => setEditGlobalRemarks(e.target.value)} placeholder="해당 주간에 전달할 메모" className="custom-input" />
+          </Form.Group>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" className="rounded-pill px-4" onClick={() => setViewingRequest(null)}>
-            닫기
+        <Modal.Footer className="border-0">
+          <Button variant="secondary" onClick={() => setEditTarget(null)}>취소</Button>
+          <Button variant="primary" onClick={handleEditSubmit} disabled={editLoading} className="fw-bold">
+            {editLoading ? '수정 중...' : '수정 완료'}
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* 상세보기 모달 */}
+      <Modal show={!!viewingRequest} onHide={() => setViewingRequest(null)} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold fs-5">
+            {viewingRequest ? `${viewingRequest.monDate} ~ ${format(addDays(parseISO(viewingRequest.monDate), 6), 'yyyy-MM-dd')} 상세` : ''}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Table bordered hover className="text-center">
+            <thead>
+              <tr><th>날짜</th><th>상태</th><th>출근 시간</th><th>근무 지점</th></tr>
+            </thead>
+            <tbody>
+              {viewingRequest && Object.values(
+                viewingRequest.weekSchs.reduce((acc, s) => {
+                  const key = `${s.date}_${s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx || 'none'}`;
+                  // If we already have a record for this date+branch, prefer the one that is actually applied/assigned
+                  if (!acc[key] || (s.wsdStatus !== '미신청' && acc[key].wsdStatus === '미신청')) {
+                    acc[key] = s;
+                  }
+                  return acc;
+                }, {})
+              ).sort((a, b) => new Date(a.date) - new Date(b.date)).map(s => {
+                const dateObj = parseISO(s.date);
+                const isOther = s.wsdWorkPlaceIdx !== user?.workPlaceIdx;
+                return (
+                  <tr key={s.wsdIdx || s.date + Math.random()}>
+                    <td>{`${format(dateObj, 'MM/dd')} (${DAY_LABELS[getDay(dateObj)]})`}</td>
+                    <td><span className={`req-status-badge ${isPublicAssignment(s) ? 'work' : s.wsdStatus === '신청' ? 'applied' : 'muted'}`}>{displayStatusLabel(s)}</span></td>
+                    <td>{isPublicAssignment(s) ? (displayOpenTime(s, dateObj) || '-') : '-'}</td>
+                    <td>{s.wsdWorkPlaceName || s.applyWorkPlaceName || '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </Modal.Body>
       </Modal>
     </Container>
   );

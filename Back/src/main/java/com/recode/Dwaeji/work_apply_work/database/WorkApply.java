@@ -32,26 +32,7 @@ public class WorkApply {
     @Column(name = "wa_date", nullable = false)
     private LocalDate waDate; // 해당 주의 월요일 날짜
 
-    @Column(name = "wa_is_mon", nullable = false)
-    private boolean waIsMon;
 
-    @Column(name = "wa_is_tue", nullable = false)
-    private boolean waIsTue;
-
-    @Column(name = "wa_is_wed", nullable = false)
-    private boolean waIsWed;
-
-    @Column(name = "wa_is_thu", nullable = false)
-    private boolean waIsThu;
-
-    @Column(name = "wa_is_fri", nullable = false)
-    private boolean waIsFri;
-
-    @Column(name = "wa_is_sat", nullable = false)
-    private boolean waIsSat;
-
-    @Column(name = "wa_is_sun", nullable = false)
-    private boolean waIsSun;
 
     @Column(name = "wa_remarks", columnDefinition = "TEXT")
     private String waRemarks;

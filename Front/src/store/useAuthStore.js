@@ -1,5 +1,22 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+
+const customStorage = {
+  getItem: (name) => {
+    return localStorage.getItem(name) || sessionStorage.getItem(name);
+  },
+  setItem: (name, value) => {
+    if (localStorage.getItem('isAutoLogin') === 'true') {
+      localStorage.setItem(name, value);
+    } else {
+      sessionStorage.setItem(name, value);
+    }
+  },
+  removeItem: (name) => {
+    localStorage.removeItem(name);
+    sessionStorage.removeItem(name);
+  },
+};
 
 const useAuthStore = create(
   persist(
@@ -15,7 +32,8 @@ const useAuthStore = create(
       signup: (userData) => set({ isAuthenticated: true, user: userData }),
     }),
     {
-      name: 'auth-storage', // localStorage에 저장될 키 이름
+      name: 'auth-storage', // 스토리지에 저장될 키 이름
+      storage: createJSONStorage(() => customStorage),
     }
   )
 );

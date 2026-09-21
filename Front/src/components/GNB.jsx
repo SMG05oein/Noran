@@ -3,9 +3,7 @@ import { Navbar, Nav, Container, Offcanvas } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import useThemeStore from '../store/useThemeStore';
-import { RiLogoutBoxRLine, RiSunLine, RiMoonLine, RiMenuLine } from 'react-icons/ri';
-import TermsModal from './TermsModal';
-import PrivacyModal from './PrivacyModal';
+import { RiLogoutBoxRLine, RiSunLine, RiMoonLine, RiMenuLine, RiUser3Line, RiMegaphoneLine, RiCalendarEventLine, RiShieldUserLine, RiNotification3Line, RiCustomerService2Line } from 'react-icons/ri';
 import './GNB.css';
 
 const GNB = () => {
@@ -15,8 +13,6 @@ const GNB = () => {
   const location = useLocation();
 
   const [showMenu, setShowMenu] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -36,16 +32,16 @@ const GNB = () => {
 
           {/* 모바일 화면에서만 보이는 다크모드/햄버거 메뉴 영역 */}
           <div className="d-lg-none d-flex align-items-center gap-2">
-            <button 
-              type="button" 
-              onClick={toggleTheme} 
+            <button
+              type="button"
+              onClick={toggleTheme}
               className="theme-toggle-btn"
               aria-label="테마 전환"
             >
               {theme === 'dark' ? <RiSunLine size={20} className="text-warning" /> : <RiMoonLine size={20} />}
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setShowMenu(true)}
               className="theme-toggle-btn border-0 bg-transparent"
               aria-label="메뉴 열기"
@@ -57,22 +53,22 @@ const GNB = () => {
           {/* 데스크톱 화면에서만 보이는 상단 메뉴 */}
           <div className="d-none d-lg-block">
             <Nav className="ms-auto align-items-center gap-2">
-              <Nav.Link as={Link} to="/" className={`gnb-link ${location.pathname === '/' ? 'active-pill' : ''}`}>홈 / 캘린더</Nav.Link>
+              <Nav.Link as={Link} to="/" className={`gnb-link ${location.pathname === '/' ? 'active-pill' : ''}`}>캘린더</Nav.Link>
               <Nav.Link as={Link} to="/records" className={`gnb-link ${location.pathname.startsWith('/records') ? 'active-pill' : ''}`}>근무기록</Nav.Link>
               <Nav.Link as={Link} to="/requests" className={`gnb-link ${location.pathname.startsWith('/requests') ? 'active-pill' : ''}`}>근무신청</Nav.Link>
-              <Nav.Link as={Link} to="/mypage" className={`gnb-link ${location.pathname.startsWith('/mypage') ? 'active-pill' : ''}`}>마이페이지</Nav.Link>
-              
+              <Nav.Link as={Link} to="/mypage" className={`gnb-link ${location.pathname.startsWith('/mypage') ? 'active-pill' : ''}`}>내 정보</Nav.Link>
+
               <div className="ms-2 d-flex align-items-center gap-2">
-                <button 
+                <button
                   type="button"
-                  onClick={toggleTheme} 
+                  onClick={toggleTheme}
                   className="theme-toggle-btn"
                 >
                   {theme === 'dark' ? <><RiSunLine size={16} className="text-warning" /> 라이트</> : <><RiMoonLine size={16} /> 다크</>}
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={handleLogout} 
+                  onClick={handleLogout}
                   className="gnb-logout"
                 >
                   로그아웃
@@ -84,36 +80,55 @@ const GNB = () => {
       </Navbar>
 
       {/* 모바일 햄버거 메뉴 (Offcanvas) */}
-      <Offcanvas show={showMenu} onHide={() => setShowMenu(false)} placement="end" className="d-lg-none" style={{ maxWidth: '280px' }}>
+      <Offcanvas show={showMenu} onHide={() => setShowMenu(false)} placement="end" className="d-lg-none gnb-offcanvas">
         <Offcanvas.Header closeButton className="border-bottom">
-          <Offcanvas.Title className="fw-bold fs-5">{displayName || '노란돼지'}</Offcanvas.Title>
+          <Offcanvas.Title className="fw-bold fs-5">메뉴</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column p-4">
-          <div className="mb-4 bg-light p-3 rounded-3">
-            <h6 className="fw-bold text-dark mb-2"> 회사 소개</h6>
-            <div className="text-muted small mb-1">대표: 최재복</div>
-            <div className="text-muted small">주소: 서울 동작구 동작대로7길 97</div>
-            <div className="text-muted small mb-1">대표 번호: 010-5833-9279</div>
-            <div className="text-muted small">시스템 개선 문의:<br/>010-2011-1392 (카톡만)</div>
+          <div className="gnb-sheet-profile mb-4 d-flex align-items-center gap-3 p-3 bg-light rounded-3 border">
+            <div
+              className="profile-avatar bg-primary text-white d-flex align-items-center justify-content-center rounded-circle shadow-sm"
+              style={{ width: '46px', height: '46px', fontSize: '1.2rem', fontWeight: 'bold' }}
+            >
+              {user?.name ? user.name.charAt(0) : '👤'}
+            </div>
+            <div>
+              <div className="fw-bold text-dark" style={{ fontSize: '1.05rem' }}>{user?.name || '직원'}</div>
+              <div className="small text-muted fw-semibold">{displayName || '노란돼지'}</div>
+            </div>
           </div>
-          
-          <div className="d-flex flex-column gap-2 mb-auto">
-            <button 
-              className="btn btn-outline-secondary text-start fw-bold py-2 px-3 border-0 bg-transparent text-dark hover-bg"
-              onClick={() => { setShowMenu(false); setShowTerms(true); }}
-            >
-              이용약관
-            </button>
-            <button 
-              className="btn btn-outline-secondary text-start fw-bold py-2 px-3 border-0 bg-transparent text-dark hover-bg"
-              onClick={() => { setShowMenu(false); setShowPrivacy(true); }}
-            >
-              개인정보처리방침
-            </button>
+          <div className="gnb-company-info text-muted mb-4 mt-auto" style={{ fontSize: '0.75rem', lineHeight: '1.5' }}>
+            <div className="fw-bold text-dark mb-1">노란돼지</div>
+            <div className="mb-1">대표: 최재복</div>
+            <div className="mb-1">주소: 서울 동작구 동작대로7길 97</div>
+            <div className="mb-3">대표 번호: 010-5833-9279</div>
+
+            <div className="fw-bold text-dark mb-1">시스템 개선 문의</div>
+            <div className="mb-1">010-2011-1392 (카카오톡)</div>
+            <div className="mb-1">010-3189-1392 (문자, 카카오톡)</div>
+            <div className="mb-3">앱 버전: v1.0.0</div>
+
+            <div style={{ fontSize: '0.7rem' }}>&copy; {new Date().getFullYear()} MinGwan-Seo. All rights reserved.</div>
           </div>
 
-          <div className="mt-4 pt-4 border-top">
-            <button 
+          <div className="pt-4 border-top">
+            <div className="mb-4">
+              <Link to="/privacy" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
+                개인정보처리방침
+              </Link>
+              <Link to="/terms" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
+                이용규정
+              </Link>
+              <Link to="/consent" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
+                개인정보 수집 및 이용 동의서
+              </Link>
+              <Link to="/eee" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
+                오늘의 농담
+              </Link>
+            </div>
+
+            <button
+              type="button"
               className="btn btn-danger w-100 fw-bold d-flex align-items-center justify-content-center gap-2 py-2"
               onClick={handleLogout}
             >
@@ -123,8 +138,6 @@ const GNB = () => {
         </Offcanvas.Body>
       </Offcanvas>
 
-      <TermsModal show={showTerms} onHide={() => setShowTerms(false)} />
-      <PrivacyModal show={showPrivacy} onHide={() => setShowPrivacy(false)} />
     </>
   );
 };

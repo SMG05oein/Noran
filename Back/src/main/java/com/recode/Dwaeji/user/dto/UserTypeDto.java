@@ -17,6 +17,12 @@ public class UserTypeDto {
     private String utName;
     private Integer utIsAdmin;
     private Integer utIsSuperAdmin;
+    private Integer utCanAccessArchive;
+    private Integer utCanViewSensitive;
+    private Integer utCanExportExcel;
+    private Integer utCanManageRoles;
+    private Integer utAllowMultiWorkplace;
+    private Integer utCanManageSchedule;
 
     public static UserTypeDto fromEntity(UserType entity) {
         if (entity == null) return null;
@@ -25,6 +31,12 @@ public class UserTypeDto {
                 .utName(entity.getUtName())
                 .utIsAdmin(entity.getUtIsAdmin())
                 .utIsSuperAdmin(entity.getUtIsSuperAdmin())
+                .utCanAccessArchive(entity.getUtCanAccessArchive())
+                .utCanViewSensitive(entity.getUtCanViewSensitive())
+                .utCanExportExcel(entity.getUtCanExportExcel())
+                .utCanManageRoles(entity.getUtCanManageRoles())
+                .utAllowMultiWorkplace(entity.getUtAllowMultiWorkplace())
+                .utCanManageSchedule(entity.getUtCanManageSchedule())
                 .build();
     }
 }

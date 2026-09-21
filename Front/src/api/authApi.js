@@ -59,9 +59,9 @@ export const updateUserInfo = async (userIdx, updateData) => {
   }
 };
 
-export const fetchAllUsers = async () => {
+export const fetchAllUsers = async (params = {}) => {
   try {
-    const response = await apiClient.get(`${addUrl}/all`);
+    const response = await apiClient.get(`${addUrl}/admin/all`, { params });
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '직원 목록을 불러오는데 실패했습니다.';
@@ -156,9 +156,40 @@ export const updateSensitiveInfo = async (userIdx, dto) => {
   }
 };
 
+
+export const bulkUpdateUsers = async (dto) => {
+  try {
+    const response = await apiClient.put(`${addUrl}/bulk-update`, dto);
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
+        sessionStorage.removeItem(key);
+      }
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '일괄 수정에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
 export const deleteUser = async (userIdx) => {
   try {
     const response = await apiClient.delete(`${addUrl}/${userIdx}`);
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
+        sessionStorage.removeItem(key);
+      }
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '비활성화에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+export const leaveUser = async (userIdx) => {
+  try {
+    const response = await apiClient.put(`${addUrl}/${userIdx}/leave`);
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
         sessionStorage.removeItem(key);
@@ -199,7 +230,7 @@ export const hardDeleteUser = async (userIdx) => {
 
 export const restoreUser = async (userIdx) => {
   try {
-    const response = await apiClient.post(`${addUrl}/admin/users/${userIdx}/restore`);
+    const response = await apiClient.post(`${addUrl}/${userIdx}/restore`);
     // 캐시 무효화
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_')) {
@@ -340,3 +371,41 @@ export const deleteUserType = async (utIdx) => {
     return { success: false, error: errMsg };
   }
 };
+
+export const fetchArchivedWorkers = async (params = {}, reason) => {
+  try {
+    const config = { params: { ...params, reason } };
+    const response = await apiClient.get(`${addUrl}/admin/archived-workers`, config);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '아카이빙 데이터를 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
+  }
+};
+
+export const restoreArchivedUser = async (userIdx) => {
+  try {
+    const response = await apiClient.post(`${addUrl}/admin/archived-workers/${userIdx}/restore`);
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) sessionStorage.removeItem(key);
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '복구에 실패했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
+  }
+};
+
+export const deleteArchivedUser = async (userIdx) => {
+  try {
+    const response = await apiClient.delete(`${addUrl}/admin/archived-workers/${userIdx}`);
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) sessionStorage.removeItem(key);
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '영구 삭제에 실패했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
+  }
+};
+

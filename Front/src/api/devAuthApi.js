@@ -86,9 +86,12 @@ export const fetchAnnouncements = async () => {
   }
 };
 
-export const createAnnouncement = async (title, content, isActive) => {
+export const createAnnouncement = async (title, content, isActive, startDate, endDate) => {
   try {
-    const response = await devApiClient.post(`${addUrl}/announcements`, { title, content, isActive });
+    const payload = { title, content, isActive };
+    if (startDate) payload.startDate = startDate;
+    if (endDate) payload.endDate = endDate;
+    const response = await devApiClient.post(`${addUrl}/announcements`, payload);
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.message || '공지사항 등록에 실패했습니다.';

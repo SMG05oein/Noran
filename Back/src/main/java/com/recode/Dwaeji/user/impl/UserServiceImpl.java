@@ -8,7 +8,7 @@ import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.user.repository.UserTypeRepository;
 import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
-import com.recode.Dwaeji.work_apply_work.repository.WorkApplyWorkRepository;
+
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import com.recode.Dwaeji.user.dto.LoginRequestDto;
 import com.recode.Dwaeji.user.dto.LoginResponseDto;
@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,9 +32,11 @@ public class UserServiceImpl implements UserService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserTypeRepository userTypeRepository;
     private final WorkPlaceRepository workPlaceRepository;
-    private final WorkApplyWorkRepository workApplyWorkRepository;
+
     private final WorkRecordRepository workRecordRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.recode.Dwaeji.user.repository.ArchivedUserRepository archivedUserRepository;
+    private final com.recode.Dwaeji.user.repository.ArchiveAccessLogRepository archiveAccessLogRepository;
     private final JwtUtil jwtUtil;
 
     @Override
@@ -104,8 +107,20 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이름을 입력해주세요.");
         }
 
+        if (signupRequestDto.getUserBirth() != null) {
+            java.time.Period period = java.time.Period.between(signupRequestDto.getUserBirth(), java.time.LocalDate.now());
+            if (period.getYears() < 15) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "만 15세 미만은 회원가입할 수 없습니다.");
+            }
+        }
+
         if (userRepository.findByUserId(signupRequestDto.getUserId()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"이미 사용하는 아이디입니다.");
+        }
+
+        // 아카이브 테이블 확인 (탈퇴한 회원 아이디 재사용 방지)
+        if (archivedUserRepository.findByUserId(signupRequestDto.getUserId()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "탈퇴한 회원의 아이디는 보존 기간 동안 재사용할 수 없습니다.");
         }
 
         // 연관 엔티티 조회
@@ -121,6 +136,10 @@ public class UserServiceImpl implements UserService {
                 .userPw(passwordEncoder.encode(signupRequestDto.getUserPw()))
                 .userName(signupRequestDto.getUserName())
                 .userPhone(signupRequestDto.getUserPhone())
+                .userBirth(signupRequestDto.getUserBirth())
+                .userEmail(signupRequestDto.getUserEmail())
+                .emailConsentAgreed(Boolean.TRUE.equals(signupRequestDto.getEmailConsentAgreed()))
+                .emailConsentDate(Boolean.TRUE.equals(signupRequestDto.getEmailConsentAgreed()) ? LocalDateTime.now() : null)
                 .userType(userType)
                 .workPlace(workPlace)
                 .userIsActive(1) // 기본적으로 활성화 상태
@@ -146,6 +165,19 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
         }
 
+        // 아카이브 테이블 확인 (탈퇴한 회원 아이디 재사용 방지)
+        if (archivedUserRepository.findByUserId(lowerUserId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "탈퇴한 회원의 아이디는 보존 기간 동안 재사용할 수 없습니다.");
+        }
+
+        // 나이 체크 (만 15세 미만 등록 불가)
+        if (dto.getUserBirth() != null) {
+            java.time.Period period = java.time.Period.between(dto.getUserBirth(), java.time.LocalDate.now());
+            if (period.getYears() < 15) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "만 15세 미만 직원은 등록할 수 없습니다.");
+            }
+        }
+
         // 3. 소속 지점 조회
         com.recode.Dwaeji.user.database.WorkPlace workPlace = workPlaceRepository.findById(dto.getFkWorkPlaceIdx())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다."));
@@ -168,6 +200,7 @@ public class UserServiceImpl implements UserService {
                 .userPw(passwordEncoder.encode(dto.getUserPw()))
                 .userName(dto.getUserName())
                 .userPhone(dto.getUserPhone())
+                .userBirth(dto.getUserBirth())
                 .userType(userType)
                 .workPlace(workPlace)
                 .userIsActive(1)
@@ -224,12 +257,53 @@ public class UserServiceImpl implements UserService {
             if (userUpdateDto.getUserBank() != null) {
                 targetUser.setUserBank(userUpdateDto.getUserBank());
             }
-            if (userUpdateDto.getUserAccountNumber() != null) {
+            if (userUpdateDto.getUserAccountNumber() != null && !userUpdateDto.getUserAccountNumber().equals("기재")) {
                 targetUser.setUserAccountNumber(userUpdateDto.getUserAccountNumber());
+            }
+            if (userUpdateDto.getUserHourlyWage() != null) {
+                targetUser.setUserHourlyWage(userUpdateDto.getUserHourlyWage());
             }
         }
         targetUser.setUserEmail(userUpdateDto.getUserEmail());
+        
+        if (userUpdateDto.getEmailConsentAgreed() != null) {
+            boolean isAgreed = userUpdateDto.getEmailConsentAgreed() == 1;
+            targetUser.setEmailConsentAgreed(isAgreed);
+            if (isAgreed && targetUser.getEmailConsentDate() == null) {
+                targetUser.setEmailConsentDate(java.time.LocalDateTime.now());
+            } else if (!isAgreed) {
+                targetUser.setEmailConsentDate(null);
+            }
+        }
+        
         userRepository.save(targetUser);
+    }
+
+    @Override
+    @Transactional
+    public void bulkUpdateUsers(String requesterId, com.recode.Dwaeji.user.dto.UserBulkUpdateDto dto) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
+        if (reqIsAdmin == null || reqIsAdmin != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일괄 업데이트 권한이 없습니다.");
+        }
+        
+        if (dto.getUserIdxList() == null || dto.getUserIdxList().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업데이트할 사용자가 선택되지 않았습니다.");
+        }
+        
+        java.util.List<User> users = userRepository.findAllById(dto.getUserIdxList());
+        for (User u : users) {
+            if (dto.getUserHourlyWage() != null) {
+                u.setUserHourlyWage(dto.getUserHourlyWage());
+            }
+            if (dto.getUserIsActive() != null) {
+                u.setUserIsActive(dto.getUserIsActive());
+            }
+        }
+        userRepository.saveAll(users);
     }
 
     @Override
@@ -256,6 +330,7 @@ public class UserServiceImpl implements UserService {
 
         // 논리적 삭제
         targetUser.setUserIsActive(0);
+        targetUser.setUserWithdrawnAt(LocalDateTime.now());
     }
 
     @Override
@@ -266,6 +341,7 @@ public class UserServiceImpl implements UserService {
         
         // 논리적 삭제
         requester.setUserIsActive(0);
+        requester.setUserWithdrawnAt(LocalDateTime.now());
     }
 
     @Override
@@ -292,7 +368,6 @@ public class UserServiceImpl implements UserService {
 
         // 관련된 자식 데이터 삭제 (Foreign Key 제약 조건 우회)
         refreshTokenRepository.deleteByUser_UserIdx(targetUserIdx);
-        workApplyWorkRepository.deleteByUser_UserIdx(targetUserIdx);
         workRecordRepository.deleteByUser_UserIdx(targetUserIdx);
 
         // 실제 사용자 물리 삭제
@@ -318,6 +393,49 @@ public class UserServiceImpl implements UserService {
 
         // 논리적 복구
         targetUser.setUserIsActive(1);
+        targetUser.setUserWithdrawnAt(null);
+    }
+
+    @Override
+    @Transactional
+    public void setLeaveStatus(String requesterId, Long targetUserIdx) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        User targetUser = userRepository.findById(targetUserIdx)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."));
+
+        Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
+        if (reqIsAdmin == null || reqIsAdmin != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한이 없습니다.");
+        }
+
+        if (targetUser.getUserIsActive() != null && targetUser.getUserIsActive() == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 퇴사 처리된 사용자입니다. 복구를 먼저 진행해주세요.");
+        }
+
+        targetUser.setUserIsActive(2); // 2: 휴직
+    }
+
+    @Override
+    @Transactional
+    public void cancelLeave(String requesterId, Long targetUserIdx) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        User targetUser = userRepository.findById(targetUserIdx)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."));
+
+        Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
+        if (reqIsAdmin == null || reqIsAdmin != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한이 없습니다.");
+        }
+
+        if (targetUser.getUserIsActive() == null || targetUser.getUserIsActive() != 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해당 사용자는 현재 휴직 상태가 아닙니다.");
+        }
+
+        targetUser.setUserIsActive(1); // 1: 재직 (복직)
     }
 
     private String maskResidentNumber(String rrn) {
@@ -374,8 +492,8 @@ public class UserServiceImpl implements UserService {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
-        Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
-        if (reqIsAdmin == null || reqIsAdmin != 1) {
+        Integer canViewSensitive = requester.getUserType().getUtCanViewSensitive();
+        if (canViewSensitive == null || canViewSensitive != 1) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "민감 정보를 조회할 권한이 없습니다.");
         }
 
@@ -391,8 +509,8 @@ public class UserServiceImpl implements UserService {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
-        Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
-        if (reqIsAdmin == null || reqIsAdmin != 1) {
+        Integer canViewSensitive = requester.getUserType().getUtCanViewSensitive();
+        if (canViewSensitive == null || canViewSensitive != 1) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "민감 정보를 수정할 권한이 없습니다.");
         }
 
@@ -403,7 +521,7 @@ public class UserServiceImpl implements UserService {
         if (dto.getUserAccountName() != null) {
             targetUser.setUserAccountName(dto.getUserAccountName());
         }
-        if (dto.getUserAccountNumber() != null) {
+        if (dto.getUserAccountNumber() != null && !dto.getUserAccountNumber().equals("기재")) {
             targetUser.setUserAccountNumber(dto.getUserAccountNumber());
         }
         if (dto.getUserBank() != null) {
@@ -461,38 +579,37 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 직원 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
-                page, size, org.springframework.data.domain.Sort.by(
-                        org.springframework.data.domain.Sort.Order.asc("userName"),
-                        org.springframework.data.domain.Sort.Order.asc("userIdx")));
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
 
-        org.springframework.data.domain.Page<User> users;
-        boolean hasName = userName != null && !userName.trim().isEmpty();
+        org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage = 
+                userRepository.searchWorkersNative(isActive, workPlaceIdx, userName, pageable);
 
-        if (isActive == null) {
-            // isActive == null: 전체 조회 (재직 + 퇴사 모두)
-            if (workPlaceIdx != null && hasName) {
-                users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdxAndUserNameContaining(0, workPlaceIdx, userName, pageable);
-            } else if (workPlaceIdx != null) {
-                users = userRepository.findByUserType_UtIsAdminAndWorkPlace_WpIdx(0, workPlaceIdx, pageable);
-            } else if (hasName) {
-                users = userRepository.findByUserType_UtIsAdminAndUserNameContaining(0, userName, pageable);
-            } else {
-                users = userRepository.findAllWorkersFetch(0, pageable);
+        return projPage.map(p -> {
+            String finalName = p.getNameSeq() > 1 ? p.getUserName() + "(" + (p.getNameSeq() - 1) + ")" : p.getUserName();
+            String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
+            if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
+                hasAccount = "기재";
             }
-        } else {
-            if (workPlaceIdx != null && hasName) {
-                users = userRepository.findWorkersByWorkPlaceAndNameFetch(0, isActive, workPlaceIdx, userName, pageable);
-            } else if (workPlaceIdx != null) {
-                users = userRepository.findWorkersByWorkPlaceFetch(0, isActive, workPlaceIdx, pageable);
-            } else if (hasName) {
-                users = userRepository.findWorkersByNameFetch(0, isActive, userName, pageable);
-            } else {
-                users = userRepository.findWorkersFetch(0, isActive, pageable);
-            }
-        }
-
-        return users.map(com.recode.Dwaeji.user.dto.UserInfoDto::fromEntity);
+            
+            return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
+                    .userIdx(p.getUserIdx())
+                    .userId(p.getUserId())
+                    .userName(finalName)
+                    .userEmail(p.getUserEmail())
+                    .userBirth(p.getUserBirth())
+                    .userPhone(p.getUserPhone())
+                    .userTypeName(p.getUserTypeName())
+                    .workPlaceName(p.getWorkPlaceName())
+                    .workPlaceIdx(p.getWorkPlaceIdx())
+                    .userIsActive(p.getUserIsActive())
+                    .userAccountName(p.getUserAccountName())
+                    .userAccountNumber(hasAccount)
+                    .userBank(p.getUserBank())
+                    .userHourlyWage(p.getUserHourlyWage())
+                    .userWithdrawnAt(p.getUserWithdrawnAt())
+                    .isAdmin(p.getIsAdmin())
+                    .build();
+        });
     }
 
     @Override
@@ -519,6 +636,48 @@ public class UserServiceImpl implements UserService {
         return users.map(com.recode.Dwaeji.user.dto.UserInfoDto::fromEntity);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
+        if (reqIsAdmin == null || reqIsAdmin != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 전체 직원 목록을 조회할 수 있습니다.");
+        }
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+
+        org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage =
+                userRepository.searchAllEmployeesNative(isActive, workPlaceIdx, userName, pageable);
+
+        return projPage.map(p -> {
+            String finalName = p.getNameSeq() > 1 ? p.getUserName() + "(" + (p.getNameSeq() - 1) + ")" : p.getUserName();
+            String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
+            if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
+                hasAccount = "기재";
+            }
+
+            return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
+                    .userIdx(p.getUserIdx())
+                    .userId(p.getUserId())
+                    .userName(finalName)
+                    .userEmail(p.getUserEmail())
+                    .userBirth(p.getUserBirth())
+                    .userPhone(p.getUserPhone())
+                    .userTypeName(p.getUserTypeName())
+                    .workPlaceName(p.getWorkPlaceName())
+                    .workPlaceIdx(p.getWorkPlaceIdx())
+                    .userIsActive(p.getUserIsActive())
+                    .userAccountName(p.getUserAccountName())
+                    .userAccountNumber(hasAccount)
+                    .userBank(p.getUserBank())
+                    .userHourlyWage(p.getUserHourlyWage())
+                    .userWithdrawnAt(p.getUserWithdrawnAt())
+                    .isAdmin(p.getIsAdmin())
+                    .build();
+        });
+    }
 
     @Override
     @Transactional
@@ -529,7 +688,7 @@ public class UserServiceImpl implements UserService {
         if (dto.getUserBank() != null && !dto.getUserBank().isEmpty()) {
             user.setUserBank(dto.getUserBank());
         }
-        if (dto.getUserAccountNumber() != null && !dto.getUserAccountNumber().isEmpty()) {
+        if (dto.getUserAccountNumber() != null && !dto.getUserAccountNumber().isEmpty() && !dto.getUserAccountNumber().equals("기재")) {
             user.setUserAccountNumber(dto.getUserAccountNumber());
         }
         if (dto.getUserAccountName() != null && !dto.getUserAccountName().isEmpty()) {
@@ -603,5 +762,98 @@ public class UserServiceImpl implements UserService {
         return userTypeRepository.findAll().stream()
                 .map(com.recode.Dwaeji.user.dto.UserTypeDto::fromEntity)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.ArchivedUserDto> getArchivedUsers(String requesterId, String reason, String ip, int page, int size) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        if (requester.getUserType() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 그룹이 설정되지 않아 아카이브 데이터 열람 권한이 없습니다.");
+        }
+        Integer canAccessArchive = requester.getUserType().getUtCanAccessArchive();
+        if (canAccessArchive == null || canAccessArchive != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아카이브 데이터 열람 권한이 없습니다.");
+        }
+        
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회 사유를 반드시 입력해야 합니다.");
+        }
+        
+        // 접근 로그 기록 (비동기 처리가 좋지만 일단 동기 처리)
+        com.recode.Dwaeji.user.database.ArchiveAccessLog log = com.recode.Dwaeji.user.database.ArchiveAccessLog.builder()
+                .accessorUserIdx(requester.getUserIdx())
+                .accessorIp(ip)
+                .accessReason(reason)
+                .build();
+        archiveAccessLogRepository.save(log);
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return archivedUserRepository.findAll(pageable)
+                .map(com.recode.Dwaeji.user.dto.ArchivedUserDto::fromEntity);
+    }
+
+    @Override
+    @Transactional
+    public void restoreArchivedUser(String requesterId, Long originalUserIdx) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        if (requester.getUserType() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 그룹이 설정되지 않아 아카이브 데이터 복구 권한이 없습니다.");
+        }
+        Integer canAccessArchive = requester.getUserType().getUtCanAccessArchive();
+        if (canAccessArchive == null || canAccessArchive != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아카이브 데이터 복구 권한이 없습니다.");
+        }
+
+        com.recode.Dwaeji.user.database.ArchivedUser archivedUser = archivedUserRepository.findById(originalUserIdx)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "아카이빙된 유저를 찾을 수 없습니다."));
+
+        User originalUser = userRepository.findById(originalUserIdx)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "원본 유저 레코드를 찾을 수 없습니다. (데이터 정합성 오류)"));
+
+        // 복구 전, 동일한 ID를 누군가(혹은 본인이) 새로 가입해서 선점했는지 최종 확인
+        if (userRepository.findByUserId(archivedUser.getUserId()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 아이디가 이미 새로운 회원에 의해 사용 중입니다. 복구할 수 없습니다.");
+        }
+
+        // 복구: 마스킹 해제 및 활성화
+        originalUser.setUserId(archivedUser.getUserId());
+        originalUser.setUserName(archivedUser.getUserName());
+        originalUser.setUserPhone(archivedUser.getUserPhone());
+        originalUser.setUserEmail(archivedUser.getUserEmail());
+        originalUser.setUserBirth(archivedUser.getUserBirth());
+        originalUser.setUserAccountNumber(archivedUser.getUserAccountNumber());
+        originalUser.setUserAccountName(archivedUser.getUserAccountName());
+        originalUser.setUserBank(archivedUser.getUserBank());
+        originalUser.setUserIsActive(1);
+        originalUser.setUserWithdrawnAt(null);
+        userRepository.save(originalUser);
+
+        // 아카이브 데이터 완전 삭제
+        archivedUserRepository.delete(archivedUser);
+    }
+
+    @Override
+    @Transactional
+    public void hardDeleteArchivedUser(String requesterId, Long originalUserIdx) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        
+        if (requester.getUserType() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 그룹이 설정되지 않아 아카이브 데이터 완전 파기 권한이 없습니다.");
+        }
+        Integer canAccessArchive = requester.getUserType().getUtCanAccessArchive();
+        if (canAccessArchive == null || canAccessArchive != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아카이브 데이터 완전 파기 권한이 없습니다.");
+        }
+
+        com.recode.Dwaeji.user.database.ArchivedUser archivedUser = archivedUserRepository.findById(originalUserIdx)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "아카이빙된 유저를 찾을 수 없습니다."));
+
+        archivedUserRepository.delete(archivedUser);
     }
 }

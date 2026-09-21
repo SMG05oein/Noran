@@ -5,9 +5,9 @@ import com.recode.Dwaeji.user.dto.UserTypeRequestDto;
 import java.util.List;
 
 public interface UserTypeService {
-    UserTypeDto createUserType(UserTypeRequestDto requestDto);
+    UserTypeDto createUserType(String requesterId, UserTypeRequestDto requestDto);
     List<UserTypeDto> getAllUserTypes();
     UserTypeDto getUserType(Long utIdx);
-    UserTypeDto updateUserType(Long utIdx, UserTypeRequestDto requestDto);
-    void deleteUserType(Long utIdx);
+    UserTypeDto updateUserType(String requesterId, Long utIdx, UserTypeRequestDto requestDto);
+    void deleteUserType(String requesterId, Long utIdx);
 }

@@ -1,43 +1,43 @@
 /* Warm Theme Main.css */
 
 /* =========================================
-   공통 웜 테라코타 아웃라인 버튼
+   공통: 아웃라인 버튼
    ========================================= */
 .req-outline-btn {
   background: transparent !important;
-  border: 1.5px solid #C8957A !important;
-  color: #A85A47 !important;
+  border: 1.5px solid var(--color-primary) !important;
+  color: var(--color-primary) !important;
   transition: all 0.18s ease;
 }
 .req-outline-btn:hover,
 .req-outline-btn:focus,
 .req-outline-btn:active {
-  background: rgba(168, 90, 71, 0.08) !important;
-  border-color: #A85A47 !important;
-  color: #A85A47 !important;
+  background: var(--color-primary-light) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
 [data-bs-theme="dark"] .req-outline-btn {
-  border-color: #9E5C47 !important;
-  color: #ffe9e9 !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-surface) !important;
 }
 [data-bs-theme="dark"] .req-outline-btn:hover,
 [data-bs-theme="dark"] .req-outline-btn:focus,
 [data-bs-theme="dark"] .req-outline-btn:active {
-  background: rgba(200, 149, 122, 0.12) !important;
+  background: var(--color-primary-light) !important;
 }
 
 /* =========================================
-   요일 선택 버튼 (Bootstrap 오버라이드)
+   요일 선택 버튼
    ========================================= */
 .day-btn-off,
 .day-btn-off:hover,
 .day-btn-off:focus,
 .day-btn-off:active {
   background: transparent !important;
-  border: 1.5px solid #C8B0A0 !important;
+  border: 1.5px solid var(--color-input-border) !important;
   opacity: 0.6 !important;
   transition: all 0.2s ease;
   transform: none !important;
@@ -48,8 +48,9 @@
 .day-btn-on:hover,
 .day-btn-on:focus,
 .day-btn-on:active {
-  border: 1.5px solid #A85A47 !important;
-  color: #ffffff !important;
+  border: 1.5px solid var(--color-primary) !important;
+  color: var(--color-surface) !important;
+  background: var(--color-primary) !important;
   opacity: 1 !important;
   transition: all 0.2s ease;
   transform: none !important;
@@ -60,15 +61,16 @@
 [data-bs-theme="dark"] .day-btn-off:hover,
 [data-bs-theme="dark"] .day-btn-off:focus,
 [data-bs-theme="dark"] .day-btn-off:active {
-  border-color: #7A6A60 !important;
-  background: #2D231E !important;
+  border-color: var(--color-input-border) !important;
+  background: var(--color-surface-hover) !important;
 }
 
 [data-bs-theme="dark"] .day-btn-on,
 [data-bs-theme="dark"] .day-btn-on:hover,
 [data-bs-theme="dark"] .day-btn-on:focus,
 [data-bs-theme="dark"] .day-btn-on:active {
-  border-color: #9E5C47 !important;
+  border-color: var(--color-primary) !important;
+  background: var(--color-primary) !important;
 }
 
 .main-container {
@@ -77,34 +79,68 @@
 }
 
 .worker-hero-card {
+  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(232, 213, 191, 0.2) 100%);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-lg);
+  padding: 1.6rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+[data-bs-theme="dark"] .worker-hero-card {
+  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(215, 122, 95, 0.08) 100%);
+}
+
+.worker-hero-title {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-text-main);
+}
+
+.worker-pay-card {
   background: var(--color-surface);
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: 1.35rem 1.5rem;
   box-shadow: var(--shadow-sm);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   position: relative;
   overflow: hidden;
 }
 
-.worker-hero-card::before {
+.worker-pay-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0 auto 0 0;
   width: 6px;
-  height: 100%;
   background: var(--color-primary);
   border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+
+.worker-pay-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  color: var(--color-primary);
+}
+
+.worker-pay-note {
+  color: var(--color-text-light);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .worker-stat-card {
   background: var(--color-surface);
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-md);
-  padding: 1.25rem;
+  padding: 1.15rem 1.25rem;
   box-shadow: var(--shadow-xs);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -112,7 +148,6 @@
 }
 
 .worker-stat-card:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -149,6 +184,9 @@
   border-radius: var(--radius-pill);
   font-weight: 700;
   font-size: 0.92rem;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid rgba(93, 138, 104, 0.25);
 }
 
 .quick-action-btn {
@@ -162,13 +200,218 @@
   transition: all 0.2s ease;
 }
 
-.quick-action-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+.req-history-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border) !important;
+  border-radius: var(--radius-lg);
 }
 
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
+.req-history-range {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  letter-spacing: -0.03em;
+}
+
+.req-history-meta {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
+}
+
+.req-icon-btn {
+  background: var(--color-input-bg) !important;
+  border: 1px solid var(--color-input-border) !important;
+  color: var(--color-text-muted) !important;
+}
+.req-icon-btn:hover {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.req-week-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  margin: 0 -0.15rem;
+  padding: 0.1rem 0.15rem 0.2rem;
+}
+
+.req-week-grid {
+  display: flex;
+  gap: 0.45rem;
+  min-width: 100%;
+  width: max-content;
+}
+
+.req-week-day {
+  text-align: center;
+  flex: 1 0 4.75rem;
+  width: 4.75rem;
+  min-width: 4.75rem;
+}
+
+.req-week-day-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.req-week-day-date {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.3rem;
+}
+
+.req-chip {
+  display: block;
+  border-radius: 8px;
+  padding: 0.28rem 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin-bottom: 0.2rem;
+}
+
+.req-chip.empty {
+  background: var(--color-input-bg);
+  color: var(--color-text-light);
+  font-weight: 700;
+}
+
+.req-chip.applied {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.req-chip.work {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.req-chip-wp {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.req-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.req-status-badge.applied {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.req-status-badge.work {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.req-status-badge.muted {
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+}
+
+/* =========================================
+   근무 신청 폼
+   ========================================= */
+.req-apply-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border) !important;
+  border-radius: var(--radius-lg);
+}
+
+.req-apply-week-label {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  letter-spacing: -0.03em;
+}
+
+.req-apply-week-hint {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
+}
+
+.req-apply-block {
+  position: relative;
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 0.85rem 1rem;
+}
+
+.req-place-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.req-place-chip {
+  border: 1px solid var(--color-input-border);
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  border-radius: 999px;
+  padding: 0.32rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.req-place-chip.selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.req-day-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.6rem;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.req-day-cell.off {
+  background: var(--color-surface);
+  color: var(--color-text-light);
+}
+
+.req-day-cell.applied {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.req-day-cell.open {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+/* Mobile & Tablet Responsiveness (up to lg breakpoint) */
+@media (max-width: 991.98px) {
   .main-container .container {
     padding-top: 1rem !important;
     padding-bottom: 5rem !important;
@@ -178,7 +421,12 @@
     font-size: 1.45rem;
   }
 
-  .worker-hero-card {
-    padding: 1.25rem;
+  .worker-hero-card,
+  .worker-pay-card {
+    padding: 1.2rem 1.25rem;
+  }
+
+  .worker-pay-value {
+    font-size: 1.7rem;
   }
 }

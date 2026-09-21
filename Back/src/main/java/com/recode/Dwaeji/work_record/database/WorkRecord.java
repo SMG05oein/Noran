@@ -1,6 +1,7 @@
 package com.recode.Dwaeji.work_record.database;
 
 import com.recode.Dwaeji.user.database.User;
+import com.recode.Dwaeji.user.database.WorkPlace;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -29,6 +30,10 @@ public class WorkRecord {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fk_user_idx", nullable = false)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fk_work_place_idx")
+    private WorkPlace workPlace;
 
     @Column(name = "wr_date", nullable = false)
     private LocalDate wrDate;

@@ -64,15 +64,28 @@ public class WorkRecordController {
             @RequestParam int year,
             @RequestParam int month,
             @RequestParam(required = false) Long workPlaceIdx) {
-        
-        byte[] excelBytes = workRecordService.downloadExcel(userDetails.getUsername(), year, month, workPlaceIdx);
-        
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        String requesterId = userDetails.getUsername();
+        byte[] excelBytes = workRecordService.downloadExcel(requesterId, year, month, workPlaceIdx);
+
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        headers.setContentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "work_records_" + year + "_" + month + ".xlsx");
-        headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
-        
-        return new ResponseEntity<>(excelBytes, headers, org.springframework.http.HttpStatus.OK);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(excelBytes);
+    }
+
+    @Operation(summary = "엑셀 업로드 기록 대조", description = "프론트엔드에서 파싱한 엑셀 데이터를 DB와 대조하여 일치 여부를 반환합니다.")
+    @PostMapping("/excel-compare")
+    public ResponseEntity<java.util.List<com.recode.Dwaeji.work_record.dto.ExcelCompareResponseDto>> compareExcelRecords(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody java.util.List<com.recode.Dwaeji.work_record.dto.ExcelCompareRequestDto> requestData) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(workRecordService.compareExcelRecords(userDetails.getUsername(), requestData));
     }
 
     @Operation(summary = "특정 근무 기록 단건 조회", description = "ID(wrIdx)를 통해 특정 근무 기록을 조회합니다.")

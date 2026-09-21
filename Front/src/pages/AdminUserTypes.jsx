@@ -18,6 +18,11 @@ const AdminUserTypes = () => {
   const [utName, setUtName] = useState('');
   const [utIsAdmin, setUtIsAdmin] = useState(0);
   const [utIsSuperAdmin, setUtIsSuperAdmin] = useState(0);
+  
+  const [utCanAccessArchive, setUtCanAccessArchive] = useState(0);
+  const [utCanViewSensitive, setUtCanViewSensitive] = useState(0);
+  const [utCanExportExcel, setUtCanExportExcel] = useState(0);
+  const [utCanManageRoles, setUtCanManageRoles] = useState(0);
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -44,6 +49,10 @@ const AdminUserTypes = () => {
     setUtName('');
     setUtIsAdmin(0);
     setUtIsSuperAdmin(0);
+    setUtCanAccessArchive(0);
+    setUtCanViewSensitive(0);
+    setUtCanExportExcel(0);
+    setUtCanManageRoles(0);
     setErrorMsg('');
     setSuccessMsg('');
     setShowModal(true);
@@ -55,6 +64,10 @@ const AdminUserTypes = () => {
     setUtName(ut.utName || '');
     setUtIsAdmin(ut.utIsAdmin || 0);
     setUtIsSuperAdmin(ut.utIsSuperAdmin || 0);
+    setUtCanAccessArchive(ut.utCanAccessArchive || 0);
+    setUtCanViewSensitive(ut.utCanViewSensitive || 0);
+    setUtCanExportExcel(ut.utCanExportExcel || 0);
+    setUtCanManageRoles(ut.utCanManageRoles || 0);
     setErrorMsg('');
     setSuccessMsg('');
     setShowModal(true);
@@ -73,7 +86,11 @@ const AdminUserTypes = () => {
     const payload = {
       utName,
       utIsAdmin: Number(utIsAdmin),
-      utIsSuperAdmin: Number(utIsSuperAdmin)
+      utIsSuperAdmin: Number(utIsSuperAdmin),
+      utCanAccessArchive: Number(utCanAccessArchive),
+      utCanViewSensitive: Number(utCanViewSensitive),
+      utCanExportExcel: Number(utCanExportExcel),
+      utCanManageRoles: Number(utCanManageRoles)
     };
 
     let res;
@@ -186,11 +203,61 @@ const AdminUserTypes = () => {
 
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">권한 설정 (관리자 기능 접근)</Form.Label>
-            <Form.Select value={utIsAdmin} onChange={e => setUtIsAdmin(e.target.value)} className="custom-input">
+            <Form.Select 
+              value={utIsAdmin} 
+              onChange={e => {
+                const val = Number(e.target.value);
+                setUtIsAdmin(val);
+                if (val === 0) {
+                  setUtCanAccessArchive(0);
+                  setUtCanViewSensitive(0);
+                  setUtCanExportExcel(0);
+                  setUtCanManageRoles(0);
+                }
+              }} 
+              className="custom-input"
+            >
               <option value={0}>일반 알바생 / 직원 (관리자 기능 제한)</option>
               <option value={1}>관리자 (관리자 대시보드 접근 허용)</option>
             </Form.Select>
           </Form.Group>
+
+          {utIsAdmin === 1 && (
+            <div className="bg-light p-3 rounded-3 mb-3 border">
+              <div className="fw-bold text-dark small mb-3">관리자 세부 권한</div>
+              <Form.Check 
+                type="switch" 
+                id="archive-switch"
+                label="아카이빙(1년 경과 퇴사자) 조회 권한" 
+                checked={utCanAccessArchive === 1}
+                onChange={e => setUtCanAccessArchive(e.target.checked ? 1 : 0)}
+                className="mb-2"
+              />
+              <Form.Check 
+                type="switch" 
+                id="sensitive-switch"
+                label="직원 민감정보(시급/계좌) 조회 권한" 
+                checked={utCanViewSensitive === 1}
+                onChange={e => setUtCanViewSensitive(e.target.checked ? 1 : 0)}
+                className="mb-2"
+              />
+              <Form.Check 
+                type="switch" 
+                id="excel-switch"
+                label="엑셀 다운로드 권한" 
+                checked={utCanExportExcel === 1}
+                onChange={e => setUtCanExportExcel(e.target.checked ? 1 : 0)}
+                className="mb-2"
+              />
+              <Form.Check 
+                type="switch" 
+                id="role-switch"
+                label="직급 및 권한 설정 관리 권한" 
+                checked={utCanManageRoles === 1}
+                onChange={e => setUtCanManageRoles(e.target.checked ? 1 : 0)}
+              />
+            </div>
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)} className="rounded-3">닫기</Button>

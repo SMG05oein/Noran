@@ -20,6 +20,8 @@ public class AnnouncementResponseDto {
     private String content;
     private Boolean isActive;
     private LocalDateTime createdAt;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
 
     public static AnnouncementResponseDto from(Announcement entity) {
         if (entity == null) return null;
@@ -29,6 +31,8 @@ public class AnnouncementResponseDto {
                 .content(entity.getAnnContent())
                 .isActive(entity.getAnnIsActive() != null && entity.getAnnIsActive() == 1)
                 .createdAt(entity.getAnnCreatedAt())
+                .startDate(entity.getAnnStartDate())
+                .endDate(entity.getAnnEndDate())
                 .build();
     }
 }

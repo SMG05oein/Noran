@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Modal, Form, Badge } from 'react-bootstrap';
-import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, createWorkRecord, deleteWorkRecord, restoreWorkRecord } from '../api/workApi';
+import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, createWorkRecord, deleteWorkRecord, restoreWorkRecord, compareWorkRecordExcel } from '../api/workApi';
 import { fetchWorkPlaces, fetchAdminWorkers } from '../api/authApi';
 import { format } from 'date-fns';
 import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiStore2Line, RiRefreshLine, RiArrowRightSLine } from 'react-icons/ri';
@@ -14,6 +14,11 @@ const AdminRecords = () => {
   const [workRecords, setWorkRecords] = useState([]);
   const [branches, setBranches] = useState([{ wpIdx: null, wpName: '전체' }]);
   const [loading, setLoading] = useState(true);
+
+  // 엑셀 대조 상태
+  const [compareResult, setCompareResult] = useState(null);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Pagination & Sorting states
   const [page, setPage] = useState(0);
@@ -360,13 +365,32 @@ const AdminRecords = () => {
     }
   };
 
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const res = await compareWorkRecordExcel(file);
+    setUploading(false);
+
+    // Reset file input
+    e.target.value = '';
+
+    if (res.success) {
+      setCompareResult(res.data);
+      setShowCompareModal(true);
+    } else {
+      alert(res.error || '엑셀 업로드 및 대조에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
         <div className="admin-header-card">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
-              <h2 className="fw-bold text-dark mb-1">근무 기록 관리</h2>
+              <h2 className="fw-bold text-dark mb-1">근무 기록</h2>
               <p className="text-muted small mb-0">전체 직원의 월별 출퇴근 기록을 조회, 검색, 수정하고 엑셀로 다운로드합니다.</p>
             </div>
             
@@ -396,36 +420,51 @@ const AdminRecords = () => {
                 disabled={loading}
               >
                 <RiRefreshLine size={16} />
-                새로고침
+                최신화
               </Button>
               <Button 
                 variant="success" 
                 className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
                 onClick={handleDownloadExcel}
-                disabled={downloading}
+                disabled={downloading || uploading}
               >
                 <RiDownload2Line size={16} />
                 {downloading ? '다운로드 중...' : '엑셀 다운로드'}
               </Button>
+              
+              <Button 
+                variant="outline-primary" 
+                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
+                onClick={() => document.getElementById('excelUpload').click()}
+                disabled={downloading || uploading}
+              >
+                {uploading ? <Spinner as="span" animation="border" size="sm" /> : <RiDownload2Line size={16} style={{ transform: 'rotate(180deg)' }} />}
+                {uploading ? '업로드 중...' : '엑셀 대조/업로드'}
+              </Button>
+              <input type="file" id="excelUpload" style={{ display: 'none' }} accept=".xlsx, .xls" onChange={handleExcelUpload} />
             </div>
           </div>
 
           <hr className="my-3 opacity-25" />
 
           {/* 검색 및 필터 바 */}
-          <div className="d-flex gap-2 align-items-center flex-wrap">
-            <Form onSubmit={handleSearch} className="d-flex align-items-center gap-1 flex-grow-1" style={{ minWidth: '220px', maxWidth: '320px' }}>
-              <Form.Control
-                type="text"
-                placeholder="직원 이름 검색"
-                value={searchInput}
-                onChange={e => setSearchInput(e.target.value)}
-                className="custom-input py-2"
-              />
-              <Button type="submit" variant="primary" className="fw-bold rounded-3 px-3 py-2 text-nowrap">
-                <RiSearchLine size={16} />
-              </Button>
-            </Form>
+          <div className="d-flex gap-2 align-items-center flex-wrap w-100">
+            <div className="branch-select-pills mb-0">
+              {branches.map((b) => (
+                <button
+                  key={b.wpIdx ?? 'all'}
+                  type="button"
+                  className={`branch-pill ${selectedWpIdx === b.wpIdx ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedWpIdx(b.wpIdx);
+                    setPage(0);
+                    setPageInput('1');
+                  }}
+                >
+                  {b.wpName}
+                </button>
+              ))}
+            </div>
 
             <Form.Control 
               type="month" 
@@ -435,22 +474,18 @@ const AdminRecords = () => {
               style={{ width: '160px' }}
             />
 
-            <div className="branch-select-pills mb-0 ms-md-auto">
-              {branches.map((b) => (
-                <button
-                  key={b.wpIdx ?? 'all'}
-                  type="button"
-                  className={`branch-pill ${selectedWpIdx === b.wpIdx ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedWpIdx(b.wpIdx);
-                    setPage(0);
-                  }}
-                >
-                  <RiStore2Line className="me-1" />
-                  {b.wpName}
-                </button>
-              ))}
-            </div>
+            <Form onSubmit={handleSearch} className="d-flex align-items-center gap-1 ms-md-auto" style={{ minWidth: '220px', maxWidth: '320px' }}>
+              <Form.Control
+                type="text"
+                placeholder="직원 이름 검색"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                className="custom-input py-2"
+              />
+              <Button type="submit" variant="primary" className="fw-bold d-flex align-items-center gap-1 rounded-3 px-3 py-2 text-nowrap">
+                <RiSearchLine size={16} /> 검색
+              </Button>
+            </Form>
           </div>
         </div>
 
@@ -731,11 +766,36 @@ const AdminRecords = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowCreateModal(false)} className="rounded-3">취소</Button>
-          <Button variant="primary" onClick={handleCreateRecord} disabled={saving} className="rounded-3 px-3">
-            {saving ? <Spinner size="sm" animation="border" /> : '추가하기'}
+          <Button variant="primary" onClick={handleCreateRecord} disabled={saving} className="fw-bold">
+            {saving ? <Spinner as="span" animation="border" size="sm" /> : '추가하기'}
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* 엑셀 대조 결과 모달 */}
+      <Modal show={showCompareModal} onHide={() => setShowCompareModal(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">엑셀 대조 결과</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          {compareResult ? (
+            <div>
+              <Alert variant="info" className="mb-4">
+                <strong>안내:</strong> 업로드한 엑셀 파일과 현재 시스템의 근무 기록을 대조한 결과입니다.
+              </Alert>
+              <pre className="p-3 bg-light rounded" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {JSON.stringify(compareResult, null, 2)}
+              </pre>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted">결과가 없습니다.</div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCompareModal(false)}>닫기</Button>
+        </Modal.Footer>
+      </Modal>
+
     </div>
   );
 };

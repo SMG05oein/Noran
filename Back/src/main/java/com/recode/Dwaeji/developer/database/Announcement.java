@@ -33,6 +33,12 @@ public class Announcement {
     @Builder.Default
     private Integer annIsActive = 1;
 
+    @Column(name = "ann_start_date")
+    private java.time.LocalDate annStartDate;
+
+    @Column(name = "ann_end_date")
+    private java.time.LocalDate annEndDate;
+
     @CreatedDate
     @Column(name = "ann_created_at", nullable = false, updatable = false)
     private LocalDateTime annCreatedAt;

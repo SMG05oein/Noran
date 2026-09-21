@@ -3,6 +3,7 @@ package com.recode.Dwaeji.user.impl;
 import com.recode.Dwaeji.user.database.UserType;
 import com.recode.Dwaeji.user.dto.UserTypeDto;
 import com.recode.Dwaeji.user.dto.UserTypeRequestDto;
+import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.user.repository.UserTypeRepository;
 import com.recode.Dwaeji.user.service.UserTypeService;
 import lombok.RequiredArgsConstructor;
@@ -19,14 +20,40 @@ import java.util.stream.Collectors;
 public class UserTypeServiceImpl implements UserTypeService {
 
     private final UserTypeRepository userTypeRepository;
+    private final UserRepository userRepository;
+
+    private void checkManageRolePermission(String requesterId) {
+        com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+        
+        com.recode.Dwaeji.user.database.UserType ut = requester.getUserType();
+        if (ut == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "직급 정보가 없습니다.");
+        }
+        
+        boolean isSuperAdmin = ut.getUtIsSuperAdmin() != null && ut.getUtIsSuperAdmin() == 1;
+        boolean canManageRoles = ut.getUtCanManageRoles() != null && ut.getUtCanManageRoles() == 1;
+        
+        if (!isSuperAdmin && !canManageRoles) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "직급 및 권한을 관리할 권한이 없습니다.");
+        }
+    }
 
     @Override
     @Transactional
-    public UserTypeDto createUserType(UserTypeRequestDto requestDto) {
+    public UserTypeDto createUserType(String requesterId, UserTypeRequestDto requestDto) {
+        checkManageRolePermission(requesterId);
+        
         UserType userType = UserType.builder()
                 .utName(requestDto.getUtName())
                 .utIsAdmin(requestDto.getUtIsAdmin())
                 .utIsSuperAdmin(requestDto.getUtIsSuperAdmin())
+                .utCanAccessArchive(requestDto.getUtCanAccessArchive() != null ? requestDto.getUtCanAccessArchive() : 0)
+                .utCanViewSensitive(requestDto.getUtCanViewSensitive() != null ? requestDto.getUtCanViewSensitive() : 0)
+                .utCanExportExcel(requestDto.getUtCanExportExcel() != null ? requestDto.getUtCanExportExcel() : 0)
+                .utCanManageRoles(requestDto.getUtCanManageRoles() != null ? requestDto.getUtCanManageRoles() : 0)
+                .utAllowMultiWorkplace(requestDto.getUtAllowMultiWorkplace() != null ? requestDto.getUtAllowMultiWorkplace() : 0)
+                .utCanManageSchedule(requestDto.getUtCanManageSchedule() != null ? requestDto.getUtCanManageSchedule() : 0)
                 .build();
         UserType saved = userTypeRepository.save(userType);
         return UserTypeDto.fromEntity(saved);
@@ -50,20 +77,30 @@ public class UserTypeServiceImpl implements UserTypeService {
 
     @Override
     @Transactional
-    public UserTypeDto updateUserType(Long utIdx, UserTypeRequestDto requestDto) {
+    public UserTypeDto updateUserType(String requesterId, Long utIdx, UserTypeRequestDto requestDto) {
+        checkManageRolePermission(requesterId);
+        
         UserType userType = userTypeRepository.findById(utIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 직급을 찾을 수 없습니다."));
         
-        userType.setUtName(requestDto.getUtName());
-        userType.setUtIsAdmin(requestDto.getUtIsAdmin());
-        userType.setUtIsSuperAdmin(requestDto.getUtIsSuperAdmin());
+        if (requestDto.getUtName() != null) userType.setUtName(requestDto.getUtName());
+        if (requestDto.getUtIsAdmin() != null) userType.setUtIsAdmin(requestDto.getUtIsAdmin());
+        if (requestDto.getUtIsSuperAdmin() != null) userType.setUtIsSuperAdmin(requestDto.getUtIsSuperAdmin());
+        if (requestDto.getUtCanAccessArchive() != null) userType.setUtCanAccessArchive(requestDto.getUtCanAccessArchive());
+        if (requestDto.getUtCanViewSensitive() != null) userType.setUtCanViewSensitive(requestDto.getUtCanViewSensitive());
+        if (requestDto.getUtCanExportExcel() != null) userType.setUtCanExportExcel(requestDto.getUtCanExportExcel());
+        if (requestDto.getUtCanManageRoles() != null) userType.setUtCanManageRoles(requestDto.getUtCanManageRoles());
+        if (requestDto.getUtAllowMultiWorkplace() != null) userType.setUtAllowMultiWorkplace(requestDto.getUtAllowMultiWorkplace());
+        if (requestDto.getUtCanManageSchedule() != null) userType.setUtCanManageSchedule(requestDto.getUtCanManageSchedule());
         
         return UserTypeDto.fromEntity(userType);
     }
 
     @Override
     @Transactional
-    public void deleteUserType(Long utIdx) {
+    public void deleteUserType(String requesterId, Long utIdx) {
+        checkManageRolePermission(requesterId);
+        
         UserType userType = userTypeRepository.findById(utIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 직급을 찾을 수 없습니다."));
         userTypeRepository.delete(userType);

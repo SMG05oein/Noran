@@ -16,16 +16,16 @@
   overflow: hidden;
 }
 
-.admin-header-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 6px;
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
-}
+/*.admin-header-card::before {*/
+/*  content: '';*/
+/*  position: absolute;*/
+/*  top: 0;*/
+/*  left: 0;*/
+/*  width: 6px;*/
+/*  height: 100%;*/
+/*  background: var(--color-primary);*/
+/*  border-radius: var(--radius-pill) 0 0 var(--radius-pill);*/
+/*}*/
 
 .admin-stat-card {
   background: var(--color-surface);
@@ -38,7 +38,7 @@
 }
 
 .admin-stat-card:hover {
-  transform: translateY(-2px);
+
   box-shadow: var(--shadow-sm);
 }
 
@@ -131,7 +131,7 @@
   color: #FFFFFF !important;
 }
 
-/* 타지점 근무 뱃지 스타일 */
+/* ?吏??洹쇰Т 諭껋? ?ㅽ???*/
 .badge-other-branch {
   display: inline-flex;
   flex-direction: column;
@@ -147,7 +147,7 @@
 }
 
 .badge-other-branch:hover {
-  transform: translateY(-1px);
+
   box-shadow: var(--shadow-xs);
   border-color: rgba(142, 68, 173, 0.6);
 }
@@ -180,8 +180,8 @@
   color: #F5B041;
 }
 
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
+/* Mobile & Tablet Responsiveness (up to lg breakpoint) */
+@media (max-width: 991.98px) {
   .admin-container {
     padding-top: 1rem;
   }
@@ -200,7 +200,122 @@
   }
 }
 
-/* 다크모드 테이블 퇴사자 로우 스타일 최적화 */
+.assign-shift-card {
+  border: 1px solid var(--color-input-border);
+  background-color: var(--color-surface);
+}
+
+[data-bs-theme="dark"] .assign-shift-card {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-input-border);
+}
+
+.assign-status-input {
+  border-radius: 10px !important;
+}
+.assign-status-input.unapplied {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-text-muted) !important;
+  border-color: var(--color-input-border) !important;
+}
+.assign-status-input.unapplied::placeholder {
+  color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+.assign-status-input.unassigned {
+  background-color: #3f342e !important;
+  color: #f6efe8 !important;
+  border-color: #3f342e !important;
+}
+.assign-status-input.unassigned::placeholder {
+  color: #f6efe8 !important;
+  opacity: 1;
+}
+
+.assign-status-input.applied {
+  background-color: var(--color-warning-bg) !important;
+  color: var(--color-warning) !important;
+  border-color: var(--color-warning) !important;
+}
+.assign-status-input.applied::placeholder {
+  color: var(--color-warning) !important;
+  opacity: 1;
+}
+
+.assign-status-input.assigned {
+  background-color: var(--color-success-bg) !important;
+  color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+}
+
+.assign-status-input.other-branch {
+  background-color: var(--color-info-bg) !important;
+  color: var(--color-info) !important;
+  border-color: var(--color-info) !important;
+}
+.assign-status-input.other-branch::placeholder {
+  color: var(--color-info) !important;
+  opacity: 1;
+}
+
+[data-bs-theme="dark"] .assign-status-input.unapplied {
+  background-color: #2c2623 !important;
+  color: var(--color-text-muted) !important;
+  border-color: #554a43 !important;
+}
+[data-bs-theme="dark"] .assign-status-input.unapplied::placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+[data-bs-theme="dark"] .assign-status-input.unassigned {
+  background-color: #6b5348 !important;
+  color: #f6efe8 !important;
+  border-color: #8a6d5d !important;
+}
+[data-bs-theme="dark"] .assign-status-input.unassigned::placeholder {
+  color: #f6efe8 !important;
+}
+
+[data-bs-theme="dark"] .assign-status-input.applied {
+  background-color: rgba(222, 158, 75, 0.18) !important;
+  color: #f0c37a !important;
+  border-color: #de9e4b !important;
+}
+[data-bs-theme="dark"] .assign-status-input.applied::placeholder {
+  color: #f0c37a !important;
+}
+
+[data-bs-theme="dark"] .assign-status-input.assigned {
+  background-color: rgba(108, 165, 121, 0.18) !important;
+  color: #9dd8a8 !important;
+  border-color: #6ca579 !important;
+}
+
+[data-bs-theme="dark"] .assign-status-input.other-branch {
+  background-color: rgba(112, 156, 196, 0.18) !important;
+  color: #9dc0e0 !important;
+  border-color: #709cc4 !important;
+}
+[data-bs-theme="dark"] .assign-status-input.other-branch::placeholder {
+  color: #9dc0e0 !important;
+}
+
+.table-leave {
+  --bs-table-color: #000;
+  --bs-table-bg: rgb(136 136 33 / 0.21); /* 기준이 되는 카키/올리브 톤 배경 */
+  --bs-table-border-color: rgb(136 136 33 / 0.4); /* 톤을 맞춘 테두리 색상 */
+  --bs-table-striped-bg: rgb(136 136 33 / 0.28); /* 줄무늬 행 (기본보다 살짝 진하게) */
+  --bs-table-striped-color: #000;
+  --bs-table-active-bg: rgb(136 136 33 / 0.45); /* 활성화 행 (가장 진하게) */
+  --bs-table-active-color: #000;
+  --bs-table-hover-bg: rgb(136 136 33 / 0.35); /* 마우스 호버 시 (적절한 중간 농도) */
+  --bs-table-hover-color: #000;
+  color: var(--bs-table-color);
+  border-color: var(--bs-table-border-color);
+}
+
+/* ?ㅽ겕紐⑤뱶 ?뚯씠釉??댁궗??濡쒖슦 ?ㅽ???理쒖쟻??*/
 [data-bs-theme="dark"] .table-secondary {
   --bs-table-bg: rgba(255, 255, 255, 0.05) !important;
   --bs-table-striped-bg: rgba(255, 255, 255, 0.07) !important;
@@ -208,3 +323,4 @@
   --bs-table-hover-bg: rgba(255, 255, 255, 0.09) !important;
   color: var(--color-text-muted) !important;
 }
+

@@ -1,5 +1,7 @@
 package com.recode.Dwaeji.user.dto;
 
+import lombok.Builder;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +12,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class WorkPlaceRequestDto {
 
     @NotBlank(message = "지점명은 필수입니다.")

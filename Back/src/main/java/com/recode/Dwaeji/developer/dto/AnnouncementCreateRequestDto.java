@@ -1,5 +1,7 @@
 package com.recode.Dwaeji.developer.dto;
 
+import lombok.Builder;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,6 +12,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class AnnouncementCreateRequestDto {
 
     @NotBlank(message = "제목은 필수 입력 항목입니다.")
@@ -19,4 +22,8 @@ public class AnnouncementCreateRequestDto {
     private String content;
 
     private Boolean isActive;
+
+    private java.time.LocalDate startDate;
+
+    private java.time.LocalDate endDate;
 }

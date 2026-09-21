@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Modal, Badge } from 'react-bootstrap';
 import { fetchMyInfo, updateUserInfo, changePassword, getMyAccountDetails, fetchWorkPlaces, updateMyBankInfo, withdrawUser } from '../api/authApi';
 import useAuthStore from '../store/useAuthStore';
@@ -6,6 +6,10 @@ import { useNavigate } from 'react-router-dom';
 import { RiUser3Line, RiLockPasswordLine, RiBankCardLine, RiStore2Line, RiShieldCheckLine, RiEdit2Line } from 'react-icons/ri';
 import './Main.css';
 import Loading from '../components/Loading';
+
+const BANK_LIST = [
+  '국민은행', '신한은행', '우리은행', '하나은행', '기업은행', '농협은행', '카카오뱅크', '토스뱅크', '케이뱅크', '새마을금고', '신협', '우체국', '수협은행', 'SC제일은행', '한국씨티은행', '부산은행', '광주은행', '제주은행', '전북은행', '경남은행'
+];
 
 const MyPage = () => {
   const { user, logout } = useAuthStore();
@@ -16,16 +20,31 @@ const MyPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const [userNameError, setUserNameError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [phoneWarn, setPhoneWarn] = useState('');
+  const [userEmailError, setUserEmailError] = useState('');
+  const [birthError, setBirthError] = useState('');
+
+  const userNameRef = useRef(null);
+  const birthRef = useRef(null);
+  const phoneRef = useRef(null);
+  const emailRef = useRef(null);
+  const bankRef = useRef(null);
+  const accountNameRef = useRef(null);
+  const accountNumRef = useRef(null);
+
   // 폼 상태
   const [userInfo, setUserInfo] = useState(null);
   const [userName, setUserName] = useState('');
+  const [userBirth, setUserBirth] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [emailConsentAgreed, setEmailConsentAgreed] = useState(false);
   const [userPhone, setUserPhone] = useState('');
   const [fkWorkPlaceIdx, setFkWorkPlaceIdx] = useState(1);
   const [userBank, setUserBank] = useState('');
   const [userAccountName, setUserAccountName] = useState('');
   const [userAccountNumber, setUserAccountNumber] = useState('');
-  const [bankConsentAgreed, setBankConsentAgreed] = useState(false);
 
   // 비밀번호 변경 팝업 상태
   const [showPwModal, setShowPwModal] = useState(false);
@@ -67,8 +86,10 @@ const MyPage = () => {
     if (res.success && res.data) {
       setUserInfo(res.data);
       setUserName(res.data.userName || '');
+      setUserBirth(res.data.userBirth || '');
       setUserEmail(res.data.userEmail || '');
       setUserPhone(res.data.userPhone || '');
+      setEmailConsentAgreed(res.data.emailConsentAgreed === 1 || res.data.emailConsentAgreed === true);
       setUserBank(res.data.userBank || '');
       setUserAccountName(res.data.userAccountName || '');
       setUserAccountNumber(res.data.userAccountNumber || '');
@@ -87,60 +108,139 @@ const MyPage = () => {
     setLoading(false);
   };
 
+  const calculateAge = (birth) => {
+    const today = new Date();
+    const birthDateObj = new Date(birth);
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleBirthChange = (e) => {
+    const val = e.target.value;
+    setUserBirth(val);
+    if (val) {
+      if (calculateAge(val) < 15) {
+        setBirthError('만 15세 미만은 가입 및 정보 수정이 제한됩니다.');
+      } else {
+        setBirthError('');
+      }
+    } else {
+      setBirthError('');
+    }
+  };
+
+  const handleUserNameChange = (e) => {
+    const val = e.target.value;
+    if (/[^ㄱ-ㅎㅏ-ㅣ가-힣]/.test(val)) {
+      setUserNameError('이름에는 한글만 입력할 수 있습니다. (띄어쓰기, 숫자, 영문 등 불가)');
+    } else {
+      setUserNameError('');
+    }
+    setUserName(val.replace(/[^ㄱ-ㅎㅏ-ㅣ가-힣]/g, ''));
+  };
+
   const handlePhoneChange = (e) => {
-    const val = e.target.value.replace(/[^0-9]/g, '');
+    const rawVal = e.target.value;
+    if (/[^0-9-]/.test(rawVal)) {
+      setPhoneWarn('연락처는 숫자만 입력 가능합니다.');
+    } else {
+      setPhoneWarn('');
+    }
+    const val = rawVal.replace(/[^0-9]/g, '');
     let formatted = val;
     if (val.length > 3 && val.length <= 7) formatted = `${val.slice(0, 3)}-${val.slice(3)}`;
     else if (val.length > 7) formatted = `${val.slice(0, 3)}-${val.slice(3, 7)}-${val.slice(7, 11)}`;
     setUserPhone(formatted);
+
+    if (formatted.length > 0 && !/^\d{3}-\d{3,4}-\d{4}$/.test(formatted)) {
+      setPhoneError('올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678)');
+    } else {
+      setPhoneError('');
+    }
   };
+
+  const handleUserEmailChange = (e) => {
+    const val = e.target.value;
+    setUserEmail(val);
+    if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      setUserEmailError('유효한 이메일 형식이 아닙니다.');
+    } else {
+      setUserEmailError('');
+    }
+  };
+
+  const hasErrors = !!userNameError || !!phoneError || !!userEmailError || !!birthError;
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!/^\d{3}-\d{3,4}-\d{4}$/.test(userPhone)) {
+    if (userNameError) {
+      userNameRef.current?.focus();
+      return setError('이름 입력 형식을 확인해주세요.');
+    }
+    if (birthError) {
+      birthRef.current?.focus();
+      return setError('만 15세 미만은 가입 및 정보 수정이 제한됩니다.');
+    }
+    if (phoneError || !/^\d{3}-\d{3,4}-\d{4}$/.test(userPhone)) {
+      phoneRef.current?.focus();
       return setError('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
+    }
+    if (userEmailError) {
+      emailRef.current?.focus();
+      return setError('유효한 이메일 형식이 아닙니다.');
+    }
+    if (!userBank) {
+      bankRef.current?.focus();
+      return setError('은행명을 선택해주세요.');
+    }
+    if (!userAccountName) {
+      accountNameRef.current?.focus();
+      return setError('예금주 성명을 입력해주세요.');
+    }
+    if (!userAccountNumber) {
+      accountNumRef.current?.focus();
+      return setError('계좌번호를 입력해주세요.');
+    }
+    if (hasErrors) {
+      return setError('입력 형식이 올바르지 않은 항목이 있습니다. 입력란 아래의 경고 메시지를 확인해주세요.');
     }
 
     setSaving(true);
     const payload = {
       userName,
+      userBirth,
       userEmail,
+      emailConsentAgreed: emailConsentAgreed ? 1 : 0,
       userPhone,
       fkWorkPlaceIdx
     };
-    const res = await updateUserInfo(userInfo.userIdx, payload);
+    
+    const bankPayload = { userBank, userAccountName };
+    if (userAccountNumber !== '기재') {
+      bankPayload.userAccountNumber = userAccountNumber;
+    }
+
+    // 두 API를 병렬로 호출 (은행정보 업데이트 포함)
+    const [resInfo, resBank] = await Promise.all([
+      updateUserInfo(userInfo.userIdx, payload),
+      updateMyBankInfo(bankPayload)
+    ]);
+    
     setSaving(false);
 
-    if (res.success) {
+    if (resInfo.success && resBank.success) {
       setSuccess('정보가 성공적으로 수정되었습니다.');
-      loadMyInfo();
-    } else {
-      setError(res.error || '수정에 실패했습니다.');
-    }
-  };
-
-  const handleUpdateBankInfo = async () => {
-    setError('');
-    setSuccess('');
-    if (!userBank || !userAccountName || !userAccountNumber) {
-      return setError('은행명, 예금주, 계좌번호를 모두 입력해주세요.');
-    }
-    if (!bankConsentAgreed) {
-      return setError('개인정보 수집 및 이용에 동의하셔야 합니다.');
-    }
-    setBankSaving(true);
-    const res = await updateMyBankInfo({ userBank, userAccountName, userAccountNumber, bankConsentAgreed });
-    setBankSaving(false);
-    if (res.success) {
-      setSuccess('은행 정보가 성공적으로 수정되었습니다.');
       setAccountDetails(null);
-      setBankConsentAgreed(false);
       loadMyInfo();
     } else {
-      setError(res.error || '은행 정보 수정에 실패했습니다.');
+      setError(resInfo.error || resBank.error || '수정에 실패했습니다.');
     }
   };
 
@@ -227,41 +327,65 @@ const MyPage = () => {
               <div className="text-muted fw-bold small">아이디</div>
               <div className="fw-bold" style={{ color: 'var(--color-input-text)' }}>{userInfo?.userId || '-'}</div>
             </div>
-            <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
               <div className="text-muted fw-bold small">직급 및 역할</div>
               <div>
                 <Badge bg="primary" className="px-2 py-1 me-1">{userInfo?.userTypeName || '직원'}</Badge>
                 {userInfo?.is_admin === 1 && <Badge bg="danger" className="px-2 py-1">관리자</Badge>}
               </div>
             </div>
+            <div className="d-flex align-items-center justify-content-between">
+              <div className="text-muted fw-bold small">시급</div>
+              <div className="fw-bold text-success">
+                {userInfo?.userHourlyWage != null ? `${Number(userInfo.userHourlyWage).toLocaleString()}원` : '관리자 미기재'}
+              </div>
+            </div>
           </div>
         </Card.Body>
       </Card>
 
-      {/* 연락처 및 소속 정보 (수정 가능) */}
+      {/* 내 정보 및 은행 정보 수정 */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-4">
           <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
-            <RiEdit2Line className="text-primary" /> 연락처 및 소속 정보 수정
+            <RiEdit2Line className="text-primary" /> 계정, 연락처, 급여 정보 관리
           </div>
           <Form onSubmit={handleUpdate}>
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">이름</Form.Label>
-              <Form.Control type="text" value={userName} onChange={e => setUserName(e.target.value)} required className="custom-input" />
+              <Form.Label className="fw-bold text-muted small">이름 <span className="text-danger">*</span></Form.Label>
+              <Form.Control type="text" value={userName} onChange={handleUserNameChange} required ref={userNameRef} className="custom-input" />
+              {userNameError && <div className="text-danger small mt-1">{userNameError}</div>}
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">전화번호</Form.Label>
-              <Form.Control type="text" value={userPhone} onChange={handlePhoneChange} required className="custom-input" />
+              <Form.Label className="fw-bold text-muted small">생년월일 <span className="text-danger">*</span></Form.Label>
+              <Form.Control type="date" value={userBirth} onChange={handleBirthChange} required ref={birthRef} className="custom-input" />
+              {birthError && <div className="text-danger small mt-1">{birthError}</div>}
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">전화번호 <span className="text-danger">*</span></Form.Label>
+              <Form.Control type="text" value={userPhone} onChange={handlePhoneChange} required ref={phoneRef} className="custom-input" />
+              {phoneWarn && <div className="text-warning small mt-1">{phoneWarn}</div>}
+              {phoneError && <div className="text-danger small mt-1">{phoneError}</div>}
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">이메일</Form.Label>
-              <Form.Control type="email" value={userEmail} onChange={e => setUserEmail(e.target.value)} className="custom-input" />
+              <Form.Control type="email" value={userEmail} onChange={handleUserEmailChange} ref={emailRef} className="custom-input mb-2" />
+              {userEmailError && <div className="text-danger small mt-1 mb-2">{userEmailError}</div>}
+              <Form.Check
+                type="switch"
+                id="email-consent-switch"
+                label="이벤트 및 공지사항 이메일 수신 동의"
+                checked={emailConsentAgreed}
+                onChange={e => setEmailConsentAgreed(e.target.checked)}
+                className="text-muted small"
+              />
             </Form.Group>
 
             <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
+              <Form.Label className="fw-bold text-muted small">소속 지점 <span className="text-danger">*</span></Form.Label>
               <Form.Select value={fkWorkPlaceIdx} onChange={e => setFkWorkPlaceIdx(Number(e.target.value))} className="custom-input">
                 {branches.map(b => (
                   <option key={b.wpIdx} value={b.wpIdx}>
@@ -271,98 +395,64 @@ const MyPage = () => {
               </Form.Select>
             </Form.Group>
 
+            <Form.Group className="mb-3 mt-4 border-top pt-3">
+              <Form.Label className="fw-bold text-muted small d-flex align-items-center gap-1">
+                <RiBankCardLine className="text-primary" /> 은행명 <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Select
+                value={userBank}
+                onChange={e => setUserBank(e.target.value)}
+                ref={bankRef}
+                className="custom-input"
+              >
+                <option value="">은행 선택</option>
+                {BANK_LIST.map(bank => (
+                  <option key={bank} value={bank}>{bank}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">예금주 <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                value={userAccountName}
+                onChange={e => setUserAccountName(e.target.value)}
+                ref={accountNameRef}
+                placeholder="예금주 성명"
+                className="custom-input"
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-bold text-muted small">계좌번호 (숫자만) <span className="text-danger">*</span></Form.Label>
+              <div className="d-flex gap-2">
+                <Form.Control
+                  type="text"
+                  value={userAccountNumber}
+                  onChange={e => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                  ref={accountNumRef}
+                  placeholder="계좌번호 입력"
+                  disabled={userInfo?.userAccountNumber && !accountDetails}
+                  className="custom-input flex-grow-1"
+                />
+                {userInfo?.userAccountNumber && !accountDetails && (
+                  <Button size="sm" variant="outline-secondary" className="px-3 text-nowrap rounded-3 fw-bold" onClick={handleRevealAccount} disabled={accountLoading}>
+                    {accountLoading ? <Spinner as="span" animation="border" size="sm" /> : '원문 조회'}
+                  </Button>
+                )}
+              </div>
+            </Form.Group>
+
             <div className="d-flex gap-2 flex-wrap">
               <Button disabled={saving} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2 rounded-3 shadow-sm">
-                {saving ? <Spinner as="span" animation="border" size="sm" /> : "정보 수정 저장"}
+                {saving ? <Spinner as="span" animation="border" size="sm" /> : "수정"}
               </Button>
               <Button variant="outline-secondary" className="fw-bold py-2 px-3 rounded-3" onClick={() => setShowPwModal(true)} type="button">
                 <RiLockPasswordLine className="me-1" /> 비밀번호 변경
               </Button>
             </div>
           </Form>
-        </Card.Body>
-      </Card>
-
-      {/* 계좌 정보 수정 (별도 영역) */}
-      <Card className="border-0 shadow-sm rounded-4 mb-4">
-        <Card.Body className="p-4">
-          <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
-            <RiBankCardLine className="text-primary" /> 급여 계좌 정보
-          </div>
-
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
-            <Form.Control
-              type="text"
-              value={userBank}
-              onChange={e => setUserBank(e.target.value)}
-              placeholder="예: 카카오뱅크, 신한은행"
-              disabled={userInfo?.userAccountNumber && !accountDetails}
-              className="custom-input"
-            />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">예금주</Form.Label>
-            <Form.Control
-              type="text"
-              value={userAccountName}
-              onChange={e => setUserAccountName(e.target.value)}
-              placeholder="예금주 성명"
-              disabled={userInfo?.userAccountNumber && !accountDetails}
-              className="custom-input"
-            />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">계좌번호 (숫자만)</Form.Label>
-            <div className="d-flex gap-2">
-              <Form.Control
-                type="text"
-                value={userAccountNumber}
-                onChange={e => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="계좌번호 입력"
-                disabled={userInfo?.userAccountNumber && !accountDetails}
-                className="custom-input flex-grow-1"
-              />
-              {userInfo?.userAccountNumber && !accountDetails && (
-                <Button size="sm" variant="outline-secondary" className="px-3 text-nowrap rounded-3 fw-bold" onClick={handleRevealAccount} disabled={accountLoading}>
-                  {accountLoading ? <Spinner as="span" animation="border" size="sm" /> : '원문 조회 및 수정'}
-                </Button>
-              )}
-            </div>
-          </Form.Group>
-
-          {/* 정보 수정/입력 모드일 때만 동의서 노출 */}
-          {(!userInfo?.userAccountNumber || accountDetails) && (
-            <div className="p-3 rounded-3 mb-3" style={{ backgroundColor: 'var(--color-input-bg)', border: '1px solid var(--color-input-border)' }}>
-              <div className="fw-bold small mb-2 text-dark">📌 [개인정보 수집 및 이용 동의]</div>
-              <ul className="text-muted small ps-3 mb-3">
-                <li><strong className="text-dark">수집 목적</strong>: 급여 지급 및 정산</li>
-                <li><strong className="text-dark">수집 항목</strong>: 은행명, 예금주, 계좌번호</li>
-                <li>
-                  <strong className="text-dark">보유 및 이용 기간</strong>: 근로 계약 종료 시까지 이용하며, 관계 법령(소득세법 5년, 근로기준법 3년)에 따라 보존합니다.
-                </li>
-                <li>
-                  <strong className="text-dark">동의 거부권 및 불이익</strong>: 귀하는 위 개인정보 수집에 대한 동의를 거부할 권리가 있습니다. 단, 동의 거부 시 급여 이체 및 정산 처리가 불가능합니다.
-                </li>
-              </ul>
-              <Form.Check
-                type="checkbox"
-                id="bankConsent"
-                label={<span className="fw-bold small text-primary">[필수] 위 개인정보 수집 및 이용에 동의합니다.</span>}
-                checked={bankConsentAgreed}
-                onChange={e => setBankConsentAgreed(e.target.checked)}
-              />
-            </div>
-          )}
-
-          <Button
-            variant="success"
-            className="w-100 fw-bold py-2 rounded-3 shadow-sm"
-            onClick={handleUpdateBankInfo}
-            disabled={bankSaving || (userInfo?.userAccountNumber && !accountDetails) || (!userInfo?.userAccountNumber || accountDetails) && !bankConsentAgreed}
-          >
-            {bankSaving ? <Spinner as="span" animation="border" size="sm" /> : '은행 정보 저장'}
-          </Button>
         </Card.Body>
       </Card>
 

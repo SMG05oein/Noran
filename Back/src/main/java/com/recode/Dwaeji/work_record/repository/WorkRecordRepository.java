@@ -66,5 +66,6 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
     List<WorkRecord> findByUser_WorkPlace_WpIdxAndWrDateBetween(Long wpIdx, LocalDate startDate, LocalDate endDate);
 
     boolean existsByUser_UserIdxAndWrDate(Long userIdx, LocalDate wrDate);
+    java.util.Optional<WorkRecord> findByUser_UserIdxAndWrDate(Long userIdx, LocalDate wrDate);
     void deleteByUser_UserIdx(Long userIdx);
 }

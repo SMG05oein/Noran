@@ -35,7 +35,9 @@
   font-weight: 500;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex: 1;
-  padding: 4px 0;
+  margin: 0 6px;
+  padding: 6px 0;
+  border-radius: 12px;
   position: relative;
 }
 
@@ -45,7 +47,6 @@
 
 .nav-item .icon {
   font-size: 1.45rem;
-  margin-bottom: 2px;
   transition: transform 0.2s ease;
 }
 
@@ -54,18 +55,18 @@
   font-weight: 700;
 }
 
-.nav-item.active .icon {
-  transform: translateY(-2px) scale(1.08);
+.nav-item.active .icon-wrapper {
+  background: var(--color-primary-light);
+  padding: 4px 16px;
+  border-radius: 50rem;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  width: 4px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background-color: var(--color-primary);
+.nav-item.active .icon {
+  transform: scale(1.08);
 }
 
 /* 데스크탑에서는 하단 바 숨김 */
@@ -74,3 +75,4 @@
     display: none !important;
   }
 }
+

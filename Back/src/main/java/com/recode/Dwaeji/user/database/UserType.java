@@ -34,6 +34,30 @@ public class UserType {
     @Column(name = "ut_is_super_admin", columnDefinition = "TINYINT")
     private Integer utIsSuperAdmin = 0;
 
+    @Builder.Default
+    @Column(name = "ut_can_access_archive", columnDefinition = "TINYINT")
+    private Integer utCanAccessArchive = 0;
+
+    @Builder.Default
+    @Column(name = "ut_can_view_sensitive", columnDefinition = "TINYINT")
+    private Integer utCanViewSensitive = 0;
+
+    @Builder.Default
+    @Column(name = "ut_can_export_excel", columnDefinition = "TINYINT")
+    private Integer utCanExportExcel = 0;
+
+    @Builder.Default
+    @Column(name = "ut_can_manage_roles", columnDefinition = "TINYINT")
+    private Integer utCanManageRoles = 0;
+
+    @Builder.Default
+    @Column(name = "ut_allow_multi_workplace", columnDefinition = "TINYINT")
+    private Integer utAllowMultiWorkplace = 0;
+
+    @Builder.Default
+    @Column(name = "ut_can_manage_schedule", columnDefinition = "TINYINT")
+    private Integer utCanManageSchedule = 0;
+
     @CreatedDate
     @Column(name = "ut_created_at", nullable = false, updatable = false)
     private LocalDateTime utCreatedAt;

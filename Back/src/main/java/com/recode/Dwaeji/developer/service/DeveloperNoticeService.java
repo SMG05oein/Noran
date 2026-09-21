@@ -37,12 +37,14 @@ public class DeveloperNoticeService {
                 .build();
     }
 
-    // [공개용] 활성화(isActive == 1)된 공지사항 목록만 조회
     @Transactional(readOnly = true)
     public List<AnnouncementResponseDto> getPublicAnnouncements() {
+        java.time.LocalDate today = java.time.LocalDate.now();
         return announcementRepository.findAllByOrderByAnnIdxDesc()
                 .stream()
                 .filter(ann -> ann.getAnnIsActive() != null && ann.getAnnIsActive() == 1)
+                .filter(ann -> ann.getAnnStartDate() == null || !today.isBefore(ann.getAnnStartDate()))
+                .filter(ann -> ann.getAnnEndDate() == null || !today.isAfter(ann.getAnnEndDate()))
                 .map(AnnouncementResponseDto::from)
                 .collect(Collectors.toList());
     }
@@ -60,6 +62,8 @@ public class DeveloperNoticeService {
                 .annTitle(request.getTitle())
                 .annContent(request.getContent())
                 .annIsActive(isActive)
+                .annStartDate(request.getStartDate())
+                .annEndDate(request.getEndDate())
                 .build();
 
         Announcement saved = announcementRepository.save(announcement);

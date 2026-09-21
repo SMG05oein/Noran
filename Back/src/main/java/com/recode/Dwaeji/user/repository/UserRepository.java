@@ -15,7 +15,101 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUserId(String userId);
     Optional<User> findByUserEmail(String userEmail);
+    Optional<User> findByUserNameAndUserPhone(String userName, String userPhone);
     List<User> findByWorkPlace_WpIdx(Long wpIdx);
+    
+    // 아카이빙 대상자 조회 (비활성화 상태이고 탈퇴일이 특정 날짜 이전인 유저)
+    @Query("SELECT u FROM User u WHERE u.userIsActive = 0 AND u.userWithdrawnAt IS NOT NULL AND u.userWithdrawnAt < :thresholdDate AND u.userName != '탈퇴자_비식별화'")
+    List<User> findUsersToArchive(@org.springframework.data.repository.query.Param("thresholdDate") java.time.LocalDateTime thresholdDate);
+
+    // --- 관리자 전용 알바생 조회 (Native Query 윈도우 함수 적용) ---
+    @Query(value = "SELECT " +
+                   "    numbered_u.user_idx as userIdx, " +
+                   "    numbered_u.user_id as userId, " +
+                   "    numbered_u.user_name as userName, " +
+                   "    numbered_u.user_email as userEmail, " +
+                   "    numbered_u.user_birth as userBirth, " +
+                   "    numbered_u.user_phone as userPhone, " +
+                   "    ut.ut_name as userTypeName, " +
+                   "    wp.wp_name as workPlaceName, " +
+                   "    numbered_u.fk_work_place_idx as workPlaceIdx, " +
+                   "    numbered_u.user_is_active as userIsActive, " +
+                   "    numbered_u.user_account_name as userAccountName, " +
+                   "    numbered_u.user_account_number as userAccountNumber, " +
+                   "    numbered_u.user_bank as userBank, " +
+                   "    numbered_u.user_hourly_wage as userHourlyWage, " +
+                   "    ut.ut_is_admin as isAdmin, " +
+                   "    numbered_u.user_withdrawn_at as userWithdrawnAt, " +
+                   "    numbered_u.nameSeq as nameSeq " +
+                   "FROM ( " +
+                   "    SELECT u.*, ROW_NUMBER() OVER (PARTITION BY u.user_name ORDER BY u.user_created_at ASC, u.user_idx ASC) as nameSeq " +
+                   "    FROM user u " +
+                   ") numbered_u " +
+                   "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
+                   "LEFT JOIN work_place wp ON numbered_u.fk_work_place_idx = wp.wp_idx " +
+                   "WHERE ut.ut_is_admin = 0 " +
+                   "  AND (:isActive IS NULL OR numbered_u.user_is_active = :isActive) " +
+                   "  AND (:wpIdx IS NULL OR numbered_u.fk_work_place_idx = :wpIdx) " +
+                   "  AND (:userName IS NULL OR numbered_u.user_name LIKE CONCAT('%', :userName, '%')) " +
+                   "  AND numbered_u.user_name != '탈퇴자_비식별화' " +
+                   "ORDER BY numbered_u.user_name ASC, numbered_u.user_idx ASC",
+           countQuery = "SELECT count(*) " +
+                        "FROM user numbered_u " +
+                        "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
+                        "WHERE ut.ut_is_admin = 0 " +
+                        "  AND (:isActive IS NULL OR numbered_u.user_is_active = :isActive) " +
+                        "  AND (:wpIdx IS NULL OR numbered_u.fk_work_place_idx = :wpIdx) " +
+                        "  AND (:userName IS NULL OR numbered_u.user_name LIKE CONCAT('%', :userName, '%')) " +
+                        "  AND numbered_u.user_name != '탈퇴자_비식별화'",
+           nativeQuery = true)
+    Page<UserWithSeqProjection> searchWorkersNative(
+            @Param("isActive") Integer isActive,
+            @Param("wpIdx") Long wpIdx,
+            @Param("userName") String userName,
+            Pageable pageable);
+
+    // --- 전체 직원(알바생+관리자) 조회 (Native Query 윈도우 함수 적용) ---
+    @Query(value = "SELECT " +
+                   "    numbered_u.user_idx as userIdx, " +
+                   "    numbered_u.user_id as userId, " +
+                   "    numbered_u.user_name as userName, " +
+                   "    numbered_u.user_email as userEmail, " +
+                   "    numbered_u.user_birth as userBirth, " +
+                   "    numbered_u.user_phone as userPhone, " +
+                   "    ut.ut_name as userTypeName, " +
+                   "    wp.wp_name as workPlaceName, " +
+                   "    numbered_u.fk_work_place_idx as workPlaceIdx, " +
+                   "    numbered_u.user_is_active as userIsActive, " +
+                   "    numbered_u.user_account_name as userAccountName, " +
+                   "    numbered_u.user_account_number as userAccountNumber, " +
+                   "    numbered_u.user_bank as userBank, " +
+                   "    numbered_u.user_hourly_wage as userHourlyWage, " +
+                   "    ut.ut_is_admin as isAdmin, " +
+                   "    numbered_u.user_withdrawn_at as userWithdrawnAt, " +
+                   "    numbered_u.nameSeq as nameSeq " +
+                   "FROM ( " +
+                   "    SELECT u.*, ROW_NUMBER() OVER (PARTITION BY u.user_name ORDER BY u.user_created_at ASC, u.user_idx ASC) as nameSeq " +
+                   "    FROM user u " +
+                   ") numbered_u " +
+                   "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
+                   "LEFT JOIN work_place wp ON numbered_u.fk_work_place_idx = wp.wp_idx " +
+                   "WHERE (:isActive IS NULL OR numbered_u.user_is_active = :isActive) " +
+                   "  AND (:wpIdx IS NULL OR numbered_u.fk_work_place_idx = :wpIdx) " +
+                   "  AND (:userName IS NULL OR numbered_u.user_name LIKE CONCAT('%', :userName, '%')) " +
+                   "  AND numbered_u.user_name != '탈퇴자_비식별화' " +
+                   "ORDER BY numbered_u.user_name ASC, numbered_u.user_idx ASC",
+           countQuery = "SELECT count(*) " +
+                        "FROM user numbered_u " +
+                        "WHERE (:isActive IS NULL OR numbered_u.user_is_active = :isActive) " +
+                        "  AND (:wpIdx IS NULL OR numbered_u.fk_work_place_idx = :wpIdx) " +
+                        "  AND (:userName IS NULL OR numbered_u.user_name LIKE CONCAT('%', :userName, '%')) " +
+                        "  AND numbered_u.user_name != '탈퇴자_비식별화'",
+           nativeQuery = true)
+    Page<UserWithSeqProjection> searchAllEmployeesNative(
+            @Param("isActive") Integer isActive,
+            @Param("wpIdx") Long wpIdx,
+            @Param("userName") String userName,
+            Pageable pageable);
 
     // --- JOIN FETCH 쿼리 (N+1 방지) ---
     @Query(value = "SELECT u FROM User u JOIN FETCH u.userType JOIN FETCH u.workPlace WHERE u.userType.utIsAdmin = :isAdmin AND u.userIsActive = :isActive",

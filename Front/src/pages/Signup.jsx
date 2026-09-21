@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authSignup, fetchWorkPlaces } from '../api/authApi';
 import { Form, Button, Container, Card, Alert, Spinner, Modal } from 'react-bootstrap';
@@ -10,24 +10,47 @@ const Signup = () => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [branch, setBranch] = useState(1);
+  const [userBank, setUserBank] = useState('');
+  const [userAccountName, setUserAccountName] = useState('');
+  const [userAccountNumber, setUserAccountNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [consent, setConsent] = useState(false);
-  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [termsConsent, setTermsConsent] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [emailConsent, setEmailConsent] = useState(false);
 
-  // 실시간 유효성 상태
   const [userIdError, setUserIdError] = useState('');
   const [pwMatchError, setPwMatchError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [phoneWarn, setPhoneWarn] = useState('');
+  const [userNameError, setUserNameError] = useState('');
+  const [userEmailError, setUserEmailError] = useState('');
+  const [birthError, setBirthError] = useState('');
+
+  const BANK_LIST = [
+    '국민은행', '신한은행', '우리은행', '하나은행', '기업은행', '농협은행', '카카오뱅크', '토스뱅크', '케이뱅크', '새마을금고', '신협', '우체국', '수협은행', 'SC제일은행', '한국씨티은행', '부산은행', '광주은행', '제주은행', '전북은행', '경남은행'
+  ];
 
   // 지점 목록
   const [branches, setBranches] = useState([]);
 
   const navigate = useNavigate();
+
+  const userNameRef = useRef(null);
+  const birthRef = useRef(null);
+  const userIdRef = useRef(null);
+  const pwConfirmRef = useRef(null);
+  const phoneRef = useRef(null);
+  const emailRef = useRef(null);
+  const bankRef = useRef(null);
+  const accountNameRef = useRef(null);
+  const accountNumRef = useRef(null);
 
   useEffect(() => {
     const loadWorkPlaces = async () => {
@@ -41,6 +64,42 @@ const Signup = () => {
     };
     loadWorkPlaces();
   }, []);
+
+  const calculateAge = (birth) => {
+    const today = new Date();
+    const birthDateObj = new Date(birth);
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const handleBirthChange = (e) => {
+    const val = e.target.value;
+    setBirthDate(val);
+    if (val) {
+      if (calculateAge(val) < 15) {
+        setBirthError('만 15세 미만은 가입 및 이용이 제한됩니다.');
+      } else {
+        setBirthError('');
+      }
+    } else {
+      setBirthError('');
+    }
+  };
+
+  // 이름 입력 (한글 이외의 문자 입력 시 경고)
+  const handleUserNameChange = (e) => {
+    const val = e.target.value;
+    if (/[^ㄱ-ㅎㅏ-ㅣ가-힣]/.test(val)) {
+      setUserNameError('이름에는 한글만 입력할 수 있습니다. (띄어쓰기, 숫자, 영문 등 불가)');
+    } else {
+      setUserNameError('');
+    }
+    setUserName(val.replace(/[^ㄱ-ㅎㅏ-ㅣ가-힣]/g, ''));
+  };
 
   // 아이디 입력 (정규식 필터링 없이 경고 메시지만 표시)
   const handleUserIdChange = (e) => {
@@ -77,7 +136,13 @@ const Signup = () => {
 
   // 전화번호 — 자동 하이픈 + 실시간 형식 체크
   const handlePhoneChange = (e) => {
-    const val = e.target.value.replace(/[^0-9]/g, '');
+    const rawVal = e.target.value;
+    if (/[^0-9-]/.test(rawVal)) {
+      setPhoneWarn('연락처는 숫자만 입력 가능합니다.');
+    } else {
+      setPhoneWarn('');
+    }
+    const val = rawVal.replace(/[^0-9]/g, '');
     let formatted = val;
     if (val.length > 3 && val.length <= 7) formatted = `${val.slice(0, 3)}-${val.slice(3)}`;
     else if (val.length > 7) formatted = `${val.slice(0, 3)}-${val.slice(3, 7)}-${val.slice(7, 11)}`;
@@ -91,23 +156,67 @@ const Signup = () => {
     }
   };
 
-  const hasErrors = !!userIdError || !!pwMatchError || !!phoneError;
+  // 이메일 형식 체크
+  const handleUserEmailChange = (e) => {
+    const val = e.target.value;
+    setUserEmail(val);
+    if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      setUserEmailError('유효한 이메일 형식이 아닙니다.');
+    } else {
+      setUserEmailError('');
+    }
+  };
+
+  const hasErrors = !!userIdError || !!pwMatchError || !!phoneError || !!userEmailError || !!birthError;
 
   const handleSignup = async (e) => {
     e.preventDefault();
 
     // 제출 시 최종 검증
-    if (!consent) {
-      return setError('개인정보 수집 및 이용에 동의해야 회원가입이 가능합니다.');
+    if (!termsConsent || !privacyConsent) {
+      return alert('필수 규정에 모두 동의해야 회원가입이 가능합니다.');
     }
 
-    if (password !== passwordConfirm) {
-      return setError('비밀번호가 일치하지 않습니다.');
+    if (userNameError) {
+      userNameRef.current?.focus();
+      return alert('이름 입력 형식을 확인해주세요.');
     }
-    if (!/^\d{3}-\d{3,4}-\d{4}$/.test(phone)) {
-      return setError('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
+    if (birthError) {
+      birthRef.current?.focus();
+      return alert('만 15세 미만은 가입 및 이용이 제한됩니다.');
     }
-    if (hasErrors) return;
+    if (userIdError) {
+      userIdRef.current?.focus();
+      return alert('아이디 입력 형식을 확인해주세요.');
+    }
+    if (pwMatchError || password !== passwordConfirm) {
+      pwConfirmRef.current?.focus();
+      return alert('비밀번호가 일치하지 않습니다.');
+    }
+    if (phoneError || !/^\d{3}-\d{3,4}-\d{4}$/.test(phone)) {
+      phoneRef.current?.focus();
+      return alert('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
+    }
+    if (userEmailError) {
+      emailRef.current?.focus();
+      return alert('유효한 이메일 형식이 아닙니다.');
+    }
+    if (!userBank) {
+      bankRef.current?.focus();
+      return alert('은행명을 선택해주세요.');
+    }
+    if (!userAccountNumber) {
+      accountNumRef.current?.focus();
+      return alert('계좌번호를 입력해주세요.');
+    }
+    if (!userAccountName) {
+      accountNameRef.current?.focus();
+      return alert('예금주 성명을 입력해주세요.');
+    }
+    
+    if (hasErrors) {
+      return alert('입력 형식이 올바르지 않은 항목이 있습니다. 입력란 아래의 경고 메시지를 확인해주세요.');
+    }
 
     setLoading(true);
     setError('');
@@ -117,24 +226,30 @@ const Signup = () => {
         userId,
         userPw: password,
         userName,
+        userBirth: birthDate,
+        userEmail: userEmail || null,
+        emailConsentAgreed: emailConsent,
         userPhone: phone,
+        userBank,
+        userAccountName,
+        userAccountNumber,
         fkUtIdx: 1,
         fkWorkPlaceIdx: parseInt(branch),
       };
 
       const response = await authSignup(payload);
       if (response.success) {
-        setSuccess(true);
-        setSuccessMessage(
-          typeof response.data === 'string'
-            ? response.data
-            : response.data?.msg || '회원가입 성공! 로그인 페이지로 이동합니다.'
-        );
-        setTimeout(() => navigate('/login'), 1500);
+        const msg = typeof response.data === 'string'
+          ? response.data
+          : response.data?.msg || '회원가입 성공! 로그인 페이지로 이동합니다.';
+        alert(msg);
+        navigate('/login');
       } else {
+        alert(response.error || '회원가입에 실패했습니다.');
         setError(response.error || '회원가입에 실패했습니다.');
       }
     } catch (err) {
+      alert('서버 오류가 발생했습니다.');
       setError('서버 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -166,14 +281,34 @@ const Signup = () => {
                   <Form.Control
                     type="text"
                     value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
+                    onChange={handleUserNameChange}
                     required
+                    ref={userNameRef}
                     placeholder="성명을 입력하세요"
-                    className="custom-input"
+                    className={`custom-input ${userNameError ? 'is-invalid' : ''}`}
                   />
+                  {userNameError && (
+                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
+                      ⚠️ {userNameError}
+                    </div>
+                  )}
                 </Form.Group>
 
-                {/* 아이디 */}
+                  {/* 생년월일 */}
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-bold text-muted small">생년월일 <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      type="date"
+                      value={birthDate}
+                      onChange={handleBirthChange}
+                      required
+                      ref={birthRef}
+                      className="custom-input"
+                    />
+                    {birthError && <div className="text-danger small mt-1">{birthError}</div>}
+                  </Form.Group>
+
+                  {/* 아이디 */}
                 <Form.Group id="userId" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
                     <RiUser3Line /> 아이디
@@ -183,12 +318,33 @@ const Signup = () => {
                     value={userId}
                     onChange={handleUserIdChange}
                     required
-                    placeholder="사용할 아이디"
+                    ref={userIdRef}
+                    placeholder="영문, 숫자 조합"
                     className={`custom-input ${userIdError ? 'is-invalid' : ''}`}
                   />
                   {userIdError && (
                     <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
                       ⚠️ {userIdError}
+                    </div>
+                  )}
+                </Form.Group>
+
+                {/* 이메일 (선택) */}
+                <Form.Group id="userEmail" className="mb-3">
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    이메일 (선택)
+                  </Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={userEmail}
+                    onChange={handleUserEmailChange}
+                    ref={emailRef}
+                    placeholder="이메일을 입력하세요 (선택)"
+                    className={`custom-input ${userEmailError ? 'is-invalid' : ''}`}
+                  />
+                  {userEmailError && (
+                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
+                      ⚠️ {userEmailError}
                     </div>
                   )}
                 </Form.Group>
@@ -218,8 +374,9 @@ const Signup = () => {
                     value={passwordConfirm}
                     onChange={handlePasswordConfirmChange}
                     required
-                    placeholder="비밀번호 재입력"
-                    className={`custom-input ${pwMatchError ? 'is-invalid' : passwordConfirm && !pwMatchError ? 'is-valid' : ''}`}
+                    ref={pwConfirmRef}
+                    placeholder="비밀번호를 다시 입력하세요"
+                    className={`custom-input ${pwMatchError ? 'is-invalid' : ''}`}
                   />
                   {pwMatchError && (
                     <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
@@ -244,18 +401,61 @@ const Signup = () => {
                     onChange={handlePhoneChange}
                     required
                     placeholder="010-0000-0000"
-                    className={`custom-input ${phoneError ? 'is-invalid' : phone && !phoneError ? 'is-valid' : ''}`}
+                    className={`custom-input ${phoneError || phoneWarn ? 'is-invalid' : phone && !phoneError && !phoneWarn ? 'is-valid' : ''}`}
                     maxLength={13}
                   />
-                  {phoneError ? (
+                  {(phoneError || phoneWarn) ? (
                     <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
-                      ⚠️ {phoneError}
+                      ⚠️ {phoneWarn || phoneError}
                     </div>
                   ) : phone && (
                     <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px', fontWeight: '600' }}>
                       ✅ 올바른 전화번호 형식입니다.
                     </div>
                   )}
+                </Form.Group>
+
+                <Form.Group id="userBank" className="mb-3">
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiStore2Line /> 은행명
+                  </Form.Label>
+                  <Form.Select 
+                    value={userBank} 
+                    onChange={(e) => setUserBank(e.target.value)} 
+                    ref={bankRef}
+                    className="custom-input"
+                  >
+                    <option value="">은행 선택</option>
+                    {BANK_LIST.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                  </Form.Select>
+                </Form.Group>
+
+                <Form.Group id="userAccountNumber" className="mb-3">
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiStore2Line /> 계좌번호
+                  </Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={userAccountNumber}
+                    onChange={(e) => setUserAccountNumber(e.target.value.replace(/[^0-9-]/g, ''))}
+                    ref={accountNumRef}
+                    placeholder="계좌번호 (숫자와 하이픈만)"
+                    className="custom-input"
+                  />
+                </Form.Group>
+
+                <Form.Group id="userAccountName" className="mb-4">
+                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
+                    <RiStore2Line /> 예금주 성명
+                  </Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={userAccountName}
+                    onChange={(e) => setUserAccountName(e.target.value)}
+                    ref={accountNameRef}
+                    placeholder="예금주 (본인 명의)"
+                    className="custom-input"
+                  />
                 </Form.Group>
 
                 {/* 소속 지점 */}
@@ -276,38 +476,102 @@ const Signup = () => {
                   </Form.Select>
                 </Form.Group>
 
-                {/* 개인정보 수집 및 이용 동의 */}
-                <Form.Group className="mb-4 d-flex align-items-start gap-2 p-3 bg-light rounded-3 border">
-                  <Form.Check
-                    type="checkbox"
-                    id="privacyConsent"
-                    checked={consent}
-                    onChange={(e) => {
-                      setConsent(e.target.checked);
-                      if (error === '개인정보 수집 및 이용에 동의해야 회원가입이 가능합니다.') setError('');
-                    }}
-                    className="mt-1"
-                  />
-                  <div>
-                    <Form.Label htmlFor="privacyConsent" className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>
-                      [필수] 개인정보 수집 및 이용 동의
+                {/* 약관 동의 */}
+                <div className="mb-4 p-3 bg-light rounded-3 border">
+                  <div className="d-flex align-items-center mb-3 pb-2 border-bottom">
+                    <Form.Check
+                      type="checkbox"
+                      id="allConsent"
+                      checked={termsConsent && privacyConsent && emailConsent}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setTermsConsent(checked);
+                        setPrivacyConsent(checked);
+                        setEmailConsent(checked);
+                        if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
+                      }}
+                      className="me-2"
+                    />
+                    <Form.Label htmlFor="allConsent" className="fw-bold text-dark mb-0" style={{ cursor: 'pointer' }}>
+                      전체 동의합니다.
                     </Form.Label>
-                    <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-                      원활한 서비스 이용을 위해 이름, 연락처, 이메일을 수집합니다.{' '}
-                      <button
-                        type="button"
-                        className="btn btn-link p-0 text-decoration-none fw-bold"
-                        style={{ fontSize: '0.8rem' }}
-                        onClick={() => setShowConsentModal(true)}
-                      >
-                        자세히 보기
-                      </button>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center">
+                        <Form.Check
+                          type="checkbox"
+                          id="termsConsent"
+                          checked={termsConsent}
+                          onChange={(e) => {
+                            setTermsConsent(e.target.checked);
+                            if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
+                          }}
+                          className="me-2"
+                        />
+                        <Form.Label htmlFor="termsConsent" className="text-dark mb-0 small" style={{ cursor: 'pointer' }}>
+                          [필수] 근태관리시스템 이용규정 동의
+                        </Form.Label>
+                      </div>
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-muted small text-decoration-none">[전체 보기]</a>
+                    </div>
+                    <div className="border rounded p-2 bg-white small text-muted" style={{ height: '80px', overflowY: 'auto', fontSize: '0.75rem' }}>
+                      <strong>근태관리시스템 이용규정</strong><br/>
+                      본 규정은 '노란돼지'가 소속 직원의 근태관리 업무 처리를 위해 도입한 내부 업무도구(전자적 근태관리시스템)의 이용 방법과 직원의 준수사항을 안내함을 목적으로 합니다.<br/>
+                      (이용규정 전문은 [전체 보기]를 통해 확인하실 수 있습니다.)
                     </div>
                   </div>
-                </Form.Group>
+
+                  <div className="mb-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center">
+                        <Form.Check
+                          type="checkbox"
+                          id="privacyConsent"
+                          checked={privacyConsent}
+                          onChange={(e) => {
+                            setPrivacyConsent(e.target.checked);
+                            if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
+                          }}
+                          className="me-2"
+                        />
+                        <Form.Label htmlFor="privacyConsent" className="text-dark mb-0 small" style={{ cursor: 'pointer' }}>
+                          [필수] 개인정보 수집 및 이용 동의
+                        </Form.Label>
+                      </div>
+                      <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-muted small text-decoration-none">[전체 보기]</a>
+                    </div>
+                    <div className="border rounded p-2 bg-white small text-muted" style={{ height: '90px', overflowY: 'auto', fontSize: '0.75rem' }}>
+                      <strong>개인정보 수집 및 이용 동의</strong><br/>
+                      1. 수집 항목: 이름, 아이디, 비밀번호(접근제어용), 생년월일, 휴대전화번호, 소속 지점, 은행명, 계좌번호, 예금주 등<br/>
+                      2. 수집 목적: 서비스 회원가입 및 관리, 근태관리 및 근무 스케줄 배정, 급여 지급 및 정산<br/>
+                      3. 보유 및 이용기간: 회원 탈퇴 후 1년 보관 (단, 근태/급여 관련 정보는 근로기준법 등에 따라 3년, 세무 증빙자료는 최대 5년 보존)<br/>
+                      * 귀하는 동의를 거부할 권리가 있으나, 거부 시 회원가입 및 서비스 이용이 제한됩니다.
+                    </div>
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center">
+                      <Form.Check
+                        type="checkbox"
+                        id="emailConsent"
+                        checked={emailConsent}
+                        onChange={(e) => setEmailConsent(e.target.checked)}
+                        className="me-2"
+                      />
+                      <Form.Label htmlFor="emailConsent" className="text-dark mb-0 small" style={{ cursor: 'pointer' }}>
+                        [선택] 이메일 등 주요 공지사항 수신 동의
+                      </Form.Label>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-end">
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary fw-bold small text-decoration-none">※ 개인정보처리방침 전문 보기</a>
+                  </div>
+                </div>
 
                 <Button
-                  disabled={loading || success || hasErrors || !consent}
+                  disabled={loading || success || hasErrors || !termsConsent || !privacyConsent}
                   className="w-100 mb-2 custom-btn d-flex align-items-center justify-content-center"
                   type="submit"
                   size="lg"
@@ -328,37 +592,6 @@ const Signup = () => {
           </Card>
         </div>
       </Container>
-
-      {/* 약관 모달 */}
-      <Modal show={showConsentModal} onHide={() => setShowConsentModal(false)} centered>
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="fw-bold fs-5">개인정보 수집 및 이용 동의</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="pt-2 text-dark">
-          <p className="small mb-3">원활한 서비스 이용을 위해 아래와 같이 개인정보를 수집 및 이용합니다.</p>
-          <div className="bg-light p-3 rounded-3 border small">
-            <h6 className="fw-bold mb-1">1. 수집하는 개인정보 항목</h6>
-            <p className="mb-3 text-muted">필수항목: 이름, 아이디, 비밀번호, 전화번호, 소속 지점<br />선택항목: 이메일</p>
-
-            <h6 className="fw-bold mb-1">2. 수집 및 이용 목적</h6>
-            <p className="mb-3 text-muted">서비스 회원가입 및 관리, 주간 근무 스케줄 배정 및 관리, 본인 식별, 원활한 의사소통 경로 확보</p>
-
-            <h6 className="fw-bold mb-1">3. 보유 및 이용 기간</h6>
-            <p className="mb-3 text-muted fw-bold">근로 계약 종료 시까지 이용하며, 관계 법령(소득세법, 근로기준법)에 의거 보존할 필요가 있는 경우 해당 기간 동안 보존합니다.</p>
-
-            <h6 className="fw-bold mb-1">4. 동의 거부권 및 불이익</h6>
-            <p className="mb-0 text-muted">귀하는 개인정보 수집에 동의를 거부할 권리가 있습니다. 단, 필수항목 수집 동의 거부 시 회원가입 및 서비스 이용이 제한됩니다.</p>
-          </div>
-        </Modal.Body>
-        <Modal.Footer className="border-0 pt-0">
-          <Button variant="primary" className="w-100 fw-bold rounded-pill" onClick={() => {
-            setConsent(true);
-            setShowConsentModal(false);
-          }}>
-            동의합니다
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 };

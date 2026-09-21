@@ -1,4 +1,4 @@
-/* App Layout */
+﻿/* App Layout */
 .app-layout {
   min-height: 100vh;
   background-color: var(--color-bg-cream);
@@ -44,7 +44,7 @@
   background-color: var(--color-primary-hover) !important;
   border-color: var(--color-primary-hover) !important;
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+
 }
 
 .btn-outline-primary {
@@ -57,7 +57,7 @@
   background-color: var(--color-primary) !important;
   color: #ffffff !important;
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+
 }
 
 .btn-secondary {
@@ -69,7 +69,7 @@
 .btn-secondary:hover, .btn-secondary:focus {
   background-color: var(--color-secondary-hover) !important;
   border-color: var(--color-secondary-hover) !important;
-  transform: translateY(-1px);
+
 }
 
 .btn-outline-secondary {
@@ -82,7 +82,7 @@
   background-color: var(--color-secondary) !important;
   color: var(--color-text-main) !important;
   border-color: var(--color-secondary) !important;
-  transform: translateY(-1px);
+
 }
 
 .btn-success {
@@ -94,7 +94,7 @@
 
 .btn-success:hover {
   opacity: 0.92;
-  transform: translateY(-1px);
+
 }
 
 .btn-danger {
@@ -105,7 +105,7 @@
 
 .btn-danger:hover {
   opacity: 0.92;
-  transform: translateY(-1px);
+
 }
 
 .btn-warning {
@@ -131,7 +131,7 @@
 
 .card.card-hover:hover, 
 .glass-card.card-hover:hover {
-  transform: translateY(-3px);
+
   box-shadow: var(--shadow-md) !important;
 }
 
@@ -255,7 +255,7 @@ select.form-select {
 .custom-month-select:hover {
   border-color: var(--color-primary) !important;
   box-shadow: var(--shadow-sm) !important;
-  transform: translateY(-1px);
+
 }
 
 /* Nav & Tabs */
@@ -329,7 +329,7 @@ select.form-select {
 .page-link:hover, .page-link:focus {
   background-color: var(--color-secondary) !important;
   color: var(--color-text-main) !important;
-  transform: translateY(-2px);
+
   box-shadow: var(--shadow-sm);
 }
 
@@ -423,3 +423,4 @@ select.form-select {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+

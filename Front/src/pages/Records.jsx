@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Card, Badge, Form, Row, Col, Button, Modal } from 'react-bootstrap';
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, isBefore, isSameDay, startOfDay, parseISO, isWeekend } from 'date-fns';
 import { RiTimeLine, RiCalendarCheckLine, RiAddLine, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
+import { isHoliday } from 'korean-holidays';
 import useAuthStore from '../store/useAuthStore';
-import { getMonthlyWorkRecords, createWorkRecord } from '../api/workApi';
+import { getMonthlyWorkRecords, createWorkRecord, getMonthlyWorkApplyWorks } from '../api/workApi';
+import { fetchWorkPlaces } from '../api/authApi';
 import Loading from '../components/Loading';
 import PaginationBar from '../components/PaginationBar';
 import './Main.css';
@@ -32,15 +34,76 @@ const Records = () => {
   const [restHour, setRestHour] = useState('00');
   const [restMin, setRestMin] = useState('00');
   const [remarks, setRemarks] = useState('');
+  const [branches, setBranches] = useState([]);
+  const [workPlaceIdx, setWorkPlaceIdx] = useState(String(user?.workPlaceIdx || ''));
+
+  const parseDateStr = (dateObj) => {
+    if (!dateObj) return new Date();
+    if (typeof dateObj === 'string') {
+      const parts = dateObj.split('T')[0].split('-');
+      if (parts.length === 3) return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      return parseISO(dateObj);
+    }
+    if (Array.isArray(dateObj)) {
+      const [y, m, d] = dateObj;
+      return new Date(y, m - 1, d);
+    }
+    return new Date(dateObj);
+  };
 
   const loadRecords = async (monthStr) => {
     setDataLoading(true);
     const [year, month] = monthStr.split('-');
     try {
-      const res = await getMonthlyWorkRecords(parseInt(year, 10), parseInt(month, 10));
-      if (res.success) {
-        setRecords(res.data.content || res.data || []);
+      const [recordsRes, requestsRes] = await Promise.all([
+        getMonthlyWorkRecords(parseInt(year, 10), parseInt(month, 10)),
+        getMonthlyWorkApplyWorks(parseInt(year, 10), parseInt(month, 10))
+      ]);
+      
+      let workRecs = [];
+      if (recordsRes.success) {
+        workRecs = recordsRes.data.content || recordsRes.data || [];
       }
+
+      let reqList = [];
+      if (requestsRes.success) {
+        reqList = requestsRes.data.content || (Array.isArray(requestsRes.data) ? requestsRes.data : []);
+      }
+
+      const today = startOfDay(new Date());
+      const missingList = [];
+
+      reqList.forEach(req => {
+        if (req.wsdStatus === '배정' || req.wsdStatus === '타지점근무') {
+          const reqDate = parseDateStr(req.date || req.wsdDate);
+          if (isBefore(reqDate, today) || isSameDay(reqDate, today)) {
+            // Check if record exists
+            const hasRecord = workRecs.some(wr => {
+              const wrD = parseDateStr(wr.wrDate);
+              return isSameDay(wrD, reqDate);
+            });
+            if (!hasRecord) {
+              missingList.push({
+                isMissing: true,
+                wrDate: req.date || req.wsdDate,
+                workPlaceName: req.wsdWorkPlaceName,
+                assignedStartTime: req.wsdStartTime,
+                wrIdx: `missing_${req.wsdIdx || Math.random()}`,
+                rawRequest: req
+              });
+            }
+          }
+        }
+      });
+
+      // Merge and sort descending
+      const merged = [...workRecs, ...missingList].sort((a, b) => {
+        const dA = parseDateStr(a.wrDate);
+        const dB = parseDateStr(b.wrDate);
+        return dB - dA; // Descending
+      });
+
+      setRecords(merged);
     } finally {
       setDataLoading(false);
     }
@@ -49,6 +112,16 @@ const Records = () => {
   useEffect(() => {
     loadRecords(selectedMonth);
   }, [selectedMonth]);
+
+  useEffect(() => {
+    fetchWorkPlaces().then(res => {
+      if (res.success && res.data) setBranches(res.data);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (user?.workPlaceIdx) setWorkPlaceIdx(String(user.workPlaceIdx));
+  }, [user?.workPlaceIdx]);
 
   const filteredRecords = useMemo(() => {
     return records; // 백엔드에서 필터링해서 가져오므로 클라이언트 필터 불필요
@@ -95,6 +168,48 @@ const Records = () => {
     return Math.max(0, endNum - startNum - restNum);
   };
 
+  const handleOpenMissingRecord = (record) => {
+    const d = parseDateStr(record.wrDate);
+    setRecDate(format(d, 'yyyy-MM-dd'));
+
+    // 근무지 매핑
+    if (record.workPlaceName) {
+      const matched = branches.find(b => b.wpName === record.workPlaceName);
+      if (matched) setWorkPlaceIdx(String(matched.wpIdx));
+    }
+
+    // 출근/퇴근 시간 계산
+    let sHour = 18;
+    let sMin = 0;
+    
+    if (record.assignedStartTime === '오픈') {
+      const isWknd = isWeekend(d);
+      const isHol = isHoliday(d);
+      if (isWknd || isHol) {
+        sHour = 10;
+      } else {
+        sHour = 16;
+      }
+    } else if (record.assignedStartTime) {
+      const parts = record.assignedStartTime.split(':');
+      sHour = parseInt(parts[0], 10) || 18;
+      sMin = parseInt(parts[1], 10) || 0;
+    }
+
+    const eHour = (sHour + 4) % 24;
+
+    setStartHour(String(sHour).padStart(2, '0'));
+    setStartMin(String(sMin).padStart(2, '0'));
+    setEndHour(String(eHour).padStart(2, '0'));
+    setEndMin(String(sMin).padStart(2, '0'));
+    
+    setRestHour('00');
+    setRestMin('00');
+    setRemarks('');
+    
+    setShowModal(true);
+  };
+
   const handleAddRecord = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -117,7 +232,8 @@ const Records = () => {
       wrEndTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`,
       wrRestTime: `${String(restHour).padStart(2, '0')}:${String(restMin).padStart(2, '0')}`,
       wrRemarks: remarks,
-      userIdx: user?.userIdx || 1
+      userIdx: user?.userIdx || 1,
+      workPlaceIdx: workPlaceIdx || user?.workPlaceIdx
     };
 
     const res = await createWorkRecord(recordData);
@@ -224,16 +340,26 @@ const Records = () => {
                           })()}
                         </h5>
                         <span className="text-muted small fw-medium d-flex align-items-center gap-1">
-                          <RiTimeLine /> {sh}:{sm} - {eh}:{em}
+                          {record.isMissing ? (
+                            <span className="text-danger fw-bold"><RiTimeLine /> 미기재 ({record.assignedStartTime?.substring(0, 5)})</span>
+                          ) : (
+                            <><RiTimeLine /> {sh}:{sm} - {eh}:{em}</>
+                          )}
                         </span>
                       </div>
                       <div className="text-end d-flex align-items-center gap-3">
                         <div>
-                          <h3 className="fw-black mb-0" style={{ color: 'var(--color-primary)', letterSpacing: '-0.5px' }}>
-                            {totalHours}<span className="fs-6 text-muted ms-1 fw-medium" style={{ letterSpacing: '0' }}>시간</span>
-                          </h3>
-                          {!isExpanded && record.wrRemarks && (
-                            <span className="badge mt-1" style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)', fontSize: '0.65rem' }}>비고 있음</span>
+                          {record.isMissing ? (
+                            <Badge bg="danger" className="py-2 px-3 rounded-pill fw-bold" style={{ fontSize: '0.85rem' }}>미기재</Badge>
+                          ) : (
+                            <>
+                              <h3 className="fw-black mb-0" style={{ color: 'var(--color-primary)', letterSpacing: '-0.5px' }}>
+                                {totalHours}<span className="fs-6 text-muted ms-1 fw-medium" style={{ letterSpacing: '0' }}>시간</span>
+                              </h3>
+                              {!isExpanded && record.wrRemarks && (
+                                <span className="badge mt-1" style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)', fontSize: '0.65rem' }}>비고 있음</span>
+                              )}
+                            </>
                           )}
                         </div>
                         <div className="text-muted" style={{ transition: 'transform 0.3s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)' }}>
@@ -246,30 +372,45 @@ const Records = () => {
                     {isExpanded && (
                       <div className="mt-3 pt-3 border-top" style={{ borderColor: 'var(--color-input-border)' }} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex flex-column gap-2">
-                          {rt && (rt.hour > 0 || rt.minute > 0) && (
-                            <div className="d-flex justify-content-between align-items-center p-2 px-3 rounded-3" style={{ backgroundColor: 'var(--color-input-bg)' }}>
-                              <span className="text-muted small fw-bold">휴게시간</span>
-                              <span className="text-dark small fw-medium">{rt.hour}시간 {rt.minute > 0 ? `${rt.minute}분` : ''}</span>
+                          {record.isMissing ? (
+                            <div className="text-center p-3">
+                              <p className="text-muted mb-3 small fw-medium">이 날짜에 배정되었으나 근무 기록이 없습니다.</p>
+                              <Button 
+                                variant="primary" 
+                                className="rounded-pill fw-bold px-4 py-2 shadow-sm border-0 d-flex align-items-center justify-content-center gap-2 mx-auto"
+                                onClick={(e) => { e.stopPropagation(); handleOpenMissingRecord(record); }}
+                              >
+                                <RiAddLine size={18} /> 기록 추가하기
+                              </Button>
                             </div>
-                          )}
-                          
-                          {record.wrRemarks && (
-                            <div className="p-3 rounded-3" style={{ backgroundColor: 'var(--color-surface-hover)', border: '1px dashed var(--color-input-border)' }}>
-                              <span className="badge mb-2" style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)' }}>비고</span>
-                              <div className="text-dark small fw-medium">{record.wrRemarks}</div>
-                            </div>
-                          )}
+                          ) : (
+                            <>
+                              {rt && (rt.hour > 0 || rt.minute > 0) && (
+                                <div className="d-flex justify-content-between align-items-center p-2 px-3 rounded-3" style={{ backgroundColor: 'var(--color-input-bg)' }}>
+                                  <span className="text-muted small fw-bold">휴게시간</span>
+                                  <span className="text-dark small fw-medium">{rt.hour}시간 {rt.minute > 0 ? `${rt.minute}분` : ''}</span>
+                                </div>
+                              )}
+                              
+                              {record.wrRemarks && (
+                                <div className="p-3 rounded-3" style={{ backgroundColor: 'var(--color-surface-hover)', border: '1px dashed var(--color-input-border)' }}>
+                                  <span className="badge mb-2" style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)' }}>비고</span>
+                                  <div className="text-dark small fw-medium">{record.wrRemarks}</div>
+                                </div>
+                              )}
 
-                          <div className="d-flex justify-content-end mt-2">
-                            <Button 
-                              variant="light" 
-                              className="rounded-pill fw-bold px-4 py-2 shadow-sm border"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/records/edit/${record.wrIdx}`); }}
-                              style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', borderColor: 'var(--color-input-border)', backgroundColor: 'var(--color-input-bg)' }}
-                            >
-                              기록 수정하기
-                            </Button>
-                          </div>
+                              <div className="d-flex justify-content-end mt-2">
+                                <Button 
+                                  variant="light" 
+                                  className="rounded-pill fw-bold px-4 py-2 shadow-sm border"
+                                  onClick={(e) => { e.stopPropagation(); navigate('/records/edit', { state: { id: record.wrIdx } }); }}
+                                  style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', borderColor: 'var(--color-input-border)', backgroundColor: 'var(--color-input-bg)' }}
+                                >
+                                  기록 수정하기
+                                </Button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
@@ -308,6 +449,15 @@ const Records = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
+              <Form.Label className="fw-bold text-muted small">근무지</Form.Label>
+              <Form.Select value={workPlaceIdx} onChange={e => setWorkPlaceIdx(e.target.value)} className="custom-input">
+                {branches.map(b => (
+                  <option key={b.wpIdx} value={String(b.wpIdx)}>{b.wpName}{String(b.wpIdx) === String(user?.workPlaceIdx) ? ' (내 지점)' : ''}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">출근 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
                 <Form.Select value={startHour} onChange={e => setStartHour(e.target.value)} className="custom-input flex-grow-1">
@@ -327,7 +477,7 @@ const Records = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">종료 시간</Form.Label>
+              <Form.Label className="fw-bold text-muted small">퇴근 시간</Form.Label>
               <div className="d-flex gap-2 align-items-center">
                 <Form.Select
                   value={endHour}

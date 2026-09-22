@@ -20,6 +20,8 @@ import java.time.LocalTime;
 public class WorkRecordResponseDto {
     private Long wrIdx;
     private Long userIdx;
+    /** 로그인 아이디 — 동명이인 배지(nameSeq)와 구분용 */
+    private String userId;
     private String userName; // 유저 이름
     private Long workPlaceIdx; // 근무 기록의 근무지 idx
     private String workPlaceName; // 근무 기록의 근무지 (기록 당시 지점 기준)
@@ -39,6 +41,11 @@ public class WorkRecordResponseDto {
     private LocalDateTime wrCreatedAt;
     private LocalDateTime wrUpdatedAt;
     private String applyStatus; // 해당 날짜의 근무 신청 상태 (신청없음, 미신청, 미배정, 배정, 신청)
+    /** 동명이인 구분 (1이면 단독, 2 이상이면 구분 번호) — 로그인 아이디와 무관 */
+    private Long nameSeq;
+    /** 알바 수정 가능 기한 (근무일 기준 계산) */
+    private LocalDateTime editableUntil;
+    private Boolean isEditable;
 
     public static WorkRecordResponseDto fromEntity(WorkRecord entity, String applyStatus) {
         if (entity == null) return null;
@@ -51,7 +58,8 @@ public class WorkRecordResponseDto {
         return WorkRecordResponseDto.builder()
                 .wrIdx(entity.getWrIdx())
                 .userIdx(entity.getUser() != null ? entity.getUser().getUserIdx() : null)
-                .userName(entity.getUser() != null ? entity.getUser().getDisplayName() : null)
+                .userId(entity.getUser() != null ? entity.getUser().getUserId() : null)
+                .userName(entity.getUser() != null ? entity.getUser().getUserName() : null)
                 .workPlaceIdx(wpIdx)
                 .workPlaceName(wpName)
                 .userWorkPlaceName(userWpName)

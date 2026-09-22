@@ -28,4 +28,9 @@ public class SensitiveInfoDto {
                 .userHourlyWage(user.getUserHourlyWage())
                 .build();
     }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("bankCode")
+    public String getBankCode() {
+        return userBank;
+    }
 }

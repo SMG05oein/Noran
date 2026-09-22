@@ -15,6 +15,7 @@ import lombok.Setter;
 public class DailyScheduleDto {
     private Long userIdx;
     private String userName;
+    private Long nameSeq;
     private String workPlaceName;
     private String startTime;
 

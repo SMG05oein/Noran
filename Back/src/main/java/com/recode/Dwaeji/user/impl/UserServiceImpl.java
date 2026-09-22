@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -140,6 +141,16 @@ public class UserServiceImpl implements UserService {
                 .userEmail(signupRequestDto.getUserEmail())
                 .emailConsentAgreed(Boolean.TRUE.equals(signupRequestDto.getEmailConsentAgreed()))
                 .emailConsentDate(Boolean.TRUE.equals(signupRequestDto.getEmailConsentAgreed()) ? LocalDateTime.now() : null)
+                .userBank(signupRequestDto.getUserBank())
+                .userAccountName(signupRequestDto.getUserAccountName())
+                .userAccountNumber(signupRequestDto.getUserAccountNumber())
+                .bankConsentAgreed(
+                        signupRequestDto.getUserBank() != null && !signupRequestDto.getUserBank().isBlank()
+                                && signupRequestDto.getUserAccountNumber() != null && !signupRequestDto.getUserAccountNumber().isBlank())
+                .bankConsentDate(
+                        (signupRequestDto.getUserBank() != null && !signupRequestDto.getUserBank().isBlank()
+                                && signupRequestDto.getUserAccountNumber() != null && !signupRequestDto.getUserAccountNumber().isBlank())
+                                ? LocalDateTime.now() : null)
                 .userType(userType)
                 .workPlace(workPlace)
                 .userIsActive(1) // 기본적으로 활성화 상태
@@ -243,9 +254,19 @@ public class UserServiceImpl implements UserService {
             if (!isAdmin) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "근무 형태를 변경할 권한이 없습니다.");
             }
-            com.recode.Dwaeji.user.database.UserType userType = userTypeRepository.findById(userUpdateDto.getFkUtIdx())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무 형태입니다."));
-            targetUser.setUserType(userType);
+            boolean isSelf = java.util.Objects.equals(requester.getUserIdx(), targetUserIdx)
+                    || java.util.Objects.equals(requester.getUserId(), targetUser.getUserId());
+            Long currentUtIdx = targetUser.getUserType() != null ? targetUser.getUserType().getUtIdx() : null;
+            // 본인 직급은 변경 불가 (동일 값 재전송은 no-op)
+            if (isSelf) {
+                if (!java.util.Objects.equals(currentUtIdx, userUpdateDto.getFkUtIdx())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인의 직급은 변경할 수 없습니다.");
+                }
+            } else {
+                com.recode.Dwaeji.user.database.UserType userType = userTypeRepository.findById(userUpdateDto.getFkUtIdx())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무 형태입니다."));
+                targetUser.setUserType(userType);
+            }
         }
         if (userUpdateDto.getFkWorkPlaceIdx() != null) {
             com.recode.Dwaeji.user.database.WorkPlace workPlace = workPlaceRepository.findById(userUpdateDto.getFkWorkPlaceIdx())
@@ -293,14 +314,31 @@ public class UserServiceImpl implements UserService {
         if (dto.getUserIdxList() == null || dto.getUserIdxList().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업데이트할 사용자가 선택되지 않았습니다.");
         }
-        
+
+        com.recode.Dwaeji.user.database.UserType bulkUserType = null;
+        if (dto.getFkUtIdx() != null) {
+            bulkUserType = userTypeRepository.findById(dto.getFkUtIdx())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무 형태입니다."));
+        }
+
         java.util.List<User> users = userRepository.findAllById(dto.getUserIdxList());
         for (User u : users) {
+            boolean isSelf = java.util.Objects.equals(requester.getUserIdx(), u.getUserIdx())
+                    || java.util.Objects.equals(requester.getUserId(), u.getUserId());
             if (dto.getUserHourlyWage() != null) {
                 u.setUserHourlyWage(dto.getUserHourlyWage());
             }
             if (dto.getUserIsActive() != null) {
+                if (isSelf) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 계정 상태는 일괄 변경할 수 없습니다.");
+                }
                 u.setUserIsActive(dto.getUserIsActive());
+            }
+            if (bulkUserType != null) {
+                if (isSelf) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인의 직급은 변경할 수 없습니다.");
+                }
+                u.setUserType(bulkUserType);
             }
         }
         userRepository.saveAll(users);
@@ -509,8 +547,8 @@ public class UserServiceImpl implements UserService {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
-        Integer canViewSensitive = requester.getUserType().getUtCanViewSensitive();
-        if (canViewSensitive == null || canViewSensitive != 1) {
+        Integer canEditSensitive = requester.getUserType().getUtCanEditSensitive();
+        if (canEditSensitive == null || canEditSensitive != 1) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "민감 정보를 수정할 권한이 없습니다.");
         }
 
@@ -585,7 +623,6 @@ public class UserServiceImpl implements UserService {
                 userRepository.searchWorkersNative(isActive, workPlaceIdx, userName, pageable);
 
         return projPage.map(p -> {
-            String finalName = p.getNameSeq() > 1 ? p.getUserName() + "(" + (p.getNameSeq() - 1) + ")" : p.getUserName();
             String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
             if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
                 hasAccount = "기재";
@@ -594,11 +631,12 @@ public class UserServiceImpl implements UserService {
             return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
                     .userIdx(p.getUserIdx())
                     .userId(p.getUserId())
-                    .userName(finalName)
+                    .userName(p.getUserName())
                     .userEmail(p.getUserEmail())
                     .userBirth(p.getUserBirth())
                     .userPhone(p.getUserPhone())
                     .userTypeName(p.getUserTypeName())
+                    .fkUtIdx(p.getFkUtIdx())
                     .workPlaceName(p.getWorkPlaceName())
                     .workPlaceIdx(p.getWorkPlaceIdx())
                     .userIsActive(p.getUserIsActive())
@@ -608,6 +646,7 @@ public class UserServiceImpl implements UserService {
                     .userHourlyWage(p.getUserHourlyWage())
                     .userWithdrawnAt(p.getUserWithdrawnAt())
                     .isAdmin(p.getIsAdmin())
+                    .nameSeq(p.getNameSeq())
                     .build();
         });
     }
@@ -652,7 +691,6 @@ public class UserServiceImpl implements UserService {
                 userRepository.searchAllEmployeesNative(isActive, workPlaceIdx, userName, pageable);
 
         return projPage.map(p -> {
-            String finalName = p.getNameSeq() > 1 ? p.getUserName() + "(" + (p.getNameSeq() - 1) + ")" : p.getUserName();
             String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
             if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
                 hasAccount = "기재";
@@ -661,11 +699,12 @@ public class UserServiceImpl implements UserService {
             return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
                     .userIdx(p.getUserIdx())
                     .userId(p.getUserId())
-                    .userName(finalName)
+                    .userName(p.getUserName())
                     .userEmail(p.getUserEmail())
                     .userBirth(p.getUserBirth())
                     .userPhone(p.getUserPhone())
                     .userTypeName(p.getUserTypeName())
+                    .fkUtIdx(p.getFkUtIdx())
                     .workPlaceName(p.getWorkPlaceName())
                     .workPlaceIdx(p.getWorkPlaceIdx())
                     .userIsActive(p.getUserIsActive())
@@ -675,6 +714,7 @@ public class UserServiceImpl implements UserService {
                     .userHourlyWage(p.getUserHourlyWage())
                     .userWithdrawnAt(p.getUserWithdrawnAt())
                     .isAdmin(p.getIsAdmin())
+                    .nameSeq(p.getNameSeq())
                     .build();
         });
     }
@@ -855,5 +895,59 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "아카이빙된 유저를 찾을 수 없습니다."));
 
         archivedUserRepository.delete(archivedUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] downloadEmployeesExcel(String requesterId, Long workPlaceIdx) {
+        User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+        Integer canExport = requester.getUserType() != null ? requester.getUserType().getUtCanExportExcel() : null;
+        if (canExport == null || canExport != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "엑셀 다운로드 권한이 없습니다.");
+        }
+
+        List<User> users = userRepository.findAll().stream()
+                .filter(u -> u.getUserName() == null || !u.getUserName().equals("탈퇴자_비식별화"))
+                .filter(u -> workPlaceIdx == null
+                        || (u.getWorkPlace() != null && workPlaceIdx.equals(u.getWorkPlace().getWpIdx())))
+                .collect(java.util.stream.Collectors.toList());
+
+        Map<String, List<User>> byWp = new java.util.LinkedHashMap<>();
+        for (User u : users) {
+            String sheetName = (u.getWorkPlace() != null && u.getWorkPlace().getWpName() != null)
+                    ? u.getWorkPlace().getWpName() : "미소속";
+            // Excel sheet name max 31 chars
+            if (sheetName.length() > 31) sheetName = sheetName.substring(0, 31);
+            byWp.computeIfAbsent(sheetName, k -> new java.util.ArrayList<>()).add(u);
+        }
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            String[] headers = {"No", "소속", "이름", "아이디", "시급", "연락처", "상태"};
+            for (Map.Entry<String, List<User>> e : byWp.entrySet()) {
+                org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet(e.getKey());
+                org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
+                for (int i = 0; i < headers.length; i++) header.createCell(i).setCellValue(headers[i]);
+                int r = 1;
+                for (User u : e.getValue()) {
+                    org.apache.poi.ss.usermodel.Row row = sheet.createRow(r++);
+                    String status = u.getUserIsActive() == null ? ""
+                            : (u.getUserIsActive() == 1 ? "재직" : (u.getUserIsActive() == 2 ? "휴직" : "퇴사"));
+                    row.createCell(0).setCellValue(r - 1);
+                    row.createCell(1).setCellValue(u.getWorkPlace() != null ? u.getWorkPlace().getWpName() : "");
+                    row.createCell(2).setCellValue(u.getUserName() != null ? u.getUserName() : "");
+                    row.createCell(3).setCellValue(u.getUserId() != null ? u.getUserId() : "");
+                    row.createCell(4).setCellValue(u.getUserHourlyWage() != null ? u.getUserHourlyWage() : 0);
+                    row.createCell(5).setCellValue(u.getUserPhone() != null ? u.getUserPhone() : "");
+                    row.createCell(6).setCellValue(status);
+                }
+                for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
+            }
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "직원 엑셀 생성 실패: " + ex.getMessage());
+        }
     }
 }

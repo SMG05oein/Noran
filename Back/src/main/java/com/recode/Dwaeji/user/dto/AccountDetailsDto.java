@@ -25,4 +25,9 @@ public class AccountDetailsDto {
                 .userAccountNumber(user.getUserAccountNumber())
                 .build();
     }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("bankCode")
+    public String getBankCode() {
+        return userBank;
+    }
 }

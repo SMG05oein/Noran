@@ -31,6 +31,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "    numbered_u.user_birth as userBirth, " +
                    "    numbered_u.user_phone as userPhone, " +
                    "    ut.ut_name as userTypeName, " +
+                   "    numbered_u.fk_ut_idx as fkUtIdx, " +
                    "    wp.wp_name as workPlaceName, " +
                    "    numbered_u.fk_work_place_idx as workPlaceIdx, " +
                    "    numbered_u.user_is_active as userIsActive, " +
@@ -42,8 +43,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "    numbered_u.user_withdrawn_at as userWithdrawnAt, " +
                    "    numbered_u.nameSeq as nameSeq " +
                    "FROM ( " +
-                   "    SELECT u.*, ROW_NUMBER() OVER (PARTITION BY u.user_name ORDER BY u.user_created_at ASC, u.user_idx ASC) as nameSeq " +
+                   "    SELECT u.*, ROW_NUMBER() OVER (" +
+                   "      PARTITION BY u.user_name " +
+                   "      ORDER BY u.user_created_at ASC, u.user_idx ASC" +
+                   "    ) as nameSeq " +
                    "    FROM user u " +
+                   "    WHERE u.user_name <> '탈퇴자_비식별화' " +
+                   "      AND (u.user_is_active IS NULL OR u.user_is_active <> 0) " +
                    ") numbered_u " +
                    "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
                    "LEFT JOIN work_place wp ON numbered_u.fk_work_place_idx = wp.wp_idx " +
@@ -77,6 +83,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "    numbered_u.user_birth as userBirth, " +
                    "    numbered_u.user_phone as userPhone, " +
                    "    ut.ut_name as userTypeName, " +
+                   "    numbered_u.fk_ut_idx as fkUtIdx, " +
                    "    wp.wp_name as workPlaceName, " +
                    "    numbered_u.fk_work_place_idx as workPlaceIdx, " +
                    "    numbered_u.user_is_active as userIsActive, " +
@@ -88,8 +95,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "    numbered_u.user_withdrawn_at as userWithdrawnAt, " +
                    "    numbered_u.nameSeq as nameSeq " +
                    "FROM ( " +
-                   "    SELECT u.*, ROW_NUMBER() OVER (PARTITION BY u.user_name ORDER BY u.user_created_at ASC, u.user_idx ASC) as nameSeq " +
+                   "    SELECT u.*, ROW_NUMBER() OVER (" +
+                   "      PARTITION BY u.user_name " +
+                   "      ORDER BY u.user_created_at ASC, u.user_idx ASC" +
+                   "    ) as nameSeq " +
                    "    FROM user u " +
+                   "    WHERE u.user_name <> '탈퇴자_비식별화' " +
+                   "      AND (u.user_is_active IS NULL OR u.user_is_active <> 0) " +
                    ") numbered_u " +
                    "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
                    "LEFT JOIN work_place wp ON numbered_u.fk_work_place_idx = wp.wp_idx " +
@@ -103,7 +115,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         "WHERE (:isActive IS NULL OR numbered_u.user_is_active = :isActive) " +
                         "  AND (:wpIdx IS NULL OR numbered_u.fk_work_place_idx = :wpIdx) " +
                         "  AND (:userName IS NULL OR numbered_u.user_name LIKE CONCAT('%', :userName, '%')) " +
-                        "  AND numbered_u.user_name != '탈퇴자_비식별화'",
+                        "  AND numbered_u.user_name != '탈퇴자_비식별화' " +
+                        "  AND (numbered_u.user_is_active IS NULL OR numbered_u.user_is_active <> 0)",
            nativeQuery = true)
     Page<UserWithSeqProjection> searchAllEmployeesNative(
             @Param("isActive") Integer isActive,
@@ -141,4 +154,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findByUserType_UtIsAdminAndUserIsActiveAndUserNameContaining(Integer isAdmin, Integer isActive, String name, Pageable pageable);
     Page<User> findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdx(Integer isAdmin, Integer isActive, Long wpIdx, Pageable pageable);
     Page<User> findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdxAndUserNameContaining(Integer isAdmin, Integer isActive, Long wpIdx, String name, Pageable pageable);
+
+    @Query(value = "SELECT COUNT(*) FROM user u2 " +
+            "WHERE u2.user_name = (SELECT u1.user_name FROM user u1 WHERE u1.user_idx = :userIdx) " +
+            "  AND u2.user_name <> '탈퇴자_비식별화' " +
+            "  AND (u2.user_is_active IS NULL OR u2.user_is_active <> 0) " +
+            "  AND (" +
+            "        u2.user_created_at < (SELECT u1.user_created_at FROM user u1 WHERE u1.user_idx = :userIdx) " +
+            "        OR (" +
+            "             u2.user_created_at <=> (SELECT u1.user_created_at FROM user u1 WHERE u1.user_idx = :userIdx) " +
+            "             AND u2.user_idx <= :userIdx" +
+            "           )" +
+            "      )",
+           nativeQuery = true)
+    Long findNameSeqByUserIdx(@Param("userIdx") Long userIdx);
 }

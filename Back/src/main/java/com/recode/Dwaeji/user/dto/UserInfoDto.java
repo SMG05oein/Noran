@@ -26,6 +26,8 @@ public class UserInfoDto {
     private LocalDate userBirth;
     private String userPhone;
     private String userTypeName;
+    /** 본인 직급 ID — 권한 상세는 GET /api/user-types 에서 조회 */
+    private Long fkUtIdx;
     private String workPlaceName;
     private Long workPlaceIdx;
     private Integer userIsActive;
@@ -41,6 +43,8 @@ public class UserInfoDto {
     private Integer isAdmin;
     
     private Integer emailConsentAgreed;
+    /** 동명이인 구분 (ROW_NUMBER) */
+    private Long nameSeq;
 
     public static UserInfoDto fromEntity(User user) {
         if (user == null) return null;
@@ -48,6 +52,7 @@ public class UserInfoDto {
         String hasAccount = (user.getUserAccountNumber() != null && !user.getUserAccountNumber().trim().isEmpty()) ? "기재" : null;
         Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null) ? user.getUserType().getUtIsAdmin() : 0;
         Integer emailConsent = (user.getEmailConsentAgreed() != null && user.getEmailConsentAgreed()) ? 1 : 0;
+        var ut = user.getUserType();
 
         return UserInfoDto.builder()
                 .userIdx(user.getUserIdx())
@@ -56,7 +61,8 @@ public class UserInfoDto {
                 .userEmail(user.getUserEmail())
                 .userBirth(user.getUserBirth())
                 .userPhone(user.getUserPhone())
-                .userTypeName(user.getUserType() != null ? user.getUserType().getUtName() : null)
+                .userTypeName(ut != null ? ut.getUtName() : null)
+                .fkUtIdx(ut != null ? ut.getUtIdx() : null)
                 .workPlaceName(user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null)
                 .workPlaceIdx(user.getWorkPlace() != null ? user.getWorkPlace().getWpIdx() : null)
                 .userIsActive(user.getUserIsActive())
@@ -68,5 +74,11 @@ public class UserInfoDto {
                 .isAdmin(adminFlag)
                 .emailConsentAgreed(emailConsent)
                 .build();
+    }
+
+    /** Front 호환: bankCode 별칭 */
+    @JsonProperty("bankCode")
+    public String getBankCode() {
+        return userBank;
     }
 }

@@ -18,17 +18,16 @@ import {
   fetchArchivedWorkers,
   restoreArchivedUser,
   deleteArchivedUser,
-  leaveUser
+  leaveUser,
+  fetchBanks,
+  downloadUserExcel
 } from '../api/authApi';
 import PaginationBar from '../components/PaginationBar';
 import BranchFilter from '../components/BranchFilter';
 import Loading from '../components/Loading';
-import { RiSearchLine } from 'react-icons/ri';
+import { RiSearchLine, RiDownload2Line } from 'react-icons/ri';
+import useAuthStore from '../store/useAuthStore';
 import './AdminMain.css';
-
-const BANK_LIST = [
-  '국민은행', '신한은행', '우리은행', '하나은행', '기업은행', '농협은행', '카카오뱅크', '토스뱅크', '케이뱅크', '새마을금고', '신협', '우체국', '수협은행', 'SC제일은행', '한국씨티은행', '부산은행', '광주은행', '제주은행', '전북은행', '경남은행'
-];
 
 const formatPhoneNumber = (value) => {
   if (!value) return '';
@@ -39,6 +38,7 @@ const formatPhoneNumber = (value) => {
 };
 
 const AdminUsers = () => {
+  const { user: me } = useAuthStore();
   const [selectedRole, setSelectedRole] = useState('알바생'); // '전체', '알바생', '직원'
   const [selectedBranch, setSelectedBranch] = useState('');
   const [activeStatus, setActiveStatus] = useState('ACTIVE'); // 'ALL', 'ACTIVE', 'INACTIVE'
@@ -57,8 +57,12 @@ const AdminUsers = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [pageInput, setPageInput] = useState('1');
 
-  // 다중 정렬 상태: [{ column: 'name', order: 'asc' }, ...]
-  const [sortConfigs, setSortConfigs] = useState([]);
+  // 정렬: API sortBy (name | branch | status)
+  const [sortBy, setSortBy] = useState('');
+  const [sortDir, setSortDir] = useState('asc');
+  const [copyToast, setCopyToast] = useState('');
+  const [banks, setBanks] = useState([]);
+  const [excelDownloading, setExcelDownloading] = useState(false);
 
   // 체크박스 다중 선택 상태
   const [selectedUserIdxs, setSelectedUserIdxs] = useState(new Set());
@@ -112,6 +116,14 @@ const AdminUsers = () => {
   const [branches, setBranches] = useState([]);
   const [userTypes, setUserTypes] = useState([]);
 
+  const myRole = useMemo(
+    () => userTypes.find(t => Number(t.utIdx) === Number(me?.fkUtIdx)),
+    [userTypes, me?.fkUtIdx]
+  );
+  const canViewSensitive = myRole?.utCanViewSensitive === 1;
+  const canEditSensitive = myRole?.utCanEditSensitive === 1;
+  const canExportExcel = myRole?.utCanExportExcel === 1;
+
   const loadUsers = async (skipCache = false) => {
     setLoading(true);
     setSelectedUserIdxs(new Set()); // 페이지 변경시 선택 초기화
@@ -127,6 +139,10 @@ const AdminUsers = () => {
       }
       if (searchName) {
         params.userName = searchName;
+      }
+      if (sortBy) {
+        params.sortBy = sortBy;
+        params.sortDir = sortDir;
       }
 
       let res;
@@ -174,6 +190,12 @@ const AdminUsers = () => {
 
       const branchRes = await fetchWorkPlaces();
       if (branchRes.success) setBranches([{ wpIdx: '', wpName: '전체' }, ...branchRes.data]);
+
+      const bankRes = await fetchBanks();
+      if (bankRes.success) {
+        const list = Array.isArray(bankRes.data) ? bankRes.data : (bankRes.data?.content || []);
+        setBanks(list);
+      }
     };
     loadData();
   }, []);
@@ -187,7 +209,7 @@ const AdminUsers = () => {
 
   useEffect(() => {
     loadUsers();
-  }, [selectedRole, page, selectedBranch, activeStatus, isArchivedMode]);
+  }, [selectedRole, page, selectedBranch, activeStatus, isArchivedMode, sortBy, sortDir]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -196,60 +218,49 @@ const AdminUsers = () => {
     loadUsers();
   };
 
-  // 정렬 제어
   const handleSort = (col) => {
-    setSortConfigs(prev => {
-      const existingIdx = prev.findIndex(c => c.column === col);
-      if (existingIdx !== -1) {
-        const currentOrder = prev[existingIdx].order;
-        if (currentOrder === 'asc') {
-          const next = [...prev];
-          next[existingIdx] = { ...next[existingIdx], order: 'desc' };
-          return next;
-        } else {
-          return prev.filter(c => c.column !== col);
-        }
+    if (sortBy === col) {
+      if (sortDir === 'asc') {
+        setSortDir('desc');
       } else {
-        return [...prev, { column: col, order: 'asc' }];
+        setSortBy('');
+        setSortDir('asc');
       }
-    });
+    } else {
+      setSortBy(col);
+      setSortDir('asc');
+    }
+    setPage(0);
+    setPageInput('1');
   };
 
-  const sortedUsers = useMemo(() => {
-    if (sortConfigs.length === 0) return users;
-    return [...users].sort((a, b) => {
-      for (let config of sortConfigs) {
-        let valA = a.userName || '';
-        let valB = b.userName || '';
-        if (config.column === 'branch') {
-          valA = a.workPlaceName || '';
-          valB = b.workPlaceName || '';
-        }
-        
-        if (valA < valB) return config.order === 'asc' ? -1 : 1;
-        if (valA > valB) return config.order === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
-  }, [users, sortConfigs]);
-
   const renderSortIcon = (col) => {
-    const idx = sortConfigs.findIndex(c => c.column === col);
-    if (idx === -1) return null;
-    const config = sortConfigs[idx];
-    const orderIcon = config.order === 'asc' ? '▲' : '▼';
-    return (
-      <span className="ms-1 text-primary">
-        {sortConfigs.length > 1 && <sup className="fw-bold me-1">{idx + 1}</sup>}
-        {orderIcon}
-      </span>
-    );
+    if (sortBy !== col) return <span className="ms-1 text-muted opacity-50">⇅</span>;
+    return <span className="ms-1 text-primary">{sortDir === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const copyUserId = async (userId) => {
+    try {
+      await navigator.clipboard.writeText(userId);
+      setCopyToast('아이디가 복사되었습니다.');
+      setTimeout(() => setCopyToast(''), 1500);
+    } catch {
+      setCopyToast('복사에 실패했습니다.');
+      setTimeout(() => setCopyToast(''), 1500);
+    }
+  };
+
+  const handleDownloadUsersExcel = async () => {
+    setExcelDownloading(true);
+    const res = await downloadUserExcel(selectedBranch || null);
+    setExcelDownloading(false);
+    if (!res.success) alert(res.error || '엑셀 다운로드에 실패했습니다.');
   };
 
   // 체크박스 제어
   const toggleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedUserIdxs(new Set(sortedUsers.map(u => u.userIdx)));
+      setSelectedUserIdxs(new Set(users.map(u => u.userIdx)));
     } else {
       setSelectedUserIdxs(new Set());
     }
@@ -264,7 +275,7 @@ const AdminUsers = () => {
     });
   };
 
-  const isAllSelected = sortedUsers.length > 0 && selectedUserIdxs.size === sortedUsers.length;
+  const isAllSelected = users.length > 0 && selectedUserIdxs.size === users.length;
 
   const handleOpenBulkModal = () => {
     setBulkStatus('');
@@ -309,13 +320,16 @@ const AdminUsers = () => {
     setEditPhone(u.userPhone || '');
     const matchedBranch = branches.find(b => b.wpName === u.workPlaceName);
     setEditBranch(matchedBranch ? matchedBranch.wpIdx : (branches.length > 1 ? branches[1].wpIdx : 1));
-    setEditFkUtIdx('');
+    const currentUtIdx = u.fkUtIdx ?? u.userTypeIdx ?? u.utIdx
+      ?? userTypes.find(t => t.utName === (u.userTypeName || u.userType))?.utIdx
+      ?? '';
+    setEditFkUtIdx(currentUtIdx === '' || currentUtIdx == null ? '' : String(currentUtIdx));
     setEditIsActive(u.userIsActive !== undefined ? u.userIsActive : 1);
     setEditError('');
     setEditSuccess('');
     
     // 민감정보 초기화 (수정 모달에 통합됨)
-    setEditBank(u.userBank || '');
+    setEditBank(u.bankCode || u.userBank || '');
     setEditAccountName(u.userAccountName || '');
     setEditAccountNo(u.userAccountNumber || '');
     setEditWage(u.userHourlyWage || '');
@@ -328,7 +342,7 @@ const AdminUsers = () => {
     const res = await getSensitiveInfo(editUser.userIdx);
     setSensitiveLoading(false);
     if (res.success && res.data) {
-      setEditBank(res.data.userBank || '');
+      setEditBank(res.data.bankCode || res.data.userBank || '');
       setEditAccountName(res.data.userAccountName || '');
       setEditAccountNo(res.data.userAccountNumber || '');
       setEditWage(res.data.userHourlyWage || '');
@@ -350,22 +364,24 @@ const AdminUsers = () => {
       fkWorkPlaceIdx: Number(editBranch),
       isActive: Number(editIsActive)
     };
-    if (editFkUtIdx) {
+    if (editFkUtIdx && Number(editUser.userIdx) !== Number(me?.userIdx)) {
       payload.fkUtIdx = Number(editFkUtIdx);
     }
 
     const res = await updateUserInfo(editUser.userIdx, payload);
 
-    // 민감정보 동시 업데이트
-    const sensitivePayload = {
-      userBank: editBank,
-      userAccountName: editAccountName,
-      userHourlyWage: editWage ? Number(editWage) : null
-    };
-    if (editAccountNo !== '기재') {
-      sensitivePayload.userAccountNumber = editAccountNo;
+    let resSensitive = { success: true };
+    if (canEditSensitive) {
+      const sensitivePayload = {
+        bankCode: editBank,
+        userAccountName: editAccountName,
+        userHourlyWage: editWage ? Number(editWage) : null
+      };
+      if (editAccountNo !== '기재') {
+        sensitivePayload.userAccountNumber = editAccountNo;
+      }
+      resSensitive = await updateSensitiveInfo(editUser.userIdx, sensitivePayload);
     }
-    const resSensitive = await updateSensitiveInfo(editUser.userIdx, sensitivePayload);
 
     setEditSaving(false);
 
@@ -570,11 +586,18 @@ const AdminUsers = () => {
             </div>
 
             <div className="d-flex gap-2 align-items-center ms-auto">
+               {canExportExcel && (
+                 <Button variant="success" className="fw-bold px-3 py-2 rounded-3 shadow-sm" onClick={handleDownloadUsersExcel} disabled={excelDownloading}>
+                   <RiDownload2Line className="me-1" />
+                   {excelDownloading ? '다운로드 중...' : '엑셀 다운로드'}
+                 </Button>
+               )}
                <Button variant="secondary" disabled={selectedUserIdxs.size === 0} onClick={handleOpenBulkModal} className="fw-bold px-4 py-2 rounded-3 shadow-sm">
                  선택된 직원 일괄 수정 ({selectedUserIdxs.size})
                </Button>
             </div>
           </div>
+          {copyToast && <Alert variant="success" className="py-2 mt-2 mb-0">{copyToast}</Alert>}
         </div>
 
         {loading ? <Loading /> : (
@@ -588,40 +611,50 @@ const AdminUsers = () => {
                         <th style={{ width: '40px' }}>
                           <Form.Check type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} />
                         </th>
-                        <th>No</th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
-                          이름 {renderSortIcon('name')}
-                        </th>
+                        <th>No.</th>
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('branch')}>
                           소속 {renderSortIcon('branch')}
+                        </th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
+                          이름 {renderSortIcon('name')}
                         </th>
                         <th>아이디</th>
                         <th>시급</th>
                         <th>연락처</th>
-                        <th>상태</th>
+                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>
+                          상태 {renderSortIcon('status')}
+                        </th>
                         {activeStatus === 'INACTIVE' && <th>퇴사일</th>}
                         <th>삭제</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedUsers.map((u, idx) => (
+                      {users.map((u, idx) => (
                         <tr key={u.userIdx} className={u.userIsActive === 0 ? 'table-secondary text-muted' : u.userIsActive === 2 ? 'table-leave text-muted' : ''}>
                           <td>
                             <Form.Check type="checkbox" checked={selectedUserIdxs.has(u.userIdx)} onChange={() => toggleSelectUser(u.userIdx)} />
                           </td>
                           <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
+                          <td className="fw-bold">{u.workPlaceName || '-'}</td>
                           <td className="fw-bold">
-                            <span 
-                              className="text-primary" 
-                              style={{ cursor: 'pointer', textDecoration: 'underline' }} 
+                            <span
+                              className="text-primary"
+                              style={{ cursor: 'pointer', textDecoration: 'underline' }}
                               onClick={() => openEditModal(u)}
                             >
                               {u.userName}
+                              {Number(u.nameSeq) > 1 && <Badge bg="secondary" className="ms-1">{u.nameSeq}</Badge>}
                             </span>
                           </td>
-                          <td className="fw-bold">{u.workPlaceName || '-'}</td>
-                          <td className="text-muted small">{u.userId}</td>
-                          <td className="small">{u.userHourlyWage ? `${u.userHourlyWage.toLocaleString()}원` : '-'}</td>
+                          <td
+                            className="text-muted small"
+                            style={{ cursor: 'pointer' }}
+                            title="클릭하여 복사"
+                            onClick={() => copyUserId(u.userId)}
+                          >
+                            {u.userId}
+                          </td>
+                          <td className="small">{canViewSensitive && u.userHourlyWage ? `${u.userHourlyWage.toLocaleString()}원` : (canViewSensitive ? '-' : '***')}</td>
                           <td className="small">{u.userPhone || '-'}</td>
                           <td>
                             {u.userIsActive === 1 ? <Badge bg="success">재직</Badge> : u.userIsActive === 2 ? <Badge bg="warning">휴직</Badge> : <Badge bg="dark">퇴사</Badge>}
@@ -653,7 +686,7 @@ const AdminUsers = () => {
                           </td>
                         </tr>
                       ))}
-                      {sortedUsers.length === 0 && (
+                      {users.length === 0 && (
                         <tr>
                           <td colSpan={9} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
                         </tr>
@@ -736,11 +769,26 @@ const AdminUsers = () => {
                 </Form.Select>
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">직급 변경 (비워두면 유지)</Form.Label>
-                <Form.Select value={editFkUtIdx} onChange={e => setEditFkUtIdx(e.target.value)}>
-                  <option value="">-- 변경 안 함 --</option>
-                  {userTypes.map(ut => <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>)}
+                <Form.Label className="fw-bold text-muted small">직급</Form.Label>
+                <Form.Select
+                  value={editFkUtIdx}
+                  onChange={e => setEditFkUtIdx(e.target.value)}
+                  disabled={Number(editUser?.userIdx) === Number(me?.userIdx)}
+                >
+                  <option value="">직급 선택</option>
+                  {userTypes.map(ut => <option key={ut.utIdx} value={String(ut.utIdx)}>{ut.utName}</option>)}
                 </Form.Select>
+                {(() => {
+                  const currentName = editUser?.userTypeName
+                    || editUser?.userType
+                    || userTypes.find(t => String(t.utIdx) === String(editFkUtIdx))?.utName;
+                  return currentName ? (
+                    <div className="text-muted small mt-1">현재 직급: <span className="fw-bold text-dark">{currentName}</span></div>
+                  ) : null;
+                })()}
+                {Number(editUser?.userIdx) === Number(me?.userIdx) && (
+                  <div className="text-muted small mt-1">본인 계정의 직급은 변경할 수 없습니다.</div>
+                )}
               </Form.Group>
             </div>
             
@@ -748,24 +796,30 @@ const AdminUsers = () => {
               <div className="fw-bold text-danger mb-2 border-bottom pb-2">
                 급여 및 계좌 정보
               </div>
+              {!canViewSensitive ? (
+                <Alert variant="secondary" className="py-2 small">민감정보 조회 권한이 없습니다.</Alert>
+              ) : (
+                <>
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
-                <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)}>
+                <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)} disabled={!canEditSensitive}>
                   <option value="">은행 선택</option>
-                  {BANK_LIST.map(bank => (
-                    <option key={bank} value={bank}>{bank}</option>
+                  {banks.map(bank => (
+                    <option key={bank.bankCode || bank.code || bank.bankName} value={bank.bankCode || bank.code}>
+                      {bank.bankName || bank.name}
+                    </option>
                   ))}
                 </Form.Select>
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold text-muted small">예금주명</Form.Label>
-                <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" />
+                <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" disabled={!canEditSensitive} />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
                 <InputGroup>
-                  <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="숫자만 입력" disabled={editAccountNo === '기재' && !sensitiveDataLoaded} />
-                  {!sensitiveDataLoaded && editAccountNo === '기재' && (
+                  <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="숫자만 입력" disabled={!canEditSensitive || (editAccountNo === '기재' && !sensitiveDataLoaded)} />
+                  {canViewSensitive && !sensitiveDataLoaded && editAccountNo === '기재' && (
                     <Button variant="outline-danger" onClick={handleRevealSensitive} disabled={sensitiveLoading} className="fw-bold px-3">
                       {sensitiveLoading ? <Spinner size="sm" /> : '원문 조회'}
                     </Button>
@@ -774,8 +828,13 @@ const AdminUsers = () => {
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold text-muted small">시급</Form.Label>
-                <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" />
+                <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" disabled={!canEditSensitive} />
               </Form.Group>
+                </>
+              )}
+                {!canEditSensitive && canViewSensitive && (
+                  <Alert variant="warning" className="py-2 small">민감정보 수정 권한이 없어 급여/계좌는 저장되지 않습니다.</Alert>
+                )}
             </div>
           </div>
 
@@ -800,7 +859,9 @@ const AdminUsers = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setEditUser(null)}>닫기</Button>
-          <Button variant="primary" onClick={handleEditSave} disabled={editSaving}>{editSaving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}</Button>
+          <Button variant="primary" onClick={handleEditSave} disabled={editSaving}>
+            {editSaving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
+          </Button>
         </Modal.Footer>
       </Modal>
 

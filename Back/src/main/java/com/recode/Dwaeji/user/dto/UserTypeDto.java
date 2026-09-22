@@ -19,6 +19,7 @@ public class UserTypeDto {
     private Integer utIsSuperAdmin;
     private Integer utCanAccessArchive;
     private Integer utCanViewSensitive;
+    private Integer utCanEditSensitive;
     private Integer utCanExportExcel;
     private Integer utCanManageRoles;
     private Integer utAllowMultiWorkplace;
@@ -33,6 +34,7 @@ public class UserTypeDto {
                 .utIsSuperAdmin(entity.getUtIsSuperAdmin())
                 .utCanAccessArchive(entity.getUtCanAccessArchive())
                 .utCanViewSensitive(entity.getUtCanViewSensitive())
+                .utCanEditSensitive(entity.getUtCanEditSensitive())
                 .utCanExportExcel(entity.getUtCanExportExcel())
                 .utCanManageRoles(entity.getUtCanManageRoles())
                 .utAllowMultiWorkplace(entity.getUtAllowMultiWorkplace())

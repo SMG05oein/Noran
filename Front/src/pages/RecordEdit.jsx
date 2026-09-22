@@ -24,6 +24,8 @@ const RecordEdit = () => {
   const [remarks, setRemarks] = useState('');
   const [workPlaceIdx, setWorkPlaceIdx] = useState(String(user?.workPlaceIdx || ''));
   const [branches, setBranches] = useState([]);
+  const [editableUntil, setEditableUntil] = useState('');
+  const [isEditable, setIsEditable] = useState(true);
 
   const parseLocalTime = (time) => {
     if (!time) return { hour: 0, minute: 0 };
@@ -57,6 +59,9 @@ const RecordEdit = () => {
         setRestHour(String(rt.hour).padStart(2, '0'));
         setRestMin(String(rt.minute).padStart(2, '0'));
         setRemarks(res.data.wrRemarks || '');
+        const until = res.data.editableUntil || res.data.wrEditableUntil || '';
+        setEditableUntil(until);
+        setIsEditable(res.data.isEditable !== false && res.data.isEditable !== 0);
         if (res.data.workPlaceIdx) {
           setWorkPlaceIdx(String(res.data.workPlaceIdx));
         } else if (user?.workPlaceIdx) {
@@ -81,6 +86,10 @@ const RecordEdit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isEditable) {
+      alert('수정 기한이 지났습니다. 급여 담당자에게 직접 연락하세요.');
+      return;
+    }
     if (!recDate) {
       alert('날짜를 선택해주세요.');
       return;
@@ -135,9 +144,15 @@ const RecordEdit = () => {
         <Card.Body>
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
-              <div>수정 가능 일자: </div>
+              <div className="fw-bold text-muted small mb-2">
+                수정 가능 일자:{' '}
+                {editableUntil
+                  ? `${String(editableUntil).slice(0, 10)} 23:59까지`
+                  : '-'}
+                {!isEditable && <span className="text-danger ms-2">(기한 만료)</span>}
+              </div>
               <Form.Label className="fw-bold text-muted small">근무지</Form.Label>
-              <Form.Select value={workPlaceIdx} onChange={e => setWorkPlaceIdx(e.target.value)} className="custom-input">
+              <Form.Select value={workPlaceIdx} onChange={e => setWorkPlaceIdx(e.target.value)} className="custom-input" disabled={!isEditable}>
                 {branches.map(b => (
                   <option key={b.wpIdx} value={String(b.wpIdx)}>{b.wpName}{String(b.wpIdx) === String(user?.workPlaceIdx) ? ' (내 지점)' : ''}</option>
                 ))}

@@ -30,7 +30,7 @@ public class UserTypeController {
         return ResponseEntity.ok(userTypeService.createUserType(userDetails.getUsername(), requestDto));
     }
 
-    @Operation(summary = "전체 직급 조회")
+    @Operation(summary = "전체 직급 조회", description = "모든 직급과 각 직급의 권한 플래그를 반환합니다. (본인 권한뿐 아니라 타 직급 권한 포함)")
     @GetMapping
     public ResponseEntity<List<UserTypeDto>> getAllUserTypes() {
         return ResponseEntity.ok(userTypeService.getAllUserTypes());

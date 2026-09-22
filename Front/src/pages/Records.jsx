@@ -403,7 +403,23 @@ const Records = () => {
                                 <Button 
                                   variant="light" 
                                   className="rounded-pill fw-bold px-4 py-2 shadow-sm border"
-                                  onClick={(e) => { e.stopPropagation(); navigate('/records/edit', { state: { id: record.wrIdx } }); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const until = record.editableUntil || record.wrEditableUntil;
+                                    const editable = record.isEditable !== false && record.isEditable !== 0;
+                                    const untilLabel = until
+                                      ? format(typeof until === 'string' ? parseISO(until.split('T')[0]) : parseISO(String(until).slice(0, 10)), 'yyyy년 MM월 dd일')
+                                      : null;
+                                    const msg = untilLabel
+                                      ? `수정 기한은 ${untilLabel} 23:59까지입니다. 이후에는 급여 담당자에게 직접 연락하세요.`
+                                      : '수정 기한이 지났습니다. 급여 담당자에게 직접 연락하세요.';
+                                    if (!editable) {
+                                      alert(msg);
+                                      return;
+                                    }
+                                    if (untilLabel) alert(msg);
+                                    navigate('/records/edit', { state: { id: record.wrIdx } });
+                                  }}
                                   style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', borderColor: 'var(--color-input-border)', backgroundColor: 'var(--color-input-bg)' }}
                                 >
                                   기록 수정하기

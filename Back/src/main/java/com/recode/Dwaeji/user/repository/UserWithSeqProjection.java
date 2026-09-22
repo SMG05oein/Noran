@@ -10,6 +10,7 @@ public interface UserWithSeqProjection {
     LocalDate getUserBirth();
     String getUserPhone();
     String getUserTypeName();
+    Long getFkUtIdx();
     String getWorkPlaceName();
     Integer getUserIsActive();
     String getUserAccountName();

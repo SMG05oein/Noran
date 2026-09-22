@@ -25,7 +25,7 @@ public class WorkScheduleDailyController {
 
     private final WorkScheduleDailyService scheduleService;
 
-    @Operation(summary = "알바생 근무 신청 생성 (일 단위)", description = "알바생이 일자별 신청 내역을 생성합니다.")
+    @Operation(summary = "알바생 근무 신청 생성 (일 단위)", description = "최초 신청만 허용. 해당 주에 이미 신청이 있으면 400.")
     @PostMapping("/apply")
     public ResponseEntity<String> createApply(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -34,6 +34,17 @@ public class WorkScheduleDailyController {
             @RequestBody List<WorkApplyDailyRequestDto> requestDtos) {
         scheduleService.createApply(userDetails.getUsername(), startDate, endDate, requestDtos);
         return ResponseEntity.ok("근무 신청이 완료되었습니다.");
+    }
+
+    @Operation(summary = "알바생 근무 신청 수정 (일 단위)", description = "이미 신청한 주의 내역을 수정합니다. 없으면 404.")
+    @PutMapping("/apply")
+    public ResponseEntity<String> updateApply(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestBody List<WorkApplyDailyRequestDto> requestDtos) {
+        scheduleService.updateApply(userDetails.getUsername(), startDate, endDate, requestDtos);
+        return ResponseEntity.ok("근무 신청이 수정되었습니다.");
     }
 
     @Operation(summary = "관리자 배정 확정 생성 (일 단위)", description = "관리자가 일자별 배정 내역을 생성합니다.")
@@ -85,9 +96,9 @@ public class WorkScheduleDailyController {
 
 
 
-    @Operation(summary = "캘린더 월간 배정 인원 조회")
+    @Operation(summary = "캘린더 월간 배정 인원 조회", description = "날짜별 { total: 총출근, peak: 피크(16~20, 오픈제외) }")
     @GetMapping("/calendar-counts")
-    public ResponseEntity<Map<String, Integer>> getCalendarCounts(
+    public ResponseEntity<Map<String, Map<String, Integer>>> getCalendarCounts(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam int year,
             @RequestParam int month,

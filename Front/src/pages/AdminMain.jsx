@@ -8,6 +8,7 @@ import { parseISO, format } from 'date-fns';
 import { RiCalendarCheckLine, RiStore2Line, RiUserStarLine, RiGroupLine, RiTimeLine } from 'react-icons/ri';
 import AdminCalendar from '../components/AdminCalendar';
 import Loading from '../components/Loading';
+import { countTotal, countPeak } from '../utils/shiftPeak';
 import './AdminMain.css';
 
 const AdminMain = () => {
@@ -30,6 +31,16 @@ const AdminMain = () => {
 
   const selectedBranchIdx = currentBranchObj?.wpIdx || selectedWpIdx;
   const selectedBranchName = currentBranchObj?.wpName || user?.branch || '지점';
+
+  const dayHeadcount = useMemo(() => {
+    const opts = { requireConfirmed: true };
+    // daily API may omit isConfirmed; treat present rows as assignments if none flagged false
+    const hasConfirmFlag = dailySchedule.some(s => s.wsdIsConfirmed != null || s.isConfirmed != null);
+    return {
+      total: countTotal(dailySchedule, hasConfirmFlag ? opts : { requireConfirmed: false }),
+      peak: countPeak(dailySchedule, hasConfirmFlag ? opts : { requireConfirmed: false })
+    };
+  }, [dailySchedule]);
 
   const loadData = async () => {
     setLoading(true);
@@ -156,7 +167,7 @@ const AdminMain = () => {
                   {format(selectedDate, 'yyyy년 MM월 dd일')} 출근 명단
                 </h5>
                 <Badge bg="primary" className="px-3 py-1 rounded-pill">
-                  총 {dailySchedule.length}명 배정
+                  출근 {dayHeadcount.total}명 · 피크 {dayHeadcount.peak}명
                 </Badge>
               </Card.Header>
               <Card.Body className="p-0">
@@ -182,7 +193,12 @@ const AdminMain = () => {
                         {dailySchedule.map((ds, idx) => (
                           <tr key={ds.userIdx}>
                             <td className="text-muted fw-semibold">{idx + 1}</td>
-                            <td><span className="fw-bold text-dark">{ds.userName || `사원 (${ds.userIdx})`}</span></td>
+                            <td>
+                              <span className="fw-bold text-dark">{ds.userName || `사원 (${ds.userIdx})`}</span>
+                              {Number(ds.nameSeq) > 1 && (
+                                <Badge bg="secondary" className="ms-1">{ds.nameSeq}</Badge>
+                              )}
+                            </td>
                             <td>
                               <span className="badge bg-success text-white fw-bold px-3 py-2 rounded-pill fs-6 shadow-xs">
                                 {ds.startTime ? ds.startTime : '-'}

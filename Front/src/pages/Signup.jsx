@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authSignup, fetchWorkPlaces } from '../api/authApi';
+import { authSignup, fetchWorkPlaces, fetchBanks } from '../api/authApi';
 import { Form, Button, Container, Card, Alert, Spinner, Modal } from 'react-bootstrap';
 import { RiUser3Line, RiLockPasswordLine, RiPhoneLine, RiStore2Line, RiRestaurantLine } from 'react-icons/ri';
 import './Auth.css';
@@ -33,9 +33,7 @@ const Signup = () => {
   const [userEmailError, setUserEmailError] = useState('');
   const [birthError, setBirthError] = useState('');
 
-  const BANK_LIST = [
-    '국민은행', '신한은행', '우리은행', '하나은행', '기업은행', '농협은행', '카카오뱅크', '토스뱅크', '케이뱅크', '새마을금고', '신협', '우체국', '수협은행', 'SC제일은행', '한국씨티은행', '부산은행', '광주은행', '제주은행', '전북은행', '경남은행'
-  ];
+  const [banks, setBanks] = useState([]);
 
   // 지점 목록
   const [branches, setBranches] = useState([]);
@@ -62,7 +60,15 @@ const Signup = () => {
         }
       }
     };
+    const loadBanks = async () => {
+      const res = await fetchBanks();
+      if (res.success) {
+        const list = Array.isArray(res.data) ? res.data : (res.data?.content || []);
+        setBanks(list);
+      }
+    };
     loadWorkPlaces();
+    loadBanks();
   }, []);
 
   const calculateAge = (birth) => {
@@ -230,7 +236,7 @@ const Signup = () => {
         userEmail: userEmail || null,
         emailConsentAgreed: emailConsent,
         userPhone: phone,
-        userBank,
+        bankCode: userBank,
         userAccountName,
         userAccountNumber,
         fkUtIdx: 1,
@@ -426,7 +432,11 @@ const Signup = () => {
                     className="custom-input"
                   >
                     <option value="">은행 선택</option>
-                    {BANK_LIST.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                    {banks.map(bank => (
+                      <option key={bank.bankCode || bank.code} value={bank.bankCode || bank.code}>
+                        {bank.bankName || bank.name}
+                      </option>
+                    ))}
                   </Form.Select>
                 </Form.Group>
 

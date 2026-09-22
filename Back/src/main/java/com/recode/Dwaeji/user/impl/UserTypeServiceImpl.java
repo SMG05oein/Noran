@@ -50,6 +50,7 @@ public class UserTypeServiceImpl implements UserTypeService {
                 .utIsSuperAdmin(requestDto.getUtIsSuperAdmin())
                 .utCanAccessArchive(requestDto.getUtCanAccessArchive() != null ? requestDto.getUtCanAccessArchive() : 0)
                 .utCanViewSensitive(requestDto.getUtCanViewSensitive() != null ? requestDto.getUtCanViewSensitive() : 0)
+                .utCanEditSensitive(requestDto.getUtCanEditSensitive() != null ? requestDto.getUtCanEditSensitive() : 0)
                 .utCanExportExcel(requestDto.getUtCanExportExcel() != null ? requestDto.getUtCanExportExcel() : 0)
                 .utCanManageRoles(requestDto.getUtCanManageRoles() != null ? requestDto.getUtCanManageRoles() : 0)
                 .utAllowMultiWorkplace(requestDto.getUtAllowMultiWorkplace() != null ? requestDto.getUtAllowMultiWorkplace() : 0)
@@ -79,7 +80,14 @@ public class UserTypeServiceImpl implements UserTypeService {
     @Transactional
     public UserTypeDto updateUserType(String requesterId, Long utIdx, UserTypeRequestDto requestDto) {
         checkManageRolePermission(requesterId);
-        
+
+        com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+        Long myUtIdx = requester.getUserType() != null ? requester.getUserType().getUtIdx() : null;
+        if (java.util.Objects.equals(myUtIdx, utIdx)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 직급의 권한은 수정할 수 없습니다.");
+        }
+
         UserType userType = userTypeRepository.findById(utIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 직급을 찾을 수 없습니다."));
         
@@ -88,6 +96,7 @@ public class UserTypeServiceImpl implements UserTypeService {
         if (requestDto.getUtIsSuperAdmin() != null) userType.setUtIsSuperAdmin(requestDto.getUtIsSuperAdmin());
         if (requestDto.getUtCanAccessArchive() != null) userType.setUtCanAccessArchive(requestDto.getUtCanAccessArchive());
         if (requestDto.getUtCanViewSensitive() != null) userType.setUtCanViewSensitive(requestDto.getUtCanViewSensitive());
+        if (requestDto.getUtCanEditSensitive() != null) userType.setUtCanEditSensitive(requestDto.getUtCanEditSensitive());
         if (requestDto.getUtCanExportExcel() != null) userType.setUtCanExportExcel(requestDto.getUtCanExportExcel());
         if (requestDto.getUtCanManageRoles() != null) userType.setUtCanManageRoles(requestDto.getUtCanManageRoles());
         if (requestDto.getUtAllowMultiWorkplace() != null) userType.setUtAllowMultiWorkplace(requestDto.getUtAllowMultiWorkplace());
@@ -100,7 +109,14 @@ public class UserTypeServiceImpl implements UserTypeService {
     @Transactional
     public void deleteUserType(String requesterId, Long utIdx) {
         checkManageRolePermission(requesterId);
-        
+
+        com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
+        Long myUtIdx = requester.getUserType() != null ? requester.getUserType().getUtIdx() : null;
+        if (java.util.Objects.equals(myUtIdx, utIdx)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인 직급은 삭제할 수 없습니다.");
+        }
+
         UserType userType = userTypeRepository.findById(utIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 직급을 찾을 수 없습니다."));
         userTypeRepository.delete(userType);

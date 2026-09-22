@@ -289,19 +289,35 @@ export const saveWorkSchedules = async (requestDataArray, startDate, endDate, wo
   }
 };
 
-// 알바생 근무 신청/수정 - POST /api/work-schedule/apply
+const clearWorkApplyCache = () => {
+  Object.keys(sessionStorage).forEach(key => {
+    if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
+      sessionStorage.removeItem(key);
+    }
+  });
+};
+
+// 알바생 근무 신청 생성 - POST /api/work-schedule/apply
 export const saveWorkApply = async (startDate, endDate, applyDataArray) => {
   try {
     const response = await globalApiClient.post(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}`, applyDataArray);
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {
-        sessionStorage.removeItem(key);
-      }
-    });
+    clearWorkApplyCache();
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청에 실패했습니다.';
-    return { success: false, error: errMsg };
+    return { success: false, error: errMsg, status: error.response?.status };
+  }
+};
+
+// 알바생 근무 신청 수정 - PUT /api/work-schedule/apply
+export const updateWorkApply = async (startDate, endDate, applyDataArray) => {
+  try {
+    const response = await globalApiClient.put(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}`, applyDataArray);
+    clearWorkApplyCache();
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '근무 신청 수정에 실패했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
   }
 };
 

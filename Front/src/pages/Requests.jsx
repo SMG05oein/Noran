@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Container, Card, Form, Button, Modal, Table } from 'react-bootstrap';
+import { Container, Card, Form, Button, Modal, Table, Alert } from 'react-bootstrap';
 import { format, startOfWeek, addDays, subMonths, parseISO, getDay } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
 import { RiFileList3Line, RiEyeLine, RiAddLine, RiDeleteBinLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { getMonthlyWorkApplyWorks, saveWorkApply } from '../api/workApi';
+import { getMonthlyWorkApplyWorks, saveWorkApply, updateWorkApply } from '../api/workApi';
 import { fetchWorkPlaces } from '../api/authApi';
 import './Main.css';
 import Loading from '../components/Loading';
@@ -129,11 +129,31 @@ const Requests = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [globalRemarks, setGlobalRemarks] = useState('');
   const [editGlobalRemarks, setEditGlobalRemarks] = useState('');
+  const [nextWeekAlreadyApplied, setNextWeekAlreadyApplied] = useState(false);
+
+  const refreshNextWeekApplied = async () => {
+    const year = nextMonday.getFullYear();
+    const month = nextMonday.getMonth() + 1;
+    const res = await getMonthlyWorkApplyWorks(year, month, true);
+    if (!res.success) {
+      setNextWeekAlreadyApplied(false);
+      return;
+    }
+    const mon = format(nextMonday, 'yyyy-MM-dd');
+    const list = res.data || [];
+    const has = list.some(sch => {
+      if (sch.wsdStatus === '미신청') return false;
+      const d = parseISO(toDateStr(sch.date) || sch.date);
+      return format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd') === mon;
+    });
+    setNextWeekAlreadyApplied(has);
+  };
 
   useEffect(() => {
     fetchWorkPlaces(true).then(res => {
       if (res.success) setWorkPlaces(res.data);
     });
+    refreshNextWeekApplied();
   }, []);
 
   const loadRequests = async (monthStr) => {
@@ -173,8 +193,24 @@ const Requests = () => {
     }));
   };
 
+  const weeklyGroups = useMemo(() => {
+    const groups = {};
+    requestList.forEach(sch => {
+      if (sch.wsdStatus === '미신청') return;
+      const d = parseISO(sch.date);
+      const monDate = format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      if (!groups[monDate]) groups[monDate] = [];
+      groups[monDate].push(sch);
+    });
+    return Object.entries(groups).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+  }, [requestList]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (nextWeekAlreadyApplied) {
+      alert('이미 신청한 주입니다. 아래 내역에서 수정해 주세요.');
+      return;
+    }
     const hasAnyDay = requestBlocks.some(b => Object.values(b.days).some(v => v));
     if (!hasAnyDay) {
       alert('신청할 요일을 최소 하나 이상 선택해주세요.');
@@ -190,7 +226,6 @@ const Requests = () => {
     const requestData = [];
 
     requestBlocks.forEach(block => {
-      // Group dates by openApplied for each block
       const openTrueDates = [];
       const openFalseDates = [];
 
@@ -231,6 +266,7 @@ const Requests = () => {
         setRequestBlocks([defaultBlock(Date.now())]);
         setGlobalRemarks('');
         loadRequests(selectedMonth);
+        refreshNextWeekApplied();
       } else {
         alert(res.error || '근무 신청에 실패했습니다.');
       }
@@ -239,18 +275,6 @@ const Requests = () => {
       alert('근무 신청 중 오류가 발생했습니다.');
     }
   };
-
-  const weeklyGroups = useMemo(() => {
-    const groups = {};
-    requestList.forEach(sch => {
-      if (sch.wsdStatus === '미신청') return;
-      const d = parseISO(sch.date);
-      const monDate = format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      if (!groups[monDate]) groups[monDate] = [];
-      groups[monDate].push(sch);
-    });
-    return Object.entries(groups).sort((a, b) => new Date(a[0]) - new Date(b[0]));
-  }, [requestList]);
 
   const displayOpenTime = (s, dateObj) => {
     const isHoli = isHoliday(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate());
@@ -350,12 +374,13 @@ const Requests = () => {
     });
 
     try {
-      const res = await saveWorkApply(startDateStr, endDateStr, requestData);
+      const res = await updateWorkApply(startDateStr, endDateStr, requestData);
       setEditLoading(false);
       if (res.success) {
         alert('근무 신청이 수정되었습니다.');
         setEditTarget(null);
         loadRequests(selectedMonth);
+        refreshNextWeekApplied();
       } else {
         alert(res.error || '수정에 실패했습니다.');
       }
@@ -425,8 +450,14 @@ const Requests = () => {
               <RiAddLine size={20} /> 타 지점 추가 신청하기
             </Button>
 
-            <Button disabled={loading} type="submit" className="w-100 py-3 rounded-3 fw-bold fs-6 btn-primary">
-              {loading ? '신청 중...' : '근무 신청서 일괄 제출하기'}
+            {nextWeekAlreadyApplied && (
+              <Alert variant="warning" className="py-2 small fw-bold">
+                이미 신청한 주입니다. 신규 제출 대신 아래 내역의 「수정」을 이용해 주세요.
+              </Alert>
+            )}
+
+            <Button disabled={loading || nextWeekAlreadyApplied} type="submit" className="w-100 py-3 rounded-3 fw-bold fs-6 btn-primary">
+              {loading ? '신청 중...' : nextWeekAlreadyApplied ? '이미 신청한 주' : '근무 신청서 일괄 제출하기'}
             </Button>
           </Form>
         </Card.Body>

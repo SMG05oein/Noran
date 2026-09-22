@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Modal, Form, Badge } from 'react-bootstrap';
-import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, createWorkRecord, deleteWorkRecord, restoreWorkRecord, compareWorkRecordExcel } from '../api/workApi';
+import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, createWorkRecord, deleteWorkRecord, restoreWorkRecord } from '../api/workApi';
 import { fetchWorkPlaces, fetchAdminWorkers } from '../api/authApi';
 import { format } from 'date-fns';
 import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiStore2Line, RiRefreshLine, RiArrowRightSLine } from 'react-icons/ri';
@@ -15,17 +15,12 @@ const AdminRecords = () => {
   const [branches, setBranches] = useState([{ wpIdx: null, wpName: '전체' }]);
   const [loading, setLoading] = useState(true);
 
-  // 엑셀 대조 상태
-  const [compareResult, setCompareResult] = useState(null);
-  const [showCompareModal, setShowCompareModal] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
   // Pagination & Sorting states
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [pageInput, setPageInput] = useState('1');
-  const [sortBy, setSortBy] = useState('date');
-  const [sortDir, setSortDir] = useState('desc');
+  const [sortBy, setSortBy] = useState('');
+  const [sortDir, setSortDir] = useState('asc');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
@@ -81,8 +76,8 @@ const AdminRecords = () => {
     const params = {
       page,
       size: 10,
-      sortBy,
-      sortDir,
+      sortBy: sortBy || undefined,
+      sortDir: sortBy ? sortDir : undefined,
       userName: searchTerm || undefined,
       workPlaceIdx: selectedWpIdx || undefined,
       year: year || undefined,
@@ -111,12 +106,23 @@ const AdminRecords = () => {
 
   const toggleSort = (field) => {
     if (sortBy === field) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      if (sortDir === 'asc') {
+        setSortDir('desc');
+      } else {
+        setSortBy('');
+        setSortDir('asc');
+      }
     } else {
       setSortBy(field);
-      setSortDir('desc'); // 기본 내림차순 시작
+      setSortDir('asc');
     }
     setPage(0);
+    setPageInput('1');
+  };
+
+  const sortIcon = (field) => {
+    if (sortBy !== field) return '⇅';
+    return sortDir === 'asc' ? '↑' : '↓';
   };
 
   const filteredRecords = workRecords; // 서버사이드 페이징 사용하므로 추가 필터링 제거
@@ -365,25 +371,6 @@ const AdminRecords = () => {
     }
   };
 
-  const handleExcelUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setUploading(true);
-    const res = await compareWorkRecordExcel(file);
-    setUploading(false);
-
-    // Reset file input
-    e.target.value = '';
-
-    if (res.success) {
-      setCompareResult(res.data);
-      setShowCompareModal(true);
-    } else {
-      alert(res.error || '엑셀 업로드 및 대조에 실패했습니다.');
-    }
-  };
-
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
@@ -426,22 +413,11 @@ const AdminRecords = () => {
                 variant="success" 
                 className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
                 onClick={handleDownloadExcel}
-                disabled={downloading || uploading}
+                disabled={downloading}
               >
                 <RiDownload2Line size={16} />
                 {downloading ? '다운로드 중...' : '엑셀 다운로드'}
               </Button>
-              
-              <Button 
-                variant="outline-primary" 
-                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
-                onClick={() => document.getElementById('excelUpload').click()}
-                disabled={downloading || uploading}
-              >
-                {uploading ? <Spinner as="span" animation="border" size="sm" /> : <RiDownload2Line size={16} style={{ transform: 'rotate(180deg)' }} />}
-                {uploading ? '업로드 중...' : '엑셀 대조/업로드'}
-              </Button>
-              <input type="file" id="excelUpload" style={{ display: 'none' }} accept=".xlsx, .xls" onChange={handleExcelUpload} />
             </div>
           </div>
 
@@ -504,18 +480,19 @@ const AdminRecords = () => {
                       <tr>
                         <th style={{ width: '60px' }}>No.</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('date')}>
-                          날짜 {sortBy === 'date' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                          날짜 {sortIcon('date')}
                         </th>
                         <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('workPlace')}>
-                          지점 {sortBy === 'workPlace' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                          지점 {sortIcon('workPlace')}
                         </th>
                         <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('userName')}>
-                          직원 {sortBy === 'userName' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                          직원 {sortIcon('userName')}
                         </th>
                         <th>출근</th>
                         <th>퇴근</th>
                         <th>휴게</th>
                         <th>총 근무</th>
+                        <th>수정일시</th>
                         <th>메모</th>
                         <th>관리</th>
                       </tr>
@@ -528,11 +505,21 @@ const AdminRecords = () => {
                             <td className="text-muted fw-semibold">{page * 10 + idx + 1}</td>
                             <td className="fw-bold text-dark">{formatDateStr(r.wrDate)}</td>
                             <td><Badge bg="light" className="text-dark border">{r.workPlaceName || '-'}</Badge></td>
-                            <td><span className="fw-bold text-primary">{r.userName || `사원(${r.userIdx})`}</span></td>
+                            <td>
+                              <span className="fw-bold text-primary">{r.userName || `사원(${r.userIdx})`}</span>
+                              {Number(r.nameSeq) > 1 && (
+                                <Badge bg="secondary" className="ms-1">{r.nameSeq}</Badge>
+                              )}
+                            </td>
                             <td>{formatTimeStr(r.wrStartTime)}</td>
                             <td>{formatTimeStr(r.wrEndTime)}</td>
                             <td>{formatTimeStr(r.wrRestTime)}</td>
                             <td className="fw-bold text-success">{totalHours.toFixed(1)}시간</td>
+                            <td className="small text-muted">
+                              {r.wrUpdatedAt
+                                ? String(r.wrUpdatedAt).replace('T', ' ').slice(0, 16)
+                                : '-'}
+                            </td>
                             <td className="small text-muted text-truncate" style={{ maxWidth: '140px' }}>{r.wrRemarks || '-'}</td>
                             <td>
                               <div className="d-flex align-items-center justify-content-center gap-2">
@@ -769,30 +756,6 @@ const AdminRecords = () => {
           <Button variant="primary" onClick={handleCreateRecord} disabled={saving} className="fw-bold">
             {saving ? <Spinner as="span" animation="border" size="sm" /> : '추가하기'}
           </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* 엑셀 대조 결과 모달 */}
-      <Modal show={showCompareModal} onHide={() => setShowCompareModal(false)} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">엑셀 대조 결과</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {compareResult ? (
-            <div>
-              <Alert variant="info" className="mb-4">
-                <strong>안내:</strong> 업로드한 엑셀 파일과 현재 시스템의 근무 기록을 대조한 결과입니다.
-              </Alert>
-              <pre className="p-3 bg-light rounded" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                {JSON.stringify(compareResult, null, 2)}
-              </pre>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted">결과가 없습니다.</div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCompareModal(false)}>닫기</Button>
         </Modal.Footer>
       </Modal>
 

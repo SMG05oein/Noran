@@ -27,6 +27,7 @@ public class UserTypeRequestDto {
 
     private Integer utCanAccessArchive;
     private Integer utCanViewSensitive;
+    private Integer utCanEditSensitive;
     private Integer utCanExportExcel;
     private Integer utCanManageRoles;
     private Integer utAllowMultiWorkplace;

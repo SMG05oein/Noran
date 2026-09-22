@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Button, Spinner, Modal, Form, Badge, Alert } from 'react-bootstrap';
 import { fetchUserTypes, createUserType, updateUserType, deleteUserType } from '../api/authApi';
+import useAuthStore from '../store/useAuthStore';
 import { RiAddLine, RiUserStarLine } from 'react-icons/ri';
 import './AdminMain.css';
 import Loading from '../components/Loading';
 
 const AdminUserTypes = () => {
+  const { user: me } = useAuthStore();
+  const myUtIdx = me?.fkUtIdx;
   const [userTypes, setUserTypes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,6 +24,7 @@ const AdminUserTypes = () => {
   
   const [utCanAccessArchive, setUtCanAccessArchive] = useState(0);
   const [utCanViewSensitive, setUtCanViewSensitive] = useState(0);
+  const [utCanEditSensitive, setUtCanEditSensitive] = useState(0);
   const [utCanExportExcel, setUtCanExportExcel] = useState(0);
   const [utCanManageRoles, setUtCanManageRoles] = useState(0);
 
@@ -51,6 +55,7 @@ const AdminUserTypes = () => {
     setUtIsSuperAdmin(0);
     setUtCanAccessArchive(0);
     setUtCanViewSensitive(0);
+    setUtCanEditSensitive(0);
     setUtCanExportExcel(0);
     setUtCanManageRoles(0);
     setErrorMsg('');
@@ -66,6 +71,7 @@ const AdminUserTypes = () => {
     setUtIsSuperAdmin(ut.utIsSuperAdmin || 0);
     setUtCanAccessArchive(ut.utCanAccessArchive || 0);
     setUtCanViewSensitive(ut.utCanViewSensitive || 0);
+    setUtCanEditSensitive(ut.utCanEditSensitive || 0);
     setUtCanExportExcel(ut.utCanExportExcel || 0);
     setUtCanManageRoles(ut.utCanManageRoles || 0);
     setErrorMsg('');
@@ -89,6 +95,7 @@ const AdminUserTypes = () => {
       utIsSuperAdmin: Number(utIsSuperAdmin),
       utCanAccessArchive: Number(utCanAccessArchive),
       utCanViewSensitive: Number(utCanViewSensitive),
+      utCanEditSensitive: Number(utCanEditSensitive),
       utCanExportExcel: Number(utCanExportExcel),
       utCanManageRoles: Number(utCanManageRoles)
     };
@@ -149,23 +156,33 @@ const AdminUserTypes = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {userTypes.map(ut => (
+                    {userTypes.map(ut => {
+                      const isMyRole = Number(ut.utIdx) === Number(myUtIdx);
+                      return (
                       <tr key={ut.utIdx}>
                         <td className="text-muted fw-semibold">{ut.utIdx}</td>
-                        <td className="fw-bold text-dark">{ut.utName}</td>
+                        <td className="fw-bold text-dark">
+                          {ut.utName}
+                          {isMyRole && <Badge bg="info" className="ms-2">내 직급</Badge>}
+                        </td>
                         <td>
                           {ut.utIsAdmin === 1 
                             ? <Badge bg="danger" className="px-3 py-1">관리자 권한</Badge> 
                             : <Badge bg="secondary" className="px-3 py-1">일반 직원</Badge>}
                         </td>
                         <td>
-                          <div className="d-flex justify-content-center gap-2">
-                            <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-3" onClick={() => handleOpenEdit(ut)}>수정</Button>
-                            <Button size="sm" variant="outline-danger" className="rounded-pill fw-bold px-3" onClick={() => handleDelete(ut.utIdx, ut.utName)}>삭제</Button>
-                          </div>
+                          {isMyRole ? (
+                            <div className="text-muted small">본인 직급은 수정할 수 없습니다</div>
+                          ) : (
+                            <div className="d-flex justify-content-center gap-2">
+                              <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-3" onClick={() => handleOpenEdit(ut)}>수정</Button>
+                              <Button size="sm" variant="outline-danger" className="rounded-pill fw-bold px-3" onClick={() => handleDelete(ut.utIdx, ut.utName)}>삭제</Button>
+                            </div>
+                          )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     {userTypes.length === 0 && (
                       <tr>
                         <td colSpan={4} className="text-center py-5 text-muted">
@@ -211,6 +228,7 @@ const AdminUserTypes = () => {
                 if (val === 0) {
                   setUtCanAccessArchive(0);
                   setUtCanViewSensitive(0);
+                  setUtCanEditSensitive(0);
                   setUtCanExportExcel(0);
                   setUtCanManageRoles(0);
                 }
@@ -235,10 +253,18 @@ const AdminUserTypes = () => {
               />
               <Form.Check 
                 type="switch" 
-                id="sensitive-switch"
+                id="sensitive-view-switch"
                 label="직원 민감정보(시급/계좌) 조회 권한" 
                 checked={utCanViewSensitive === 1}
                 onChange={e => setUtCanViewSensitive(e.target.checked ? 1 : 0)}
+                className="mb-2"
+              />
+              <Form.Check 
+                type="switch" 
+                id="sensitive-edit-switch"
+                label="직원 민감정보(시급/계좌) 수정 권한" 
+                checked={utCanEditSensitive === 1}
+                onChange={e => setUtCanEditSensitive(e.target.checked ? 1 : 0)}
                 className="mb-2"
               />
               <Form.Check 

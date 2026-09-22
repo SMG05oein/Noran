@@ -20,7 +20,8 @@ import java.time.LocalDateTime;
 public class WorkScheduleDailyResponseDto {
     private Long wsdIdx;
     private Long userIdx;
-    private String userName; // 뷰어용 유저 이름
+    private String userName; // 순수 이름 (전화번호 미포함)
+    private Long nameSeq; // 동명이인: PARTITION BY name ORDER BY created_at, idx
     private String workPlaceName; // 알바생 소속 지점
     private LocalDate date;
 
@@ -45,7 +46,7 @@ public class WorkScheduleDailyResponseDto {
 
         LocalDate date = schedule != null ? schedule.getWsdDate() : apply.getWadDate();
         Long userIdx = schedule != null ? schedule.getUser().getUserIdx() : apply.getUser().getUserIdx();
-        String userName = schedule != null ? schedule.getUser().getDisplayName() : apply.getUser().getDisplayName();
+        String userName = schedule != null ? schedule.getUser().getUserName() : apply.getUser().getUserName();
         String userHomeWpName = schedule != null && schedule.getUser().getWorkPlace() != null ? schedule.getUser().getWorkPlace().getWpName()
                               : (apply != null && apply.getUser().getWorkPlace() != null ? apply.getUser().getWorkPlace().getWpName() : null);
 

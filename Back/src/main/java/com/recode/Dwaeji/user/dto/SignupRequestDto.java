@@ -1,5 +1,6 @@
 package com.recode.Dwaeji.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Builder;
 
 import jakarta.validation.constraints.NotBlank;
@@ -42,4 +43,12 @@ public class SignupRequestDto {
     private String userEmail;
 
     private Boolean emailConsentAgreed;
+
+    /** 은행명 또는 은행코드 (Front는 bankCode로 전송) */
+    @JsonAlias("bankCode")
+    private String userBank;
+
+    private String userAccountName;
+
+    private String userAccountNumber;
 }

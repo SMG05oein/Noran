@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Form, Button, Alert, Spinner, Modal, Badge } from 'react-bootstrap';
-import { fetchMyInfo, updateUserInfo, changePassword, getMyAccountDetails, fetchWorkPlaces, updateMyBankInfo, withdrawUser } from '../api/authApi';
+import { fetchMyInfo, updateUserInfo, changePassword, getMyAccountDetails, fetchWorkPlaces, updateMyBankInfo, withdrawUser, fetchBanks } from '../api/authApi';
 import useAuthStore from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { RiUser3Line, RiLockPasswordLine, RiBankCardLine, RiStore2Line, RiShieldCheckLine, RiEdit2Line } from 'react-icons/ri';
 import './Main.css';
 import Loading from '../components/Loading';
-
-const BANK_LIST = [
-  '국민은행', '신한은행', '우리은행', '하나은행', '기업은행', '농협은행', '카카오뱅크', '토스뱅크', '케이뱅크', '새마을금고', '신협', '우체국', '수협은행', 'SC제일은행', '한국씨티은행', '부산은행', '광주은행', '제주은행', '전북은행', '경남은행'
-];
 
 const MyPage = () => {
   const { user, logout } = useAuthStore();
@@ -45,6 +41,7 @@ const MyPage = () => {
   const [userBank, setUserBank] = useState('');
   const [userAccountName, setUserAccountName] = useState('');
   const [userAccountNumber, setUserAccountNumber] = useState('');
+  const [banks, setBanks] = useState([]);
 
   // 비밀번호 변경 팝업 상태
   const [showPwModal, setShowPwModal] = useState(false);
@@ -82,6 +79,12 @@ const MyPage = () => {
       setBranches(workPlaceList);
     }
 
+    const bankRes = await fetchBanks();
+    if (bankRes.success) {
+      const list = Array.isArray(bankRes.data) ? bankRes.data : (bankRes.data?.content || []);
+      setBanks(list);
+    }
+
     const res = await fetchMyInfo();
     if (res.success && res.data) {
       setUserInfo(res.data);
@@ -90,7 +93,7 @@ const MyPage = () => {
       setUserEmail(res.data.userEmail || '');
       setUserPhone(res.data.userPhone || '');
       setEmailConsentAgreed(res.data.emailConsentAgreed === 1 || res.data.emailConsentAgreed === true);
-      setUserBank(res.data.userBank || '');
+      setUserBank(res.data.bankCode || res.data.userBank || '');
       setUserAccountName(res.data.userAccountName || '');
       setUserAccountNumber(res.data.userAccountNumber || '');
 
@@ -222,7 +225,7 @@ const MyPage = () => {
       fkWorkPlaceIdx
     };
     
-    const bankPayload = { userBank, userAccountName };
+    const bankPayload = { bankCode: userBank, userAccountName };
     if (userAccountNumber !== '기재') {
       bankPayload.userAccountNumber = userAccountNumber;
     }
@@ -271,7 +274,7 @@ const MyPage = () => {
       setAccountDetails(res.data);
       // 원문 조회 시 실제 입력 폼 값도 원문으로 교체
       setUserAccountNumber(res.data.userAccountNumber || '');
-      if (res.data.userBank) setUserBank(res.data.userBank);
+      if (res.data.bankCode || res.data.userBank) setUserBank(res.data.bankCode || res.data.userBank);
       if (res.data.userAccountName) setUserAccountName(res.data.userAccountName);
     }
   };
@@ -406,8 +409,10 @@ const MyPage = () => {
                 className="custom-input"
               >
                 <option value="">은행 선택</option>
-                {BANK_LIST.map(bank => (
-                  <option key={bank} value={bank}>{bank}</option>
+                {banks.map(bank => (
+                  <option key={bank.bankCode || bank.code} value={bank.bankCode || bank.code}>
+                    {bank.bankName || bank.name}
+                  </option>
                 ))}
               </Form.Select>
             </Form.Group>

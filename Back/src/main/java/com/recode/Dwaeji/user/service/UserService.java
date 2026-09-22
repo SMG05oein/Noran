@@ -39,6 +39,9 @@ public interface UserService {
     void changePassword(String requesterId, com.recode.Dwaeji.user.dto.ChangePasswordDto dto);
     void updateMyBankInfo(String requesterId, com.recode.Dwaeji.user.dto.BankInfoUpdateDto dto);
     java.util.List<com.recode.Dwaeji.user.dto.UserTypeDto> getAllUserTypes();
+
+    /** 직원 엑셀 — 근무지별 Sheet (workPlaceIdx 있으면 해당 지점만) */
+    byte[] downloadEmployeesExcel(String requesterId, Long workPlaceIdx);
     
     // 아카이빙 관련
     org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.ArchivedUserDto> getArchivedUsers(String requesterId, String reason, String ip, int page, int size);

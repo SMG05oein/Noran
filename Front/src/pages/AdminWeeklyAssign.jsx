@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { toPng } from 'html-to-image';
-import { Container, Table, Button, Spinner, Form, Card, Modal, Badge, ButtonGroup, ToggleButton } from 'react-bootstrap';
+import { Container, Table, Button, Spinner, Form, Card, Modal, Badge, ButtonGroup, ToggleButton, OverlayTrigger, Popover } from 'react-bootstrap';
 import { fetchWorkRequests, saveWorkSchedules } from '../api/workApi';
 import { fetchWorkPlaces, fetchAllUsers } from '../api/authApi';
 import { addDays, format, startOfWeek, endOfWeek, subWeeks, addWeeks, getWeekOfMonth, parseISO, getYear, getMonth, getDate, isSunday, isSaturday, getDay } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
 import useAuthStore from '../store/useAuthStore';
+import { countPeak } from '../utils/shiftPeak';
 import { RiArrowLeftSLine, RiArrowRightSLine, RiDownload2Line, RiUserAddLine, RiDeleteBinLine, RiSearchLine, RiAddLine } from 'react-icons/ri';
 import './AdminMain.css';
 import Loading from '../components/Loading';
@@ -308,6 +309,29 @@ const AdminWeeklyAssign = () => {
     return Array.from({ length: 7 }).map((_, i) => addDays(currentWeekStart, i));
   }, [currentWeekStart]);
 
+  const peakByDate = useMemo(() => {
+    const map = {};
+    weekDays.forEach(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const dayShifts = [];
+      Object.values(editSchedules).forEach(userDays => {
+        (userDays[dateStr] || []).forEach(s => {
+          if (Number(s.wsdWorkPlaceIdx || currentWorkPlaceIdx) === Number(currentWorkPlaceIdx)) {
+            dayShifts.push(s);
+          }
+        });
+      });
+      // live grid: count 배정/타지점근무 (confirmed or temp)
+      map[dateStr] = countPeak(dayShifts, { requireConfirmed: false });
+    });
+    return map;
+  }, [editSchedules, weekDays, currentWorkPlaceIdx]);
+
+  const handlePickWeekDate = (value) => {
+    if (!value) return;
+    setCurrentWeekStart(startOfWeek(parseISO(value), { weekStartsOn: 1 }));
+  };
+
   const renderUsers = useMemo(() => {
     let usersToShow = allUsers.filter(u => {
       if (u.status === '퇴사' || u.isActive === false || u.userIsActive === 0) return false;
@@ -366,6 +390,9 @@ const AdminWeeklyAssign = () => {
       if (patch.wsdIsOpen === true) {
         nextShift.wsdStartTime = openStartTimeForDate(dateStr);
         nextShift.wsdStatus = '배정';
+      } else if (patch.wsdIsOpen === false) {
+        // unlock time field; keep existing time unless empty
+        nextShift.wsdIsOpen = false;
       }
       arr[idx] = nextShift;
       nextUser[dateStr] = arr;
@@ -459,10 +486,32 @@ const AdminWeeklyAssign = () => {
                   <Button variant="link" className="text-dark p-2" onClick={handlePrevWeek}>
                     <RiArrowLeftSLine size={24} />
                   </Button>
-                  <span className="fw-bold px-3 d-flex flex-column align-items-center" style={{ minWidth: '150px' }}>
-                  <span className="text-primary small">{format(currentWeekStart, 'yyyy')}년 {getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차</span>
-                  <span className="fs-6">{format(currentWeekStart, 'MM/dd')} ~ {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MM/dd')}</span>
-                </span>
+                  <OverlayTrigger
+                    trigger="click"
+                    rootClose
+                    placement="bottom"
+                    overlay={
+                      <Popover id="week-pick-popover">
+                        <Popover.Body className="p-2">
+                          <Form.Control
+                            type="date"
+                            className="fw-bold"
+                            value={format(currentWeekStart, 'yyyy-MM-dd')}
+                            onChange={(e) => handlePickWeekDate(e.target.value)}
+                          />
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="fw-bold px-3 d-flex flex-column align-items-center border-0 bg-transparent"
+                      style={{ minWidth: '150px', cursor: 'pointer' }}
+                    >
+                      <span className="text-primary small">{format(currentWeekStart, 'yyyy')}년 {getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차</span>
+                      <span className="fs-6">{format(currentWeekStart, 'MM/dd')} ~ {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MM/dd')}</span>
+                    </button>
+                  </OverlayTrigger>
                   <Button variant="link" className="text-dark p-2" onClick={handleNextWeek}>
                     <RiArrowRightSLine size={24} />
                   </Button>
@@ -544,6 +593,7 @@ const AdminWeeklyAssign = () => {
                             <th key={format(date, 'yyyy-MM-dd')} className={`py-3 align-middle bg-light ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`} style={{ minWidth: '150px' }}>
                               <div>{format(date, 'MM/dd')}</div>
                               <div className="small fw-normal">{'일월화수목금토'[getDay(date)]}요일</div>
+                              <div className="small fw-bold text-muted mt-1">피크 {peakByDate[format(date, 'yyyy-MM-dd')] || 0}</div>
                             </th>
                         );
                       })}
@@ -609,7 +659,10 @@ const AdminWeeklyAssign = () => {
                                                 list={`time-options-${shift._id}`}
                                                 value={shift.wsdStartTime || ''}
                                                 placeholder={displayShiftStatus(shift.wsdStatus)}
+                                                disabled={!!shift.wsdIsOpen}
+                                                readOnly={!!shift.wsdIsOpen}
                                                 onChange={(e) => {
+                                                  if (shift.wsdIsOpen) return;
                                                   const val = e.target.value;
                                                   if (val === '미배정') {
                                                     handleUpdateShift(uid, dateStr, shift._id, { wsdStartTime: '', wsdStatus: '미배정', wsdIsOpen: false });

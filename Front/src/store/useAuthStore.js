@@ -22,7 +22,7 @@ const useAuthStore = create(
   persist(
     (set) => ({
       isAuthenticated: false,
-      user: null, // { userId, userName, userPhone, userTypeName, workPlaceName, tokens: { accessToken, refreshToken } }
+      user: null, // { userIdx, userId, name, fkUtIdx, workPlaceIdx, isAdmin, tokens } — utCan*는 /api/user-types 에서 fkUtIdx로 lookup
 
       login: (userData) => set({ isAuthenticated: true, user: userData }),
       logout: () => {

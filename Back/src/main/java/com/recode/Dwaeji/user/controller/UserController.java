@@ -235,6 +235,19 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllEmployees(userDetails.getUsername(), userName, workPlaceIdx, page, size, isActive));
     }
 
+    @Operation(summary = "직원 엑셀 다운로드", description = "근무지별 Sheet로 직원 목록을 엑셀 다운로드합니다.")
+    @GetMapping("/admin/excel")
+    public ResponseEntity<byte[]> downloadEmployeesExcel(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) Long workPlaceIdx) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        byte[] bytes = userService.downloadEmployeesExcel(userDetails.getUsername(), workPlaceIdx);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=employees.xlsx")
+                .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
+    }
+
     @Operation(summary = "임시 비밀번호 설정", description = "관리자 전용. 특정 유저의 임시 비밀번호를 설정합니다.")
     @PostMapping("/{userIdx}/temp-password")
     public ResponseEntity<String> setTempPassword(

@@ -63,6 +63,10 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         return userIdx + "_" + date;
     }
 
+    private String userDateWpKey(Long userIdx, LocalDate date, Long workPlaceIdx) {
+        return userIdx + "_" + date + "_" + (workPlaceIdx != null ? workPlaceIdx : "null");
+    }
+
     /** 확정된 실제 근무 배정만 해당. 알바생 화면/캘린더 집계에 쓴다. */
     private boolean isAssignment(ApplyStatus status) {
         return status == ApplyStatus.배정 || status == ApplyStatus.타지점근무;
@@ -95,9 +99,8 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         }
         List<WorkScheduleDailyRequestDto> dtos = requestDtos != null ? requestDtos : List.of();
 
-        // 1. 해당 기간의 기존 배정을 지점 구분 없이 조회한다.
-        //    삭제 대상은 지금 편집 중인 지점의 배정으로 한정하되, 재사용 대상은 전 지점에서 찾아야
-        //    같은 알바생/날짜에 지점만 다른 배정 행이 중복으로 쌓이지 않는다.
+        // 1. 해당 기간의 기존 배정 조회. 삭제 대상은 지금 편집 중인 지점만.
+        //    같은 날 다른 지점 배정은 허용하므로 키는 user+date+workPlace.
         List<WorkScheduleDaily> existingSchedules = scheduleRepository.findByWsdDateBetweenFetch(startDate, endDate);
 
         Set<WorkScheduleDaily> toDelete = new HashSet<>();
@@ -107,13 +110,13 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             }
         }
 
-        Map<String, WorkScheduleDaily> existingByUserDate = new HashMap<>();
+        Map<String, WorkScheduleDaily> existingByUserDateWp = new HashMap<>();
         for (WorkScheduleDaily s : existingSchedules) {
-            String key = userDateKey(s.getUser().getUserIdx(), s.getWsdDate());
-            WorkScheduleDaily prev = existingByUserDate.get(key);
-            // 이미 중복 행이 쌓여 있다면 현재 지점 소유의 행을 우선 재사용하고 나머지는 정리되도록 둔다.
+            Long wpKey = resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser());
+            String key = userDateWpKey(s.getUser().getUserIdx(), s.getWsdDate(), wpKey);
+            WorkScheduleDaily prev = existingByUserDateWp.get(key);
             if (prev == null || (toDelete.contains(s) && !toDelete.contains(prev))) {
-                existingByUserDate.put(key, s);
+                existingByUserDateWp.put(key, s);
             }
         }
 
@@ -137,7 +140,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         Map<Long, WorkPlace> workPlaceMap = workPlaceRepository.findAllById(targetWpIdxes).stream()
                 .collect(Collectors.toMap(WorkPlace::getWpIdx, wp -> wp));
 
-        // 3. 새로 전달받은 배정과 비교 (Smart Update)
+        // 3. 새로 전달받은 배정과 비교 (Smart Update). 같은 날 다른 지점은 허용.
         List<WorkScheduleDaily> toSave = new ArrayList<>();
         Set<String> requestKeySet = new HashSet<>();
         for (WorkScheduleDailyRequestDto dto : dtos) {
@@ -145,14 +148,8 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 continue; // 미신청/신청은 배정 행으로 만들지 않는다.
             }
             if (dto.getDate().isBefore(startDate) || dto.getDate().isAfter(endDate)) {
-                // 기간 밖의 날짜는 삭제 대상 조회에도 잡히지 않아 정리되지 않는 행이 된다.
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "배정 기간을 벗어난 날짜(" + dto.getDate() + ")가 포함되어 있습니다.");
-            }
-
-            String key = userDateKey(dto.getUserIdx(), dto.getDate());
-            if (!requestKeySet.add(key)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "동일한 알바생/날짜에 중복된 배정 내역이 존재합니다.");
             }
 
             User targetUser = userMap.get(dto.getUserIdx());
@@ -164,30 +161,29 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             if (wp == null) {
                 wp = targetUser.getWorkPlace();
             }
+            Long resolvedWpIdx = wp != null ? wp.getWpIdx() : null;
 
-            WorkScheduleDaily matched = existingByUserDate.get(key);
-            boolean otherWorkplaceOwns = matched != null && !toDelete.contains(matched);
-            if (otherWorkplaceOwns) {
-                if (dto.getStatus() == ApplyStatus.미배정) {
-                    // 다른 지점이 이미 배정한 날짜에 미배정 행을 만들면 그 배정을 덮어쓰게 된다.
-                    continue;
-                }
-                String ownerName = matched.getWorkPlace() != null ? matched.getWorkPlace().getWpName() : "다른 지점";
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        targetUser.getDisplayName() + "님은 " + dto.getDate() + "에 이미 " + ownerName + "에 배정되어 있습니다.");
+            String key = userDateWpKey(dto.getUserIdx(), dto.getDate(), resolvedWpIdx);
+            if (!requestKeySet.add(key)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "동일한 알바생/날짜/지점에 중복된 배정 내역이 존재합니다.");
             }
 
-            if (matched != null) {
-                // 기존에 있으면 값만 UPDATE
+            WorkScheduleDaily matched = existingByUserDateWp.get(key);
+            // 현재 편집 지점이 아닌 행은 건드리지 않음 (다른 지점 배정 유지)
+            if (matched != null && !toDelete.contains(matched) && !workPlaceIdx.equals(resolvedWpIdx)) {
+                continue;
+            }
+
+            if (matched != null && toDelete.contains(matched)) {
                 matched.setWsdStatus(dto.getStatus());
                 matched.setWsdStartTime(dto.getStartTime());
                 matched.setWorkPlace(wp);
                 matched.setWsdIsConfirmed(Boolean.TRUE.equals(dto.getIsConfirmed()));
                 matched.setWsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()));
                 toSave.add(matched);
-                toDelete.remove(matched); // 매칭된 데이터는 삭제 대상에서 제외
-            } else {
-                // 기존에 없으면 새로 INSERT
+                toDelete.remove(matched);
+            } else if (matched == null) {
                 WorkScheduleDaily newSchedule = WorkScheduleDaily.builder()
                         .user(targetUser)
                         .wsdDate(dto.getDate())
@@ -198,6 +194,15 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         .wsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()))
                         .build();
                 toSave.add(newSchedule);
+            } else {
+                // 같은 지점 행이 toDelete에 없었지만 키가 맞는 경우 UPDATE
+                matched.setWsdStatus(dto.getStatus());
+                matched.setWsdStartTime(dto.getStartTime());
+                matched.setWorkPlace(wp);
+                matched.setWsdIsConfirmed(Boolean.TRUE.equals(dto.getIsConfirmed()));
+                matched.setWsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()));
+                toSave.add(matched);
+                toDelete.remove(matched);
             }
         }
 
@@ -318,7 +323,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         String waRemarks = weeklyRemarksMap.get(targetUserIdx);
                         results.add(WorkScheduleDailyResponseDto.builder()
                             .userIdx(targetUserIdx)
-                            .userName(requester.getDisplayName())
+                            .userName(requester.getUserName())
                             .workPlaceName(requester.getWorkPlace() != null ? requester.getWorkPlace().getWpName() : null)
                             .date(d)
                             .wsdStatus(com.recode.Dwaeji.work_apply_work.database.ApplyStatus.미신청)
@@ -345,6 +350,16 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             }
         }
 
+        Map<Long, Long> nameSeqCache = new HashMap<>();
+        for (WorkScheduleDailyResponseDto dto : results) {
+            if (dto.getUserIdx() == null) continue;
+            Long seq = nameSeqCache.computeIfAbsent(dto.getUserIdx(), id -> {
+                Long s = userRepository.findNameSeqByUserIdx(id);
+                return s != null ? s : 1L;
+            });
+            dto.setNameSeq(seq);
+        }
+
         return results.stream()
                 .sorted(Comparator.comparing(WorkScheduleDailyResponseDto::getDate, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(WorkScheduleDailyResponseDto::getUserName, Comparator.nullsLast(String::compareTo)))
@@ -368,14 +383,18 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 .filter(s -> workPlaceIdx == null || workPlaceIdx.equals(resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser())))
                 .sorted(Comparator
                         .comparing(WorkScheduleDaily::getWsdStartTime, Comparator.nullsLast(String::compareTo))
-                        .thenComparing(s -> s.getUser() != null ? s.getUser().getDisplayName() : null, Comparator.nullsLast(String::compareTo)))
-                .map(s -> com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto.builder()
+                        .thenComparing(s -> s.getUser() != null ? s.getUser().getUserName() : null, Comparator.nullsLast(String::compareTo)))
+                .map(s -> {
+                    Long seq = userRepository.findNameSeqByUserIdx(s.getUser().getUserIdx());
+                    return com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto.builder()
                         .userIdx(s.getUser().getUserIdx())
-                        .userName(s.getUser().getDisplayName())
+                        .userName(s.getUser().getUserName())
+                        .nameSeq(seq != null ? seq : 1L)
                         .workPlaceName(s.getWorkPlace() != null ? s.getWorkPlace().getWpName()
                                 : (s.getUser().getWorkPlace() != null ? s.getUser().getWorkPlace().getWpName() : null))
                         .startTime(s.getWsdStartTime())
-                        .build())
+                        .build();
+                })
                 .collect(Collectors.toList());
     }
 
@@ -430,7 +449,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             if (defaultUserIdx != null && defaultUser != null && d != null) {
                 res.add(WorkScheduleDailyResponseDto.builder()
                         .userIdx(defaultUserIdx)
-                        .userName(defaultUser.getDisplayName())
+                        .userName(defaultUser.getUserName())
                         .workPlaceName(defaultUser.getWorkPlace() != null ? defaultUser.getWorkPlace().getWpName() : null)
                         .date(d)
                         .wsdStatus(com.recode.Dwaeji.work_apply_work.database.ApplyStatus.미신청)
@@ -467,51 +486,58 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Integer> getCalendarAssignmentCounts(String requesterId, int year, int month, Long workPlaceIdx) {
+    public Map<String, Map<String, Integer>> getCalendarAssignmentCounts(String requesterId, int year, int month, Long workPlaceIdx) {
         YearMonth yearMonth = YearMonth.of(year, month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
         List<WorkScheduleDaily> schedules = scheduleRepository.findByWsdDateBetweenFetch(startDate, endDate);
+        Map<String, Map<String, Integer>> counts = new HashMap<>();
 
-        Map<String, Integer> counts = new HashMap<>();
-        
         for (WorkScheduleDaily s : schedules) {
             if (!isAssignment(s.getWsdStatus())) {
                 continue;
             }
-            // 지점이 비어 있는 배정은 알바생의 소속 지점 기준으로 판단한다. (주간 배정표 조회와 동일)
             if (workPlaceIdx != null && !workPlaceIdx.equals(resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser()))) {
                 continue;
             }
             if (!Boolean.TRUE.equals(s.getWsdIsConfirmed())) {
-                continue; // 임시 저장 상태의 배정은 집계하지 않는다.
+                continue;
             }
 
-            LocalDate d = s.getWsdDate();
-            boolean isWeekday = d.getDayOfWeek() != DayOfWeek.SATURDAY && d.getDayOfWeek() != DayOfWeek.SUNDAY;
-            
-            String t = s.getWsdStartTime();
-            boolean isValidTime = true;
-            if (isWeekday && t != null && !t.equals("오픈")) {
-                try {
-                    java.time.LocalTime lt = java.time.LocalTime.parse(t);
-                    if (lt.isBefore(java.time.LocalTime.of(16, 0)) || !lt.isBefore(java.time.LocalTime.of(20, 0))) {
-                        isValidTime = false;
-                    }
-                } catch (Exception e) {
-                    isValidTime = false;
-                }
-            } else if (isWeekday && "오픈".equals(t)) {
-                isValidTime = false;
-            }
-
-            if (isValidTime) {
-                String dateStr = d.toString();
-                counts.put(dateStr, counts.getOrDefault(dateStr, 0) + 1);
+            String dateStr = s.getWsdDate().toString();
+            Map<String, Integer> day = counts.computeIfAbsent(dateStr, k -> {
+                Map<String, Integer> m = new HashMap<>();
+                m.put("total", 0);
+                m.put("peak", 0);
+                return m;
+            });
+            day.put("total", day.get("total") + 1);
+            if (isPeakAssignment(s)) {
+                day.put("peak", day.get("peak") + 1);
             }
         }
         return counts;
+    }
+
+    /** 피크: 16:00 <= t < 20:00 (요일 무관). 오픈은 제외. */
+    private boolean isPeakAssignment(WorkScheduleDaily s) {
+        if (Boolean.TRUE.equals(s.getWsdIsOpen())) {
+            return false;
+        }
+        String t = s.getWsdStartTime();
+        if (t == null || t.isBlank()) {
+            return false;
+        }
+        if ("오픈".equals(t.trim())) {
+            return false;
+        }
+        try {
+            java.time.LocalTime lt = java.time.LocalTime.parse(t.trim());
+            return !lt.isBefore(java.time.LocalTime.of(16, 0)) && lt.isBefore(java.time.LocalTime.of(20, 0));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
@@ -521,117 +547,137 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신청 기간이 올바르지 않습니다.");
         }
-        
-        // 1. WorkApply (주간 요약 데이터) 조회 또는 생성
+        List<WorkApplyDaily> existingDailies =
+                applyRepository.findByUserIdxAndWadDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
+        if (!existingDailies.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 신청한 주입니다");
+        }
+        saveApplyShifts(requester, startDate, endDate, requestDtos, false);
+    }
+
+    @Override
+    @Transactional
+    public void updateApply(String requesterId, java.time.LocalDate startDate, java.time.LocalDate endDate, List<WorkApplyDailyRequestDto> requestDtos) {
+        User requester = getRequester(requesterId);
+        if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신청 기간이 올바르지 않습니다.");
+        }
+        List<WorkApplyDaily> existingDailies =
+                applyRepository.findByUserIdxAndWadDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
+        if (existingDailies.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "수정할 신청 내역이 없습니다");
+        }
+        saveApplyShifts(requester, startDate, endDate, requestDtos, true);
+    }
+
+    private void saveApplyShifts(User requester, LocalDate startDate, LocalDate endDate,
+                                 List<WorkApplyDailyRequestDto> requestDtos, boolean allowSmartUpdate) {
         LocalDate targetMonday = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         WorkApply workApply = workApplyRepository.findByUser_UserIdxAndWaDate(requester.getUserIdx(), targetMonday)
                 .orElseGet(() -> WorkApply.builder()
                         .user(requester)
                         .waDate(targetMonday)
                         .build());
-                        
 
         String globalRemarks = null;
-
-        // 프론트엔드에서 보낸 신규 데이터 파싱
         class IncomingShift {
             LocalDate date;
             Long wpIdx;
             boolean openApplied;
-            String remarks;
         }
         List<IncomingShift> incomingShifts = new ArrayList<>();
-        Set<String> applyKeySet = new HashSet<>(); // 중복 검사용 Set
+        Set<String> applyKeySet = new HashSet<>();
+        List<WorkApplyDailyRequestDto> dtos = requestDtos != null ? requestDtos : List.of();
 
-        for (WorkApplyDailyRequestDto dto : requestDtos) {
+        for (WorkApplyDailyRequestDto dto : dtos) {
             if (dto.getApplyDates() == null || dto.getApplyDates().isEmpty()) {
                 continue;
             }
             if (globalRemarks == null && dto.getRemarks() != null && !dto.getRemarks().isBlank()) {
-                globalRemarks = dto.getRemarks(); // 첫 번째 유효한 비고를 주간 비고로 사용
+                globalRemarks = dto.getRemarks();
             }
             for (LocalDate date : dto.getApplyDates()) {
                 if (date.isBefore(startDate) || date.isAfter(endDate)) {
-                    // 기간 밖의 날짜는 정리 대상 조회에도 잡히지 않아 지워지지 않는 신청이 된다.
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "신청 기간을 벗어난 날짜(" + date + ")가 포함되어 있습니다.");
                 }
-                String key = date.toString() + "_" + dto.getWorkPlaceIdx();
+                String key = date + "_" + dto.getWorkPlaceIdx();
                 if (!applyKeySet.add(key)) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "동일한 날짜(" + date + ")에 중복된 신청 내역이 존재합니다.");
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "동일한 날짜(" + date + ")·지점에 중복된 신청 내역이 존재합니다.");
                 }
                 IncomingShift inc = new IncomingShift();
                 inc.date = date;
                 inc.wpIdx = dto.getWorkPlaceIdx();
                 inc.openApplied = dto.getOpenApplied() != null && dto.getOpenApplied();
-                inc.remarks = dto.getRemarks();
                 incomingShifts.add(inc);
             }
         }
-        
-        // 주간 비고 미리 저장해서 waIdx 확보 (WorkApplyDaily에 FK 걸기 위함)
+        if (incomingShifts.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "신청할 날짜가 없습니다.");
+        }
         if (globalRemarks != null) {
             workApply.setWaRemarks(globalRemarks);
         }
         final WorkApply savedWorkApply = workApplyRepository.save(workApply);
-        
-        // 2. 기존 DB에 있는 해당 주간의 WorkApplyDaily 조회
+
+        if (!allowSmartUpdate) {
+            List<WorkApplyDaily> toInsert = new ArrayList<>();
+            for (IncomingShift inc : incomingShifts) {
+                WorkPlace wp = inc.wpIdx != null ? workPlaceRepository.findById(inc.wpIdx).orElse(null) : null;
+                toInsert.add(WorkApplyDaily.builder()
+                        .user(requester)
+                        .wadDate(inc.date)
+                        .wadIsOpen(inc.openApplied)
+                        .workPlace(wp)
+                        .workApply(savedWorkApply)
+                        .build());
+            }
+            applyRepository.saveAll(toInsert);
+            return;
+        }
+
         List<WorkApplyDaily> existingDailies =
                 applyRepository.findByUserIdxAndWadDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
-        
         Set<WorkApplyDaily> toDelete = new HashSet<>(existingDailies);
         List<WorkApplyDaily> toSave = new ArrayList<>();
-        
-        // 3. Smart Update 처리 (기존 데이터가 있으면 UPDATE, 없으면 INSERT, 더 이상 없으면 DELETE)
+
         for (IncomingShift inc : incomingShifts) {
             WorkApplyDaily matched = null;
             for (WorkApplyDaily ex : toDelete) {
-                if (ex.getWadDate().equals(inc.date) && 
-                    ((ex.getWorkPlace() == null && inc.wpIdx == null) || 
-                     (ex.getWorkPlace() != null && ex.getWorkPlace().getWpIdx().equals(inc.wpIdx)))) {
+                if (ex.getWadDate().equals(inc.date) &&
+                        ((ex.getWorkPlace() == null && inc.wpIdx == null) ||
+                                (ex.getWorkPlace() != null && ex.getWorkPlace().getWpIdx().equals(inc.wpIdx)))) {
                     matched = ex;
                     break;
                 }
             }
-            
             if (matched != null) {
-                // 기존 데이터 매칭 성공 -> 값 업데이트
                 matched.setWadIsOpen(inc.openApplied);
-                matched.setWorkApply(savedWorkApply); // FK 연결
+                matched.setWorkApply(savedWorkApply);
                 toSave.add(matched);
-                toDelete.remove(matched); // 매칭된 데이터는 삭제 대상에서 제외
+                toDelete.remove(matched);
             } else {
-                // 매칭 실패 -> 새로운 데이터 추가
-                WorkPlace wp = null;
-                if (inc.wpIdx != null) {
-                    wp = workPlaceRepository.findById(inc.wpIdx).orElse(null);
-                }
-                WorkApplyDaily newDaily = WorkApplyDaily.builder()
-                    .user(requester)
-                    .wadDate(inc.date)
-                    .wadIsOpen(inc.openApplied)
-                    .workPlace(wp)
-                    .workApply(savedWorkApply) // FK 연결
-                    .build();
-                toSave.add(newDaily);
+                WorkPlace wp = inc.wpIdx != null ? workPlaceRepository.findById(inc.wpIdx).orElse(null) : null;
+                toSave.add(WorkApplyDaily.builder()
+                        .user(requester)
+                        .wadDate(inc.date)
+                        .wadIsOpen(inc.openApplied)
+                        .workPlace(wp)
+                        .workApply(savedWorkApply)
+                        .build());
             }
         }
-        
-        // 삭제할 대상(더 이상 신청되지 않은 요일/지점)은 DB에서 제거
+
         if (!toDelete.isEmpty()) {
-            // 임시 저장 상태인 배정 내역(WorkScheduleDaily) 연쇄 삭제 로직 추가
-            // 그 날짜의 신청이 전부 사라진 경우에만 지운다. 여러 지점에 신청한 뒤 한 곳만
-            // 취소했다면 남아 있는 신청에 대한 배정까지 지워지면 안 된다.
-            Set<LocalDate> remainingDates = incomingShifts.stream()
-                    .map(inc -> inc.date)
-                    .collect(Collectors.toSet());
+            Set<LocalDate> remainingDates = incomingShifts.stream().map(inc -> inc.date).collect(Collectors.toSet());
             Set<LocalDate> datesToDelete = toDelete.stream()
                     .map(WorkApplyDaily::getWadDate)
                     .filter(d -> !remainingDates.contains(d))
                     .collect(Collectors.toSet());
-                    
             if (!datesToDelete.isEmpty()) {
-                List<WorkScheduleDaily> existingSchedules = scheduleRepository.findByUserIdxAndWsdDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
+                List<WorkScheduleDaily> existingSchedules =
+                        scheduleRepository.findByUserIdxAndWsdDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
                 List<WorkScheduleDaily> schedulesToDelete = new ArrayList<>();
                 for (WorkScheduleDaily s : existingSchedules) {
                     if (datesToDelete.contains(s.getWsdDate()) && !Boolean.TRUE.equals(s.getWsdIsConfirmed())) {
@@ -642,11 +688,8 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                     scheduleRepository.deleteAll(schedulesToDelete);
                 }
             }
-
             applyRepository.deleteAll(toDelete);
         }
-        
-        // 추가 및 수정된 대상 저장
         if (!toSave.isEmpty()) {
             applyRepository.saveAll(toSave);
         }

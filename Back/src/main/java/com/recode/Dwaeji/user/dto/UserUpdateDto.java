@@ -1,5 +1,6 @@
 package com.recode.Dwaeji.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Builder;
 
 import lombok.AllArgsConstructor;
@@ -21,6 +22,7 @@ public class UserUpdateDto {
     private LocalDate userBirth;
     private Long fkUtIdx;
     private Long fkWorkPlaceIdx;
+    @JsonAlias("bankCode")
     private String userBank;
     private String userAccountNumber;
     private Integer userHourlyWage;

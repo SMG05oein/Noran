@@ -12,6 +12,7 @@ import com.recode.Dwaeji.work_record.database.WorkRecordHistory;
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,12 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private final WorkApplyDailyRepository workApplyDailyRepository;
     private final WorkPlaceRepository workPlaceRepository;
 
+    @Value("${work-record.edit-deadline-day-of-month:1}")
+    private int editDeadlineDayOfMonth;
+
+    @Value("${work-record.edit-deadline-time:23:59:59}")
+    private String editDeadlineTime;
+
     private User getRequester(String requesterId) {
         return userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
@@ -53,22 +60,63 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return user.getUserType() != null && user.getUserType().getUtIsAdmin() != null && user.getUserType().getUtIsAdmin() == 1;
     }
 
+    private java.time.LocalDateTime resolveEditDeadline(java.time.LocalDate wrDate) {
+        if (wrDate == null) return null;
+        java.time.LocalTime time;
+        try {
+            time = java.time.LocalTime.parse(editDeadlineTime);
+        } catch (Exception e) {
+            time = java.time.LocalTime.of(23, 59, 59);
+        }
+        int day = Math.max(1, Math.min(editDeadlineDayOfMonth, 28));
+        return wrDate.plusMonths(1).withDayOfMonth(day).atTime(time);
+    }
+
+    private void assertEditable(java.time.LocalDate wrDate) {
+        java.time.LocalDateTime deadline = resolveEditDeadline(wrDate);
+        if (deadline != null && java.time.LocalDateTime.now().isAfter(deadline)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "기한이 지나 급여 담당자에게 직접 연락바랍니다");
+        }
+    }
+
+    private void enrichEditMeta(WorkRecordResponseDto dto, java.time.LocalDate wrDate) {
+        if (dto == null || wrDate == null) return;
+        java.time.LocalDateTime until = resolveEditDeadline(wrDate);
+        dto.setEditableUntil(until);
+        dto.setIsEditable(until == null || !java.time.LocalDateTime.now().isAfter(until));
+    }
+
+    private String formatTotalWorkHours(LocalTime start, LocalTime end, LocalTime rest) {
+        if (start == null || end == null) return "";
+        long startMinutes = start.getHour() * 60L + start.getMinute();
+        long endMinutes = end.getHour() * 60L + end.getMinute();
+        if (endMinutes < startMinutes) endMinutes += 24 * 60;
+        long restMinutes = rest != null ? rest.getHour() * 60L + rest.getMinute() : 0;
+        long actual = Math.max(0, endMinutes - startMinutes - restMinutes);
+        return String.format("%d:%02d", actual / 60, actual % 60);
+    }
+
     @Override
     @Transactional
     public void createWorkRecord(String requesterId, WorkRecordRequestDto requestDto) {
         User requester = getRequester(requesterId);
-        
-        User targetUser = requester;
-        if (isAdmin(requester) && requestDto.getUserIdx() != null) {
-            targetUser = userRepository.findById(requestDto.getUserIdx())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대리 기록할 사용자를 찾을 수 없습니다."));
-        }
 
-        if (!isAdmin(requester)) {
-            java.time.LocalDateTime deadline = requestDto.getWrDate().plusMonths(1).withDayOfMonth(1).atTime(23, 59, 59);
-            if (java.time.LocalDateTime.now().isAfter(deadline)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "기한이 지나 급여 담당자에게 직접 연락바랍니다");
+        User targetUser;
+        if (isAdmin(requester)) {
+            if (requestDto.getUserIdx() != null) {
+                targetUser = userRepository.findById(requestDto.getUserIdx())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대리 기록할 사용자를 찾을 수 없습니다."));
+            } else {
+                targetUser = requester;
             }
+        } else {
+            // 알바생은 무조건 본인 기록만 — 클라이언트가 보낸 userIdx는 무시
+            if (requestDto.getUserIdx() != null
+                    && !java.util.Objects.equals(requestDto.getUserIdx(), requester.getUserIdx())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 외 사용자의 근무 기록은 생성할 수 없습니다.");
+            }
+            targetUser = requester;
+            assertEditable(requestDto.getWrDate());
         }
 
         if (workRecordRepository.existsByUser_UserIdxAndWrDate(targetUser.getUserIdx(), requestDto.getWrDate())) {
@@ -237,12 +285,18 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return records.map(record -> {
             LocalDate wrDate = record.getWrDate();
             if (wrDate == null || record.getUser() == null) {
-                return WorkRecordResponseDto.fromEntity(record, "미신청");
+                WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, "미신청");
+                enrichEditMeta(dto, wrDate);
+                return dto;
             }
             WorkScheduleDaily schedule = scheduleMap.get(record.getUser().getUserIdx() + "-" + wrDate);
             WorkApplyDaily apply = applyMap.get(record.getUser().getUserIdx() + "-" + wrDate);
             String applyStatus = resolveApplyStatus(schedule, apply);
-            return WorkRecordResponseDto.fromEntity(record, applyStatus);
+            WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, applyStatus);
+            enrichEditMeta(dto, wrDate);
+            Long seq = userRepository.findNameSeqByUserIdx(record.getUser().getUserIdx());
+            dto.setNameSeq(seq != null ? seq : 1L);
+            return dto;
         });
     }
 
@@ -274,12 +328,18 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return records.stream().map(record -> {
             LocalDate wrDate = record.getWrDate();
             if (wrDate == null || record.getUser() == null) {
-                return WorkRecordResponseDto.fromEntity(record, "미신청");
+                WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, "미신청");
+                enrichEditMeta(dto, wrDate);
+                return dto;
             }
             WorkScheduleDaily schedule = scheduleMap.get(record.getUser().getUserIdx() + "-" + wrDate);
             WorkApplyDaily apply = applyMap.get(record.getUser().getUserIdx() + "-" + wrDate);
             String applyStatus = resolveApplyStatus(schedule, apply);
-            return WorkRecordResponseDto.fromEntity(record, applyStatus);
+            WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, applyStatus);
+            enrichEditMeta(dto, wrDate);
+            Long seq = userRepository.findNameSeqByUserIdx(record.getUser().getUserIdx());
+            dto.setNameSeq(seq != null ? seq : 1L);
+            return dto;
         }).collect(Collectors.toList());
     }
 
@@ -309,10 +369,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         if (!isAdmin(requester)) {
-            java.time.LocalDateTime deadline = record.getWrDate().plusMonths(1).withDayOfMonth(1).atTime(23, 59, 59);
-            if (java.time.LocalDateTime.now().isAfter(deadline)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "기한이 지나 급여 담당자에게 직접 연락바랍니다");
-            }
+            assertEditable(record.getWrDate());
         }
 
         if (requestDto.getWrDate() != null && !requestDto.getWrDate().equals(record.getWrDate())) {
@@ -463,8 +520,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return historyPage.map(h -> WorkRecordHistoryResponseDto.builder()
                 .wrhIdx(h.getWrhIdx())
                 .wrIdx(h.getWrIdx())
-                .adminName(h.getAdminUser().getDisplayName())
-                .targetUserName(h.getTargetUser().getDisplayName())
+                .adminName(h.getAdminUser().getUserName())
+                .targetUserName(h.getTargetUser().getUserName())
                 .workPlaceName(h.getTargetUser().getWorkPlace() != null ? h.getTargetUser().getWorkPlace().getWpName() : null)
                 .wrDate(h.getWrDate())
                 .beforeStartTime(h.getBeforeStartTime())
@@ -491,7 +548,9 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private WorkRecordResponseDto mapToDto(WorkRecord record) {
         java.time.LocalDate wrDate = record.getWrDate();
         if (wrDate == null || record.getUser() == null) {
-            return WorkRecordResponseDto.fromEntity(record, "미신청");
+            WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, "미신청");
+            enrichEditMeta(dto, wrDate);
+            return dto;
         }
         
         WorkScheduleDaily schedule = workScheduleDailyRepository
@@ -503,7 +562,13 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 .orElse(null);
 
         String applyStatus = resolveApplyStatus(schedule, apply);
-        return WorkRecordResponseDto.fromEntity(record, applyStatus);
+        WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, applyStatus);
+        enrichEditMeta(dto, wrDate);
+        if (record.getUser() != null && record.getUser().getUserIdx() != null) {
+            Long seq = userRepository.findNameSeqByUserIdx(record.getUser().getUserIdx());
+            dto.setNameSeq(seq != null ? seq : 1L);
+        }
+        return dto;
     }
 
     @Override
@@ -530,65 +595,31 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
             org.apache.poi.ss.usermodel.Sheet sheet1 = workbook.createSheet(month + "월 근무기록");
 
-            // 헤더 생성
+            // 헤더 생성 (QA: 이름/날짜/출퇴근/휴게/총근무시간, 알바생 시트 제외)
             org.apache.poi.ss.usermodel.Row headerRow1 = sheet1.createRow(0);
-            String[] headers1 = {"No", "날짜", "이름", "소속", "출근 시간", "퇴근 시간", "휴게 시간", "시급", "일급계산결과(세전)"};
+            String[] headers1 = {"No", "이름", "날짜", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
             for (int i = 0; i < headers1.length; i++) {
                 headerRow1.createCell(i).setCellValue(headers1[i]);
             }
 
-            java.util.Map<Long, User> uniqueUsersMap = new java.util.HashMap<>();
-
-            // 데이터 채우기
             int rowNum1 = 1;
             for (WorkRecord record : records) {
                 User user = record.getUser();
-                if (user != null && user.getUserIdx() != null) {
-                    uniqueUsersMap.put(user.getUserIdx(), user);
-                }
-                
                 org.apache.poi.ss.usermodel.Row row = sheet1.createRow(rowNum1++);
-
                 String date = record.getWrDate() != null ? record.getWrDate().toString() : "";
-                String userName = user != null && user.getDisplayName() != null ? user.getDisplayName() : "";
-                String workPlace = user != null && user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "";
+                String userName = user != null && user.getUserName() != null ? user.getUserName() : "";
                 String startTime = record.getWrStartTime() != null ? record.getWrStartTime().toString() : "";
                 String endTime = record.getWrEndTime() != null ? record.getWrEndTime().toString() : "";
                 String restTimeStr = record.getWrRestTime() != null ? record.getWrRestTime().toString() : "00:00";
-                
-                Integer hourlyWage = user != null && user.getUserHourlyWage() != null ? user.getUserHourlyWage() : 0;
-
-                // Calculate daily wage
-                long dailyWage = 0;
-                if (record.getWrStartTime() != null && record.getWrEndTime() != null && hourlyWage > 0) {
-                    java.time.LocalTime start = record.getWrStartTime();
-                    java.time.LocalTime end = record.getWrEndTime();
-                    java.time.LocalTime rest = record.getWrRestTime() != null ? record.getWrRestTime() : java.time.LocalTime.MIDNIGHT;
-                    
-                    long startMinutes = start.getHour() * 60 + start.getMinute();
-                    long endMinutes = end.getHour() * 60 + end.getMinute();
-                    if (endMinutes < startMinutes) {
-                        endMinutes += 24 * 60; // Next day
-                    }
-                    long totalMinutes = endMinutes - startMinutes;
-                    long restMinutes = rest.getHour() * 60 + rest.getMinute();
-                    long actualMinutes = totalMinutes - restMinutes;
-                    if (actualMinutes < 0) actualMinutes = 0;
-                    
-                    dailyWage = (long) ((actualMinutes / 60.0) * hourlyWage);
-                }
-
+                String totalHours = formatTotalWorkHours(record.getWrStartTime(), record.getWrEndTime(), record.getWrRestTime());
                 row.createCell(0).setCellValue(rowNum1 - 1);
-                row.createCell(1).setCellValue(date);
-                row.createCell(2).setCellValue(userName);
-                row.createCell(3).setCellValue(workPlace);
-                row.createCell(4).setCellValue(startTime);
-                row.createCell(5).setCellValue(endTime);
-                row.createCell(6).setCellValue(restTimeStr);
-                row.createCell(7).setCellValue(hourlyWage);
-                row.createCell(8).setCellValue(dailyWage);
+                row.createCell(1).setCellValue(userName);
+                row.createCell(2).setCellValue(date);
+                row.createCell(3).setCellValue(startTime);
+                row.createCell(4).setCellValue(endTime);
+                row.createCell(5).setCellValue(restTimeStr);
+                row.createCell(6).setCellValue(totalHours);
             }
-
             if (rowNum1 > 1) {
                 sheet1.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, rowNum1 - 1, 0, headers1.length - 1));
             }
@@ -596,39 +627,6 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 sheet1.autoSizeColumn(i);
                 int currentWidth = sheet1.getColumnWidth(i);
                 sheet1.setColumnWidth(i, (int)(currentWidth * 1.3));
-            }
-
-            // 두 번째 시트: 알바생 정보
-            org.apache.poi.ss.usermodel.Sheet sheet2 = workbook.createSheet("알바생 정보");
-            org.apache.poi.ss.usermodel.Row headerRow2 = sheet2.createRow(0);
-            String[] headers2 = {"No", "이름", "소속", "은행명", "계좌번호"};
-            for (int i = 0; i < headers2.length; i++) {
-                headerRow2.createCell(i).setCellValue(headers2[i]);
-            }
-
-            int rowNum2 = 1;
-            for (User user : uniqueUsersMap.values()) {
-                org.apache.poi.ss.usermodel.Row row = sheet2.createRow(rowNum2++);
-                
-                String userName = user.getDisplayName() != null ? user.getDisplayName() : "";
-                String workPlace = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "";
-                String bank = user.getUserBank() != null ? user.getUserBank() : "";
-                String accountNo = user.getUserAccountNumber() != null ? user.getUserAccountNumber() : "";
-
-                row.createCell(0).setCellValue(rowNum2 - 1);
-                row.createCell(1).setCellValue(userName);
-                row.createCell(2).setCellValue(workPlace);
-                row.createCell(3).setCellValue(bank);
-                row.createCell(4).setCellValue(accountNo);
-            }
-
-            if (rowNum2 > 1) {
-                sheet2.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, rowNum2 - 1, 0, headers2.length - 1));
-            }
-            for (int i = 0; i < headers2.length; i++) {
-                sheet2.autoSizeColumn(i);
-                int currentWidth = sheet2.getColumnWidth(i);
-                sheet2.setColumnWidth(i, (int)(currentWidth * 1.3));
             }
 
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();

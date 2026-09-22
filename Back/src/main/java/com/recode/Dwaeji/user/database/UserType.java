@@ -43,6 +43,10 @@ public class UserType {
     private Integer utCanViewSensitive = 0;
 
     @Builder.Default
+    @Column(name = "ut_can_edit_sensitive", columnDefinition = "TINYINT")
+    private Integer utCanEditSensitive = 0;
+
+    @Builder.Default
     @Column(name = "ut_can_export_excel", columnDefinition = "TINYINT")
     private Integer utCanExportExcel = 0;
 

@@ -58,7 +58,8 @@ const Login = () => {
             workPlaceIdx: infoRes.data.workPlaceIdx,
             userType: infoRes.data.userTypeName,
             userHourlyWage: infoRes.data.userHourlyWage,
-            isAdmin: infoRes.data.is_admin
+            isAdmin: infoRes.data.is_admin,
+            fkUtIdx: infoRes.data.fkUtIdx
           };
         }
 

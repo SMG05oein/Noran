@@ -305,13 +305,51 @@ export const deleteWorkPlace = async (wpIdx) => {
   }
 };
 
-// 은행 정보 수정 전용 (본인만)
+// 은행 코드 목록
+export const fetchBanks = async () => {
+  try {
+    const response = await apiClient.get('/api/banks');
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '은행 목록을 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 은행 정보 수정 전용 (본인만) — payload: { bankCode, userAccountName, ... }
 export const updateMyBankInfo = async (bankData) => {
   try {
     const response = await apiClient.put(`${addUrl}/me/bank-info`, bankData);
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data || '은행 정보 수정에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};
+
+// 직원 엑셀 다운로드 (지점별 Sheet)
+export const downloadUserExcel = async (workPlaceIdx = null) => {
+  try {
+    const params = {};
+    if (workPlaceIdx) params.workPlaceIdx = workPlaceIdx;
+    const response = await apiClient.get(`${addUrl}/admin/excel`, {
+      params,
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `직원목록_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    return { success: true };
+  } catch (error) {
+    const errMsg = error.response?.data?.msg || '직원 엑셀 다운로드에 실패했습니다.';
     return { success: false, error: errMsg };
   }
 };

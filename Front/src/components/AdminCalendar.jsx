@@ -142,7 +142,13 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
         const isCurrentMonth = isSameMonth(day, monthStart);
         
         const formattedCloneDay = format(cloneDay, 'yyyy-MM-dd');
-        const acceptCount = calendarCounts[formattedCloneDay] || 0;
+        const dayCount = calendarCounts[formattedCloneDay];
+        const dayTotal = typeof dayCount === 'object' && dayCount != null
+          ? Number(dayCount.total) || 0
+          : Number(dayCount) || 0;
+        const dayPeak = typeof dayCount === 'object' && dayCount != null
+          ? Number(dayCount.peak) || 0
+          : 0;
         
         const isSun = day.getDay() === 0;
         const isSat = day.getDay() === 6;
@@ -186,11 +192,17 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
               {formattedDate}
             </span>
             <div className="cal-status-box">
-              {acceptCount > 0 && (
-                <Badge bg="success" className="cal-admin-badge text-white text-center rounded-pill fw-bold">
-                  <span className="d-none d-sm-inline">배정 {acceptCount}명</span>
-                  <span className="d-sm-none">{acceptCount}명</span>
-                </Badge>
+              {(dayTotal > 0 || dayPeak > 0) && (
+                <div className="d-flex flex-column align-items-center gap-1">
+                  <Badge bg="success" className="cal-admin-badge text-white text-center rounded-pill fw-bold">
+                    <span className="d-none d-sm-inline">출근 {dayTotal}명</span>
+                    <span className="d-sm-none">{dayTotal}</span>
+                  </Badge>
+                  <Badge bg="warning" text="dark" className="cal-admin-badge text-center rounded-pill fw-bold">
+                    <span className="d-none d-sm-inline">피크 {dayPeak}명</span>
+                    <span className="d-sm-none">P{dayPeak}</span>
+                  </Badge>
+                </div>
               )}
             </div>
           </div>

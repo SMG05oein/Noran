@@ -115,7 +115,7 @@ const AdminGNB = () => {
             <div className="fw-bold text-dark mb-1">시스템 개선 문의</div>
             <div className="mb-1">010-2011-1392 (카카오톡)</div>
             <div className="mb-1">010-3189-1392 (문자, 카카오톡)</div>
-            <div className="mb-3">앱 버전: v1.0.0</div>
+            <div className="mb-3">앱 버전: v0.5.0</div>
 
             <div style={{ fontSize: '0.7rem' }}>&copy; {new Date().getFullYear()} MinGwan-Seo. All rights reserved.</div>
           </div>

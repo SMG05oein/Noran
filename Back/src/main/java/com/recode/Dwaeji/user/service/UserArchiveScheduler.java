@@ -22,7 +22,7 @@ public class UserArchiveScheduler {
     private final ArchivedUserRepository archivedUserRepository;
 
     // 테스트를 위해 10초마다 실행되도록 변경
-    @Scheduled(cron = "* * 3 * * *")
+    @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void runArchiving() {
         log.info("퇴사자 아카이빙 및 비식별화 배치 작업 시작...");

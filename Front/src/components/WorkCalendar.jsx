@@ -23,11 +23,9 @@ import {
   RiArrowDownSLine
 } from 'react-icons/ri';
 import { Dropdown } from 'react-bootstrap';
-import Holidays from 'date-holidays';
+import { isHoliday } from 'holiday-kr';
 import useAuthStore from '../store/useAuthStore';
 import './WorkCalendar.css';
-
-const hd = new Holidays('KR');
 
 const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, initialMonth, onDateClick, onMonthChange }) => {
   const { user } = useAuthStore();
@@ -162,7 +160,7 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, in
 
         const isSun = day.getDay() === 0;
         const isSat = day.getDay() === 6;
-        const isHol = hd.isHoliday(day);
+        const isHol = isHoliday(day.getFullYear(), day.getMonth() + 1, day.getDate());
         const isRed = isSun || isHol;
         const isBlue = isSat && !isHol;
 

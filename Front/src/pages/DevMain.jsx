@@ -4,10 +4,11 @@ import useDevAuthStore from '../store/useDevAuthStore';
 import useThemeStore from '../store/useThemeStore';
 import { fetchSystemInfo, changeDevPassword } from '../api/devAuthApi';
 import { Container, Row, Col, Card, Button, Spinner, Modal, Form, Alert, Badge, Tabs, Tab, Table } from 'react-bootstrap';
-import DatabaseManager from '../components/DatabaseManager';
 import DevLogViewer from '../components/DevLogViewer';
 import ApiAnalyticsViewer from '../components/ApiAnalyticsViewer';
 import AnnouncementManager from '../components/AnnouncementManager';
+
+const DatabaseManager = React.lazy(() => import('../components/DatabaseManager'));
 
 const DevMain = () => {
   const devUser = useDevAuthStore((state) => state.devUser);
@@ -201,7 +202,9 @@ const DevMain = () => {
             </Tab>
 
             <Tab eventKey="database" title="데이터베이스 관리">
-              <DatabaseManager />
+              <React.Suspense fallback={<div className="text-center py-5"><Spinner animation="border" variant="warning" /></div>}>
+                <DatabaseManager />
+              </React.Suspense>
             </Tab>
 
             <Tab eventKey="logs" title="실시간 로그">

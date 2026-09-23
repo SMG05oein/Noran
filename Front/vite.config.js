@@ -36,6 +36,15 @@ export default defineConfig({
             if (id.includes('monaco-editor') || id.includes('@monaco-editor')) {
               return 'vendor-monaco'
             }
+            if (id.includes('xlsx-js-style') || id.includes('/xlsx/') || id.includes('\\xlsx\\')) {
+              return 'vendor-xlsx'
+            }
+            if (id.includes('html2canvas') || id.includes('html-to-image')) {
+              return 'vendor-capture'
+            }
+            if (id.includes('date-holidays')) {
+              return 'vendor-holidays'
+            }
             if (
               id.includes('react-dom') ||
               id.includes('react-router') ||

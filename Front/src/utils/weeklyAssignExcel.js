@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx-js-style';
 import { format, endOfWeek, getYear, getMonth, getDate, getDay, isSunday, isSaturday } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
 
@@ -77,8 +76,8 @@ const cellLabel = (shifts) => {
 
 const styledCell = (value, style) => ({ v: value ?? '', t: 's', s: style });
 
-/** 주간 배정 그리드를 엑셀(.xlsx)로 다운로드 */
-export const downloadWeeklyAssignExcel = ({
+/** 주간 배정 그리드를 엑셀(.xlsx)로 다운로드 (xlsx는 클릭 시에만 로드) */
+export const downloadWeeklyAssignExcel = async ({
   branchName,
   weekStart,
   weekDays,
@@ -86,6 +85,8 @@ export const downloadWeeklyAssignExcel = ({
   editSchedules,
   toUserIdx,
 }) => {
+  const XLSX = await import('xlsx-js-style');
+  const xlsx = XLSX.default ?? XLSX;
   const dayHeaders = weekDays.map(dayHeaderLabel);
   const period = `${format(weekStart, 'yyyy-MM-dd')} ~ ${format(endOfWeek(weekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')}`;
   const colCount = 1 + dayHeaders.length;
@@ -167,7 +168,7 @@ export const downloadWeeklyAssignExcel = ({
     ]);
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const ws = xlsx.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [{ wch: 14 }, ...dayHeaders.map(() => ({ wch: 11 }))];
   ws['!rows'] = aoa.map((_, idx) => ({
     hpt: idx === 3 ? 32 : 26,
@@ -178,7 +179,7 @@ export const downloadWeeklyAssignExcel = ({
     { s: { r: 2, c: 1 }, e: { r: 2, c: colCount - 1 } },
   ];
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '주간배정');
-  XLSX.writeFile(wb, `주간배정_${branchName || '지점'}_${format(weekStart, 'yyyy-MM-dd')}.xlsx`);
+  const wb = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(wb, ws, '주간배정');
+  xlsx.writeFile(wb, `주간배정_${branchName || '지점'}_${format(weekStart, 'yyyy-MM-dd')}.xlsx`);
 };

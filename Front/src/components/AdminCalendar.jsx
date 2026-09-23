@@ -15,11 +15,9 @@ import {
 } from 'date-fns';
 import { RiArrowLeftSLine, RiArrowRightSLine, RiCalendarEventLine, RiArrowDownSLine } from 'react-icons/ri';
 import { Dropdown, Badge } from 'react-bootstrap';
-import Holidays from 'date-holidays';
+import { isHoliday } from 'holiday-kr';
 import { fetchCalendarCounts } from '../api/workApi';
 import './WorkCalendar.css';
-
-const hd = new Holidays('KR');
 
 const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selectedDate }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -149,7 +147,7 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
         
         const isSun = day.getDay() === 0;
         const isSat = day.getDay() === 6;
-        const isHol = hd.isHoliday(day);
+        const isHol = isHoliday(day.getFullYear(), day.getMonth() + 1, day.getDate());
         const isRed = isSun || isHol;
         const isBlue = isSat && !isHol;
 

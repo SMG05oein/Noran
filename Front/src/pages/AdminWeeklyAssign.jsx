@@ -107,9 +107,9 @@ const AdminWeeklyAssign = () => {
   const currentWorkPlaceIdx = currentBranchObj?.wpIdx || user?.workPlaceIdx || 1;
   const selectedBranchName = currentBranchObj?.wpName || user?.workPlaceName || user?.branch || '지점';
 
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
     try {
-      downloadWeeklyAssignExcel({
+      await downloadWeeklyAssignExcel({
         branchName: selectedBranchName,
         weekStart: currentWeekStart,
         weekDays,

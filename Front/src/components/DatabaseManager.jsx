@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Card, Button, Form, Spinner, Row, Col, Table, Modal, Alert, Badge, Accordion } from 'react-bootstrap';
-import Editor from '@monaco-editor/react';
 import { fetchDatabaseSchema, executeDbQuery } from '../api/devAuthApi';
+
+const Editor = lazy(() => import('@monaco-editor/react'));
 
 const DatabaseManager = () => {
   const [schema, setSchema] = useState([]);
@@ -218,23 +219,25 @@ const DatabaseManager = () => {
           <Card.Body>
             <Card.Title className="fw-bold text-info mb-3">SQL Query Executor <Badge bg="danger" className="ms-2 fs-6">DANGER</Badge></Card.Title>
             <div className="mb-3 rounded" style={{ border: '1px solid #3f3f5a', overflow: 'hidden' }}>
-              <Editor
-                height="200px"
-                defaultLanguage="sql"
-                theme="vs-dark"
-                value={query}
-                onChange={(value) => setQuery(value || '')}
-                onMount={handleEditorDidMount}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  wordWrap: 'on',
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  quickSuggestions: true,
-                  suggestOnTriggerCharacters: true
-                }}
-              />
+              <Suspense fallback={<div className="d-flex justify-content-center py-5"><Spinner animation="border" variant="info" /></div>}>
+                <Editor
+                  height="200px"
+                  defaultLanguage="sql"
+                  theme="vs-dark"
+                  value={query}
+                  onChange={(value) => setQuery(value || '')}
+                  onMount={handleEditorDidMount}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    wordWrap: 'on',
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    quickSuggestions: true,
+                    suggestOnTriggerCharacters: true
+                  }}
+                />
+              </Suspense>
             </div>
             {queryError && <Alert variant="danger" className="py-2">{queryError}</Alert>}
             <div className="d-flex justify-content-end">

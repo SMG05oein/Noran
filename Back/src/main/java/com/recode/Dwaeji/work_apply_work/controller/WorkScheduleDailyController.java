@@ -47,17 +47,26 @@ public class WorkScheduleDailyController {
         return ResponseEntity.ok("근무 신청이 수정되었습니다.");
     }
 
-    @Operation(summary = "관리자 배정 생성 (일 단위)", description = "임시 저장(confirmed=false) 또는 확정(confirmed=true). 확정 시 배정되지 않은 신청은 미출근으로 저장됩니다.")
+    @Operation(summary = "관리자 배정 생성 (일 단위)",
+            description = "assignMode=DRAFT|PARTIAL|CONFIRM. 없으면 confirmed로 폴백(true→CONFIRM, false→DRAFT). "
+                    + "DRAFT=임시저장(미공개), PARTIAL=일부 출근만 공개·신청 유지, CONFIRM=주 확정·남은 신청→미출근.")
     @PostMapping("/schedule")
     public ResponseEntity<String> createSchedule(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam Long workPlaceIdx,
+            @RequestParam(required = false) String assignMode,
             @RequestParam(defaultValue = "false") boolean confirmed,
             @RequestBody List<WorkScheduleDailyRequestDto> requestDtos) {
-        scheduleService.createSchedule(userDetails.getUsername(), startDate, endDate, workPlaceIdx, requestDtos, confirmed);
-        return ResponseEntity.ok(confirmed ? "배정이 확정되었습니다." : "임시 저장이 완료되었습니다.");
+        com.recode.Dwaeji.work_apply_work.database.AssignMode mode =
+                scheduleService.createSchedule(userDetails.getUsername(), startDate, endDate, workPlaceIdx, requestDtos, assignMode, confirmed);
+        String msg = switch (mode) {
+            case DRAFT -> "임시 저장이 완료되었습니다.";
+            case PARTIAL -> "임시 배정이 완료되었습니다.";
+            case CONFIRM -> "배정이 확정되었습니다.";
+        };
+        return ResponseEntity.ok(msg);
     }
 
     @Operation(summary = "월간 배정 리스트 조회 (알바생 캘린더용)")

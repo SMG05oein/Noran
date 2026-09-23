@@ -6,6 +6,7 @@ import com.recode.Dwaeji.user.database.WorkPlace;
 import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
+import com.recode.Dwaeji.work_apply_work.database.AssignMode;
 import com.recode.Dwaeji.work_apply_work.database.WorkApply;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyDaily;
 import com.recode.Dwaeji.work_apply_work.database.WorkScheduleDaily;
@@ -86,7 +87,14 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
     @Override
     @Transactional
-    public void createSchedule(String requesterId, LocalDate startDate, LocalDate endDate, Long workPlaceIdx, List<WorkScheduleDailyRequestDto> requestDtos, boolean confirmed) {
+    public AssignMode createSchedule(String requesterId, LocalDate startDate, LocalDate endDate, Long workPlaceIdx, List<WorkScheduleDailyRequestDto> requestDtos, String assignModeParam, boolean confirmedFallback) {
+        AssignMode assignMode;
+        try {
+            assignMode = AssignMode.from(assignModeParam, confirmedFallback);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+
         User requester = getRequester(requesterId);
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "배정 권한이 없습니다.");
@@ -99,14 +107,17 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         }
         List<WorkScheduleDailyRequestDto> dtos = requestDtos != null ? requestDtos : List.of();
 
-        // 1. 해당 기간의 기존 배정 조회. 삭제 대상은 지금 편집 중인 지점만.
-        //    같은 날 다른 지점 배정은 허용하므로 키는 user+date+workPlace.
+        // 1. 해당 기간의 기존 배정 조회.
+        //    CONFIRM: 편집 지점 행을 삭제 후보로 두고 payload로 재구성.
+        //    DRAFT/PARTIAL: payload 키만 upsert (다른 날·기존 공개 배정 유지, 신청→미출근 변환 없음).
         List<WorkScheduleDaily> existingSchedules = scheduleRepository.findByWsdDateBetweenFetch(startDate, endDate);
 
         Set<WorkScheduleDaily> toDelete = new HashSet<>();
-        for (WorkScheduleDaily s : existingSchedules) {
-            if (workPlaceIdx.equals(resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser()))) {
-                toDelete.add(s);
+        if (assignMode.replacesWholeRange()) {
+            for (WorkScheduleDaily s : existingSchedules) {
+                if (workPlaceIdx.equals(resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser()))) {
+                    toDelete.add(s);
+                }
             }
         }
 
@@ -146,7 +157,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         Set<String> requestKeySet = new HashSet<>();
         for (WorkScheduleDailyRequestDto dto : dtos) {
             if (!isPersistedSchedule(dto.getStatus())) {
-                continue; // 신청만 있는 경우는 배정 행으로 만들지 않는다(확정 시 미출근 upsert).
+                continue; // 신청만 있는 경우는 배정 행으로 만들지 않는다(CONFIRM 시 미출근 upsert).
             }
             if (dto.getDate().isBefore(startDate) || dto.getDate().isAfter(endDate)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -172,15 +183,24 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
             WorkScheduleDaily matched = existingByUserDateWp.get(key);
             // 현재 편집 지점이 아닌 행은 건드리지 않음 (다른 지점 배정 유지)
-            if (matched != null && !toDelete.contains(matched) && !workPlaceIdx.equals(resolvedWpIdx)) {
+            if (matched != null && !toDelete.contains(matched) && !workPlaceIdx.equals(resolvedWpIdx)
+                    && assignMode.replacesWholeRange()) {
+                continue;
+            }
+            if (matched != null && !workPlaceIdx.equals(resolvedWpIdx) && !assignMode.replacesWholeRange()) {
+                // DRAFT/PARTIAL: 다른 지점 키는 스킵
                 continue;
             }
 
-            if (matched != null && toDelete.contains(matched)) {
+            boolean confirmedFlag = assignMode.forcesUnconfirmed()
+                    ? false
+                    : Boolean.TRUE.equals(dto.getIsConfirmed());
+
+            if (matched != null && (toDelete.contains(matched) || !assignMode.replacesWholeRange())) {
                 matched.setWsdStatus(dto.getStatus());
                 matched.setWsdStartTime(dto.getStartTime());
                 matched.setWorkPlace(wp);
-                matched.setWsdIsConfirmed(Boolean.TRUE.equals(dto.getIsConfirmed()));
+                matched.setWsdIsConfirmed(confirmedFlag);
                 matched.setWsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()));
                 toSave.add(matched);
                 toDelete.remove(matched);
@@ -191,23 +211,22 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         .wsdStatus(dto.getStatus())
                         .wsdStartTime(dto.getStartTime())
                         .workPlace(wp)
-                        .wsdIsConfirmed(Boolean.TRUE.equals(dto.getIsConfirmed()))
+                        .wsdIsConfirmed(confirmedFlag)
                         .wsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()))
                         .build();
                 toSave.add(newSchedule);
             } else {
-                // 같은 지점 행이 toDelete에 없었지만 키가 맞는 경우 UPDATE
                 matched.setWsdStatus(dto.getStatus());
                 matched.setWsdStartTime(dto.getStartTime());
                 matched.setWorkPlace(wp);
-                matched.setWsdIsConfirmed(Boolean.TRUE.equals(dto.getIsConfirmed()));
+                matched.setWsdIsConfirmed(confirmedFlag);
                 matched.setWsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()));
                 toSave.add(matched);
                 toDelete.remove(matched);
             }
         }
 
-        // 4. 더 이상 쓰이지 않는 기존 데이터 처리 (일괄 삭제)
+        // 4. CONFIRM만: 더 이상 쓰이지 않는 기존 데이터 일괄 삭제
         if (!toDelete.isEmpty()) {
             scheduleRepository.deleteAll(toDelete);
         }
@@ -217,10 +236,12 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             scheduleRepository.saveAll(toSave);
         }
 
-        // 6. 확정 시: 해당 지점·기간에 신청만 있고 출근 배정이 없으면 미출근 행 생성
-        if (confirmed) {
+        // 6. CONFIRM만: 신청만 있고 출근 없으면 미출근 행 생성
+        if (assignMode.convertsUnassignedApplies()) {
             upsertUnassignedForUnassignedApplicants(startDate, endDate, workPlaceIdx, workPlaceMap.get(workPlaceIdx), toSave);
         }
+
+        return assignMode;
     }
 
     /**

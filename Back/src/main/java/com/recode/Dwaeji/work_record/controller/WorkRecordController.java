@@ -6,6 +6,7 @@ import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,7 +29,7 @@ public class WorkRecordController {
     @PostMapping
     public ResponseEntity<String> createWorkRecord(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody WorkRecordRequestDto requestDto) {
+            @Valid @RequestBody WorkRecordRequestDto requestDto) {
         workRecordService.createWorkRecord(userDetails.getUsername(), requestDto);
         return ResponseEntity.ok("근무 기록이 생성되었습니다.");
     }
@@ -101,7 +102,7 @@ public class WorkRecordController {
     public ResponseEntity<String> updateWorkRecord(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long wrIdx,
-            @RequestBody WorkRecordRequestDto requestDto) {
+            @Valid @RequestBody WorkRecordRequestDto requestDto) {
         workRecordService.updateWorkRecord(userDetails.getUsername(), wrIdx, requestDto);
         return ResponseEntity.ok("근무 기록이 수정되었습니다.");
     }

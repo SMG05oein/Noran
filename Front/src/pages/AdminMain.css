@@ -213,6 +213,48 @@
 .assign-status-input {
   border-radius: 10px !important;
 }
+
+.assign-time-input {
+  width: 100%;
+}
+
+.assign-time-dropdown {
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.assign-time-option {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.4rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.assign-time-option:hover,
+.assign-time-option.is-active {
+  background: var(--color-surface-hover, rgba(0, 0, 0, 0.06));
+  color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .assign-time-dropdown {
+  background: var(--color-surface-hover, #2c2623);
+  border-color: #554a43;
+}
+
+[data-bs-theme="dark"] .assign-time-option:hover,
+[data-bs-theme="dark"] .assign-time-option.is-active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .assign-status-input.unapplied {
   background-color: var(--color-input-bg) !important;
   color: var(--color-text-muted) !important;
@@ -247,6 +289,15 @@
   background-color: var(--color-success-bg) !important;
   color: var(--color-success) !important;
   border-color: var(--color-success) !important;
+  border-style: solid !important;
+}
+
+.assign-status-input.assigned-draft {
+  background-color: var(--color-success-bg) !important;
+  color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  border-style: dashed !important;
+  opacity: 0.92;
 }
 
 .assign-status-input.other-branch {
@@ -290,6 +341,14 @@
   background-color: rgba(108, 165, 121, 0.18) !important;
   color: #9dd8a8 !important;
   border-color: #6ca579 !important;
+  border-style: solid !important;
+}
+
+[data-bs-theme="dark"] .assign-status-input.assigned-draft {
+  background-color: rgba(108, 165, 121, 0.14) !important;
+  color: #9dd8a8 !important;
+  border-color: #6ca579 !important;
+  border-style: dashed !important;
 }
 
 [data-bs-theme="dark"] .assign-status-input.other-branch {

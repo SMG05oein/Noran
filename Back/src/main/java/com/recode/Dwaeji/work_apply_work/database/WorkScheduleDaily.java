@@ -34,7 +34,7 @@ public class WorkScheduleDaily {
     private LocalDate wsdDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "wsd_status", nullable = false, columnDefinition = "enum('미신청','미배정','배정','신청','타지점근무')")
+    @Column(name = "wsd_status", nullable = false, columnDefinition = "enum('출근','미출근','신청')")
     private ApplyStatus wsdStatus;
 
     @Column(name = "wsd_start_time")

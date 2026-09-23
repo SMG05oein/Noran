@@ -12,7 +12,7 @@ export const isOpenShift = (shift) => {
 export const isAssignmentShift = (shift, { requireConfirmed = false } = {}) => {
   if (!shift) return false;
   const st = statusOf(shift);
-  if (st === '미신청' || st === '신청' || st === '미배정' || st === '신규') return false;
+  if (st === '미신청' || st === '신청' || st === '미배정' || st === '미출근' || st === '신규') return false;
   if (st && st !== '배정' && st !== '타지점근무' && st !== '출근') return false;
   // no status → treat as assignment row (daily API)
   if (!requireConfirmed) return true;
@@ -20,7 +20,7 @@ export const isAssignmentShift = (shift, { requireConfirmed = false } = {}) => {
   return shift.wsdIsConfirmed === true || shift.isConfirmed === true;
 };
 
-/** 16:00 ≤ t < 20:00, excludes open shifts */
+/** 18:00 ≤ t < 20:00, excludes open shifts */
 export const isPeakShift = (shift, opts) => {
   if (!isAssignmentShift(shift, opts)) return false;
   if (isOpenShift(shift)) return false;
@@ -28,7 +28,7 @@ export const isPeakShift = (shift, opts) => {
   const m = raw.match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return false;
   const mins = Number(m[1]) * 60 + Number(m[2]);
-  return mins >= 16 * 60 && mins < 20 * 60;
+  return mins >= 18 * 60 && mins < 20 * 60;
 };
 
 export const countTotal = (shifts, opts) =>

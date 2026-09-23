@@ -47,16 +47,17 @@ public class WorkScheduleDailyController {
         return ResponseEntity.ok("근무 신청이 수정되었습니다.");
     }
 
-    @Operation(summary = "관리자 배정 확정 생성 (일 단위)", description = "관리자가 일자별 배정 내역을 생성합니다.")
+    @Operation(summary = "관리자 배정 생성 (일 단위)", description = "임시 저장(confirmed=false) 또는 확정(confirmed=true). 확정 시 배정되지 않은 신청은 미출근으로 저장됩니다.")
     @PostMapping("/schedule")
     public ResponseEntity<String> createSchedule(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam Long workPlaceIdx,
+            @RequestParam(defaultValue = "false") boolean confirmed,
             @RequestBody List<WorkScheduleDailyRequestDto> requestDtos) {
-        scheduleService.createSchedule(userDetails.getUsername(), startDate, endDate, workPlaceIdx, requestDtos);
-        return ResponseEntity.ok("배정이 완료되었습니다.");
+        scheduleService.createSchedule(userDetails.getUsername(), startDate, endDate, workPlaceIdx, requestDtos, confirmed);
+        return ResponseEntity.ok(confirmed ? "배정이 확정되었습니다." : "임시 저장이 완료되었습니다.");
     }
 
     @Operation(summary = "월간 배정 리스트 조회 (알바생 캘린더용)")
@@ -85,7 +86,7 @@ public class WorkScheduleDailyController {
         return ResponseEntity.ok(scheduleService.getDailySchedules(userDetails.getUsername(), workPlaceIdx, startDate, endDate));
     }
 
-    @Operation(summary = "일별 출근 명단 조회 (관리자용)", description = "선택한 날짜·지점의 확정된 출근 인원을 반환합니다.")
+    @Operation(summary = "일별 출근 명단 조회 (관리자용)", description = "선택한 날짜·지점의 출근 인원을 반환합니다. 임시 저장(미확정) 배정도 포함합니다.")
     @GetMapping("/daily")
     public ResponseEntity<List<com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto>> getDayAssignments(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -96,7 +97,7 @@ public class WorkScheduleDailyController {
 
 
 
-    @Operation(summary = "캘린더 월간 배정 인원 조회", description = "날짜별 { total: 총출근, peak: 피크(16~20, 오픈제외) }")
+    @Operation(summary = "캘린더 월간 배정 인원 조회", description = "날짜별 { total: 총출근, peak: 피크(18~20, 오픈제외) }. 임시 저장(미확정) 포함.")
     @GetMapping("/calendar-counts")
     public ResponseEntity<Map<String, Map<String, Integer>>> getCalendarCounts(
             @AuthenticationPrincipal UserDetails userDetails,

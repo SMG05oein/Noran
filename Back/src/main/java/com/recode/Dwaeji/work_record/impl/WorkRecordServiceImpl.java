@@ -285,7 +285,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return records.map(record -> {
             LocalDate wrDate = record.getWrDate();
             if (wrDate == null || record.getUser() == null) {
-                WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, "미신청");
+                WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, null);
                 enrichEditMeta(dto, wrDate);
                 return dto;
             }
@@ -328,7 +328,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return records.stream().map(record -> {
             LocalDate wrDate = record.getWrDate();
             if (wrDate == null || record.getUser() == null) {
-                WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, "미신청");
+                WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, null);
                 enrichEditMeta(dto, wrDate);
                 return dto;
             }
@@ -536,19 +536,22 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
     private String resolveApplyStatus(WorkScheduleDaily schedule, WorkApplyDaily apply) {
         if (schedule != null && Boolean.TRUE.equals(schedule.getWsdIsConfirmed())
-                && (schedule.getWsdStatus() == ApplyStatus.배정 || schedule.getWsdStatus() == ApplyStatus.타지점근무)) {
-            return schedule.getWsdStatus() != null ? schedule.getWsdStatus().name() : "미신청";
+                && schedule.getWsdStatus() == ApplyStatus.출근) {
+            return ApplyStatus.출근.name();
+        }
+        if (schedule != null && schedule.getWsdStatus() == ApplyStatus.미출근) {
+            return ApplyStatus.미출근.name();
         }
         if (apply != null) {
-            return "신청"; // 오픈조 지원 여부와 무관하게 신청 내역이 있으면 신청 상태다.
+            return ApplyStatus.신청.name();
         }
-        return "미신청";
+        return null;
     }
 
     private WorkRecordResponseDto mapToDto(WorkRecord record) {
         java.time.LocalDate wrDate = record.getWrDate();
         if (wrDate == null || record.getUser() == null) {
-            WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, "미신청");
+            WorkRecordResponseDto dto = WorkRecordResponseDto.fromEntity(record, null);
             enrichEditMeta(dto, wrDate);
             return dto;
         }

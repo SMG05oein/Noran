@@ -81,7 +81,13 @@ const ApplyWeekGrid = ({ monday, block, onCycleDay }) => (
 );
 
 const isPublicAssignment = (s) =>
-  (s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') && s?.wsdIsConfirmed === true;
+  (s?.wsdStatus === '출근' || s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') && s?.wsdIsConfirmed === true;
+
+/** 빈 칸 (null / 레거시 미신청) — 신청 이력 없음 */
+const isBlankStatus = (status) => !status || status === '미신청';
+
+/** 알바생 비공개 (확정 미출근 등) — 이력에는 남기되 상태/시간 비공개 */
+const isWorkerHiddenStatus = (status) => status === '미출근' || status === '미배정';
 
 const toDateStr = (value) => {
   if (!value) return '';
@@ -93,8 +99,9 @@ const toDateStr = (value) => {
 };
 
 const displayStatusLabel = (s) => {
-  if (isPublicAssignment(s) || s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') return '출근';
-  return s?.wsdStatus || '';
+  if (isPublicAssignment(s)) return '출근';
+  if (s?.wsdStatus === '신청') return '신청';
+  return '';
 };
 
 const Requests = () => {
@@ -142,7 +149,7 @@ const Requests = () => {
     const mon = format(nextMonday, 'yyyy-MM-dd');
     const list = res.data || [];
     const has = list.some(sch => {
-      if (sch.wsdStatus === '미신청') return false;
+      if (isBlankStatus(sch.wsdStatus)) return false;
       const d = parseISO(toDateStr(sch.date) || sch.date);
       return format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd') === mon;
     });
@@ -196,7 +203,7 @@ const Requests = () => {
   const weeklyGroups = useMemo(() => {
     const groups = {};
     requestList.forEach(sch => {
-      if (sch.wsdStatus === '미신청') return;
+      if (isBlankStatus(sch.wsdStatus)) return;
       const d = parseISO(sch.date);
       const monDate = format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd');
       if (!groups[monDate]) groups[monDate] = [];
@@ -488,7 +495,10 @@ const Requests = () => {
               const weekCells = Array.from({ length: 7 }, (_, i) => {
                 const date = addDays(parseISO(monDate), i);
                 const dateStr = format(date, 'yyyy-MM-dd');
-                const slots = weekSchs.filter(s => toDateStr(s.date) === dateStr && s.wsdStatus !== '미신청');
+                const slots = weekSchs.filter(s => {
+                  const st = s.wsdStatus;
+                  return toDateStr(s.date) === dateStr && !isBlankStatus(st) && !isWorkerHiddenStatus(st);
+                });
                 return { date, dateStr, slots };
               });
 
@@ -636,7 +646,7 @@ const Requests = () => {
                 viewingRequest.weekSchs.reduce((acc, s) => {
                   const key = `${s.date}_${s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx || 'none'}`;
                   // If we already have a record for this date+branch, prefer the one that is actually applied/assigned
-                  if (!acc[key] || (s.wsdStatus !== '미신청' && acc[key].wsdStatus === '미신청')) {
+                  if (!acc[key] || (!isBlankStatus(s.wsdStatus) && isBlankStatus(acc[key].wsdStatus))) {
                     acc[key] = s;
                   }
                   return acc;

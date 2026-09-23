@@ -10,7 +10,7 @@ import java.util.Map;
 
 public interface WorkScheduleDailyService {
     // 관리자 배정 API
-    void createSchedule(String requesterId, java.time.LocalDate startDate, java.time.LocalDate endDate, Long workPlaceIdx, List<WorkScheduleDailyRequestDto> requestDtos);
+    void createSchedule(String requesterId, java.time.LocalDate startDate, java.time.LocalDate endDate, Long workPlaceIdx, List<WorkScheduleDailyRequestDto> requestDtos, boolean confirmed);
     List<WorkScheduleDailyResponseDto> getDailySchedules(String requesterId, Long workPlaceIdx, LocalDate startDate, LocalDate endDate);
     List<DailyScheduleDto> getDayAssignments(String requesterId, LocalDate date, Long workPlaceIdx);
 

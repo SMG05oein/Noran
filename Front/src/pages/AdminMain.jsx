@@ -33,12 +33,10 @@ const AdminMain = () => {
   const selectedBranchName = currentBranchObj?.wpName || user?.branch || '지점';
 
   const dayHeadcount = useMemo(() => {
-    const opts = { requireConfirmed: true };
-    // daily API may omit isConfirmed; treat present rows as assignments if none flagged false
-    const hasConfirmFlag = dailySchedule.some(s => s.wsdIsConfirmed != null || s.isConfirmed != null);
+    // 관리자 대시보드: 임시 저장(미확정) 배정도 출근/피크에 포함
     return {
-      total: countTotal(dailySchedule, hasConfirmFlag ? opts : { requireConfirmed: false }),
-      peak: countPeak(dailySchedule, hasConfirmFlag ? opts : { requireConfirmed: false })
+      total: countTotal(dailySchedule, { requireConfirmed: false }),
+      peak: countPeak(dailySchedule, { requireConfirmed: false })
     };
   }, [dailySchedule]);
 

@@ -140,7 +140,7 @@ const Main = () => {
     (workRequests || []).forEach(r => {
       if (r.date) {
         const targetDate = parseDateString(r.date);
-        if (r.wsdStatus === '배정' || r.wsdStatus === '타지점근무') {
+        if (r.wsdStatus === '출근' || r.wsdStatus === '배정' || r.wsdStatus === '타지점근무') {
           if (r.wsdIsConfirmed !== true) return;
           const hasWorked = combined.some(c => c.status === 'WORKED' && isSameDay(c.date, targetDate));
           if (!hasWorked) {

@@ -74,7 +74,7 @@ const Records = () => {
       const missingList = [];
 
       reqList.forEach(req => {
-        if (req.wsdStatus === '배정' || req.wsdStatus === '타지점근무') {
+        if ((req.wsdStatus === '출근' || req.wsdStatus === '배정' || req.wsdStatus === '타지점근무') && req.wsdIsConfirmed === true) {
           const reqDate = parseDateStr(req.date || req.wsdDate);
           if (isBefore(reqDate, today) || isSameDay(reqDate, today)) {
             // Check if record exists

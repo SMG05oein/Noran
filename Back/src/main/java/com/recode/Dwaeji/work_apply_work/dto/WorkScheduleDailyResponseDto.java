@@ -57,7 +57,7 @@ public class WorkScheduleDailyResponseDto {
                 .workPlaceName(userHomeWpName)
                 .date(date)
 
-                .wsdStatus(schedule != null ? schedule.getWsdStatus() : (apply != null ? ApplyStatus.신청 : ApplyStatus.미신청))
+                .wsdStatus(schedule != null ? schedule.getWsdStatus() : (apply != null ? ApplyStatus.신청 : null))
                 .wsdStartTime(schedule != null ? schedule.getWsdStartTime() : null)
                 .wsdWorkPlaceIdx(schedule != null && schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpIdx() : null)
                 .wsdWorkPlaceName(schedule != null && schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpName() : null)

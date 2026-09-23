@@ -272,10 +272,10 @@ export const compareWorkRecordExcel = async (file) => {
 };
 
 // 배열 구조 스케줄 등록/수정 (통합) - 관리자 전용
-export const saveWorkSchedules = async (requestDataArray, startDate, endDate, workPlaceIdx) => {
+export const saveWorkSchedules = async (requestDataArray, startDate, endDate, workPlaceIdx, confirmed = false) => {
   try {
     const response = await globalApiClient.post('/api/work-schedule/schedule', requestDataArray, {
-      params: { startDate, endDate, workPlaceIdx }
+      params: { startDate, endDate, workPlaceIdx, confirmed }
     });
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {

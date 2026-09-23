@@ -40,7 +40,7 @@ public class WorkRecordResponseDto {
     private String wrRemarks;
     private LocalDateTime wrCreatedAt;
     private LocalDateTime wrUpdatedAt;
-    private String applyStatus; // 해당 날짜의 근무 신청 상태 (신청없음, 미신청, 미배정, 배정, 신청)
+    private String applyStatus; // 해당 날짜의 근무 상태 (null | 신청 | 미출근 | 출근)
     /** 동명이인 구분 (1이면 단독, 2 이상이면 구분 번호) — 로그인 아이디와 무관 */
     private Long nameSeq;
     /** 알바 수정 가능 기한 (근무일 기준 계산) */

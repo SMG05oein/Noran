@@ -65,21 +65,25 @@ const ProtectedRoute = ({ children }) => {
 
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   if (user?.isAdmin !== 1) {
     return <Navigate to="/" replace />;
   }
+  const hideFooter = location.pathname.startsWith('/admin/weekly-assign');
   return (
     <div className="app-layout">
       <AdminGNB />
       <div className="content-wrapper">
         {children}
       </div>
-      <div className="pb-5 pb-lg-0 w-100">
-        <Footer />
-      </div>
+      {!hideFooter && (
+        <div className="pb-5 pb-lg-0 w-100">
+          <Footer />
+        </div>
+      )}
       <AdminBottomNav />
     </div>
   );

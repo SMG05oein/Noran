@@ -651,10 +651,16 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            String[] headers = {"No", "이름", "근무지", "날짜", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
+            String[] headers = {"No", "날짜", "이름", "근무지", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
             Set<String> usedSheetNames = new HashSet<>();
             for (Map.Entry<Long, List<WorkRecord>> entry : byWpIdx.entrySet()) {
-                List<WorkRecord> sheetRecords = entry.getValue();
+                List<WorkRecord> sheetRecords = entry.getValue().stream()
+                        .sorted(Comparator
+                                .comparing(WorkRecord::getWrDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                                .thenComparing(r -> r.getUser() != null ? r.getUser().getUserName() : null,
+                                        Comparator.nullsLast(String::compareTo))
+                                .thenComparing(WorkRecord::getWrStartTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                        .collect(Collectors.toList());
                 String baseName = resolveSheetName(entry.getKey(), sheetRecords, month, workPlaceIdx);
                 String sheetName = uniqueExcelSheetName(toExcelSheetName(baseName), usedSheetNames);
                 writeWorkRecordSheet(workbook.createSheet(sheetName), headers, sheetRecords);
@@ -726,9 +732,9 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             String restTimeStr = record.getWrRestTime() != null ? record.getWrRestTime().toString() : "00:00";
             String totalHours = formatTotalWorkHours(record.getWrStartTime(), record.getWrEndTime(), record.getWrRestTime());
             row.createCell(0).setCellValue(rowNum - 1);
-            row.createCell(1).setCellValue(userName);
-            row.createCell(2).setCellValue(wpName);
-            row.createCell(3).setCellValue(date);
+            row.createCell(1).setCellValue(date);
+            row.createCell(2).setCellValue(userName);
+            row.createCell(3).setCellValue(wpName);
             row.createCell(4).setCellValue(startTime);
             row.createCell(5).setCellValue(endTime);
             row.createCell(6).setCellValue(restTimeStr);

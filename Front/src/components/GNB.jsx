@@ -122,8 +122,8 @@ const GNB = () => {
               <Link to="/consent" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
                 개인정보 수집 및 이용 동의서
               </Link>
-              <Link to="/eee" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
-                오늘의 농담
+              <Link to="/gathering" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
+                돼지들 모임 🐷
               </Link>
             </div>
 

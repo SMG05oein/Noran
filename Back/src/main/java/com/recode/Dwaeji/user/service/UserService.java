@@ -29,11 +29,11 @@ public interface UserService {
     void updateSensitiveInfo(String requesterId, Long targetUserIdx, com.recode.Dwaeji.user.dto.SensitiveInfoDto dto);
     TokenRefreshResponseDto refreshAccessToken(String refreshToken);
 
-    org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive);
+    org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir);
 
-    org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive);
+    org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive, String sortBy, String sortDir);
 
-    org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive);
+    org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir);
 
     void setTempPassword(String requesterId, Long targetUserIdx, String tempPw);
     void changePassword(String requesterId, com.recode.Dwaeji.user.dto.ChangePasswordDto dto);

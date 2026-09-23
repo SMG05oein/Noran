@@ -198,7 +198,7 @@ public class UserController {
     }
 
 
-    @Operation(summary = "일반 직원 검색", description = "관리자 전용. 이름, 소속 지점으로 알바생(직원)을 검색하고 10명 단위로 페이징하여 조회합니다.")
+    @Operation(summary = "일반 직원 검색", description = "관리자 전용. 이름, 소속 지점으로 알바생(직원)을 검색하고 10명 단위로 페이징하여 조회합니다. sortBy=name|branch|status")
     @GetMapping("/admin/workers")
     public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> searchWorkers(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -206,23 +206,27 @@ public class UserController {
             @RequestParam(required = false) Long workPlaceIdx,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Integer isActive) {
+            @RequestParam(required = false) Integer isActive,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.searchWorkers(userDetails.getUsername(), userName, workPlaceIdx, page, size, isActive));
+        return ResponseEntity.ok(userService.searchWorkers(userDetails.getUsername(), userName, workPlaceIdx, page, size, isActive, sortBy, sortDir));
     }
 
-    @Operation(summary = "관리자 목록 조회", description = "관리자 전용. 관리자 계정만 10명 단위로 페이징하여 조회합니다.")
+    @Operation(summary = "관리자 목록 조회", description = "관리자 전용. 관리자 계정만 10명 단위로 페이징하여 조회합니다. sortBy=name|branch|status")
     @GetMapping("/admin/managers")
     public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> getManagers(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Integer isActive) {
+            @RequestParam(required = false) Integer isActive,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.getManagers(userDetails.getUsername(), page, size, isActive));
+        return ResponseEntity.ok(userService.getManagers(userDetails.getUsername(), page, size, isActive, sortBy, sortDir));
     }
 
-    @Operation(summary = "전체 직원 조회", description = "관리자 전용. 직급과 무관하게 전체 직원을 페이징하여 조회합니다.")
+    @Operation(summary = "전체 직원 조회", description = "관리자 전용. 직급과 무관하게 전체 직원을 페이징하여 조회합니다. sortBy=name|branch|status")
     @GetMapping("/admin/all")
     public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> getAllEmployees(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -230,9 +234,11 @@ public class UserController {
             @RequestParam(required = false) Long workPlaceIdx,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Integer isActive) {
+            @RequestParam(required = false) Integer isActive,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(userService.getAllEmployees(userDetails.getUsername(), userName, workPlaceIdx, page, size, isActive));
+        return ResponseEntity.ok(userService.getAllEmployees(userDetails.getUsername(), userName, workPlaceIdx, page, size, isActive, sortBy, sortDir));
     }
 
     @Operation(summary = "직원 엑셀 다운로드", description = "근무지별 Sheet로 직원 목록을 엑셀 다운로드합니다.")

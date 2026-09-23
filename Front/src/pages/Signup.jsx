@@ -193,15 +193,17 @@ const Signup = () => {
     }
     if (userIdError) {
       userIdRef.current?.focus();
-      return alert('아이디 입력 형식을 확인해주세요.');
+      return alert(userIdError.includes('이미') || userIdError.includes('재사용')
+        ? userIdError
+        : '아이디 입력 형식을 확인해주세요.');
     }
     if (pwMatchError || password !== passwordConfirm) {
       pwConfirmRef.current?.focus();
       return alert('비밀번호가 일치하지 않습니다.');
     }
-    if (phoneError || !/^\d{3}-\d{3,4}-\d{4}$/.test(phone)) {
+    if (phoneError || phoneWarn || !/^\d{3}-\d{3,4}-\d{4}$/.test(phone)) {
       phoneRef.current?.focus();
-      return alert('전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
+      return alert(phoneError || phoneWarn || '전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)');
     }
     if (userEmailError) {
       emailRef.current?.focus();
@@ -251,8 +253,23 @@ const Signup = () => {
         alert(msg);
         navigate('/login');
       } else {
-        alert(response.error || '회원가입에 실패했습니다.');
-        setError(response.error || '회원가입에 실패했습니다.');
+        const errMsg = response.error || '회원가입에 실패했습니다.';
+        const isIdDup = /아이디/.test(errMsg) && (/이미|중복|재사용/.test(errMsg));
+        const isPhoneDup = /휴대폰|전화|연락처/.test(errMsg) && (/이미|중복/.test(errMsg));
+
+        if (isIdDup) {
+          setUserIdError(errMsg);
+          setError('');
+          setTimeout(() => userIdRef.current?.focus(), 0);
+        } else if (isPhoneDup) {
+          setPhoneError(errMsg);
+          setPhoneWarn('');
+          setError('');
+          setTimeout(() => phoneRef.current?.focus(), 0);
+        } else {
+          setError(errMsg);
+        }
+        alert(errMsg);
       }
     } catch (err) {
       alert('서버 오류가 발생했습니다.');
@@ -406,6 +423,7 @@ const Signup = () => {
                     value={phone}
                     onChange={handlePhoneChange}
                     required
+                    ref={phoneRef}
                     placeholder="010-0000-0000"
                     className={`custom-input ${phoneError || phoneWarn ? 'is-invalid' : phone && !phoneError && !phoneWarn ? 'is-valid' : ''}`}
                     maxLength={13}

@@ -621,7 +621,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -629,7 +629,7 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 직원 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, true);
 
         org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage = 
                 userRepository.searchWorkersNative(isActive, workPlaceIdx, userName, pageable);
@@ -665,7 +665,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive, String sortBy, String sortDir) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -673,10 +673,7 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 관리자 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
-                page, size, org.springframework.data.domain.Sort.by(
-                        org.springframework.data.domain.Sort.Order.asc("userName"),
-                        org.springframework.data.domain.Sort.Order.asc("userIdx")));
+        org.springframework.data.domain.Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, false);
 
         org.springframework.data.domain.Page<User> users;
         if (isActive == null) {
@@ -689,7 +686,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive) {
+    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -697,7 +694,7 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 전체 직원 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, true);
 
         org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage =
                 userRepository.searchAllEmployeesNative(isActive, workPlaceIdx, userName, pageable);
@@ -964,6 +961,47 @@ public class UserServiceImpl implements UserService {
     }
 
     /** 하이픈/공백 무시하고 휴대폰 번호 중복 여부. excludeUserIdx가 있으면 해당 유저는 제외(본인 수정). */
+    /**
+     * 직원관리 목록 정렬. sortBy 화이트리스트만 허용 (name|branch|status).
+     * native=true: SQL 컬럼 (JpaSort.unsafe) — numbered_u.user_name / wp.wp_name / numbered_u.user_is_active
+     * native=false: JPQL paths — userName / workPlace.wpName / userIsActive
+     * 기본: userName ASC, userIdx ASC
+     */
+    private org.springframework.data.domain.Pageable buildAdminUserPageable(
+            int page, int size, String sortBy, String sortDir, boolean nativeQuery) {
+        org.springframework.data.domain.Sort.Direction direction =
+                "desc".equalsIgnoreCase(sortDir)
+                        ? org.springframework.data.domain.Sort.Direction.DESC
+                        : org.springframework.data.domain.Sort.Direction.ASC;
+
+        String key = sortBy == null ? "" : sortBy.trim().toLowerCase();
+        org.springframework.data.domain.Sort sort;
+        if (nativeQuery) {
+            String primary = switch (key) {
+                case "branch" -> "wp.wp_name";
+                case "status" -> "numbered_u.user_is_active";
+                case "name" -> "numbered_u.user_name";
+                default -> "numbered_u.user_name";
+            };
+            // native: domain property 검증 우회, 화이트리스트 SQL만
+            sort = org.springframework.data.jpa.domain.JpaSort.unsafe(direction, primary)
+                    .and(org.springframework.data.jpa.domain.JpaSort.unsafe(
+                            org.springframework.data.domain.Sort.Direction.ASC, "numbered_u.user_idx"));
+        } else {
+            String primary = switch (key) {
+                case "branch" -> "workPlace.wpName";
+                case "status" -> "userIsActive";
+                case "name" -> "userName";
+                default -> "userName";
+            };
+            sort = org.springframework.data.domain.Sort
+                    .by(direction, primary)
+                    .and(org.springframework.data.domain.Sort.by(
+                            org.springframework.data.domain.Sort.Direction.ASC, "userIdx"));
+        }
+        return org.springframework.data.domain.PageRequest.of(page, size, sort);
+    }
+
     private boolean isPhoneDuplicated(String userPhone, Long excludeUserIdx) {
         if (userPhone == null || userPhone.isBlank()) {
             return false;

@@ -1,0 +1,648 @@
+/* =========================================================
+   오늘의 농담 (Developer & Meat BBQ Memes) - Joke.css
+   ========================================================= */
+
+.joke-page-wrapper {
+  min-height: 100vh;
+  background-color: var(--color-bg-cream);
+  background-image:
+    radial-gradient(at 15% 15%, rgba(var(--color-primary-rgb), 0.08) 0px, transparent 50%),
+    radial-gradient(at 85% 85%, rgba(201, 138, 61, 0.06) 0px, transparent 50%);
+  color: var(--color-text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 상단 탑바 */
+.joke-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  margin-bottom: 1.25rem;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.joke-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.joke-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-main);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-xs);
+}
+
+.joke-back-btn:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+  transform: translateX(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.joke-create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.825rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.25);
+}
+
+.joke-create-btn:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.35);
+}
+
+.joke-header-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.75rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.joke-header-badge .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  display: inline-block;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* 카테고리 필터 칩 바 */
+.joke-categories-bar {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 1.25rem 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.joke-categories-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.joke-category-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.825rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.joke-category-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--color-surface-hover);
+}
+
+.joke-category-chip.active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.28);
+}
+
+/* 히어로 농담 카드 */
+.joke-card-container {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.joke-main-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 2.25rem 2rem;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.3s ease;
+}
+
+/* 카드 상단 은은한 그라데이션 라인 */
+.joke-main-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary), #E88E75, var(--color-warning));
+}
+
+/* 카드 변경 애니메이션 */
+.joke-anim-pop {
+  animation: jokePop 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes jokePop {
+  0% {
+    opacity: 0.2;
+    transform: translateY(8px) scale(0.985);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 메타 헤더 */
+.joke-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* 상황별 & 테마 뱃지 */
+.joke-tag-badge {
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 0.32rem 0.8rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  letter-spacing: -0.01em;
+}
+
+.joke-tag-badge.badge-wtf {
+  background-color: rgba(142, 68, 173, 0.12);
+  color: #8E44AD;
+  border: 1px solid rgba(142, 68, 173, 0.35);
+}
+
+.joke-tag-badge.badge-real {
+  background-color: rgba(159, 78, 59, 0.14);
+  color: var(--color-primary);
+  border: 1px solid rgba(159, 78, 59, 0.35);
+}
+
+.joke-tag-badge.badge-sad {
+  background-color: rgba(91, 130, 166, 0.14);
+  color: #3b6e99;
+  border: 1px solid rgba(91, 130, 166, 0.35);
+}
+
+.joke-tag-badge.badge-nonsense {
+  background-color: rgba(201, 138, 61, 0.14);
+  color: #B57424;
+  border: 1px solid rgba(201, 138, 61, 0.35);
+}
+
+.joke-tag-badge.badge-escape {
+  background-color: rgba(93, 138, 104, 0.14);
+  color: #4a7754;
+  border: 1px solid rgba(93, 138, 104, 0.35);
+}
+
+.joke-tag-badge.badge-chaos {
+  background-color: rgba(184, 92, 92, 0.14);
+  color: #B85C5C;
+  border: 1px solid rgba(184, 92, 92, 0.35);
+}
+
+[data-bs-theme="dark"] .joke-tag-badge.badge-wtf {
+  color: #C39BD3;
+  background-color: rgba(142, 68, 173, 0.25);
+}
+
+[data-bs-theme="dark"] .joke-tag-badge.badge-real {
+  color: #E88E75;
+  background-color: rgba(215, 122, 95, 0.22);
+}
+
+[data-bs-theme="dark"] .joke-tag-badge.badge-sad {
+  color: #85B3D9;
+  background-color: rgba(91, 130, 166, 0.25);
+}
+
+[data-bs-theme="dark"] .joke-tag-badge.badge-nonsense {
+  color: #F3BC75;
+  background-color: rgba(222, 158, 75, 0.22);
+}
+
+[data-bs-theme="dark"] .joke-tag-badge.badge-escape {
+  color: #82C293;
+  background-color: rgba(93, 138, 104, 0.25);
+}
+
+[data-bs-theme="dark"] .joke-tag-badge.badge-chaos {
+  color: #E68B8B;
+  background-color: rgba(207, 110, 110, 0.22);
+}
+
+/* 레거시 HTTP 코드 호환 */
+.http-code-badge {
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.02em;
+}
+
+.http-code-badge.code-4xx {
+  background-color: rgba(201, 138, 61, 0.14);
+  color: #B57424;
+  border: 1px solid rgba(201, 138, 61, 0.35);
+}
+
+.http-code-badge.code-5xx {
+  background-color: rgba(184, 92, 92, 0.14);
+  color: #B85C5C;
+  border: 1px solid rgba(184, 92, 92, 0.35);
+}
+
+.http-code-badge.code-6xx {
+  background-color: rgba(159, 78, 59, 0.14);
+  color: var(--color-primary);
+  border: 1px solid rgba(159, 78, 59, 0.35);
+}
+
+[data-bs-theme="dark"] .http-code-badge.code-4xx {
+  color: #F3BC75;
+  background-color: rgba(222, 158, 75, 0.22);
+}
+
+[data-bs-theme="dark"] .http-code-badge.code-5xx {
+  color: #E68B8B;
+  background-color: rgba(207, 110, 110, 0.22);
+}
+
+[data-bs-theme="dark"] .http-code-badge.code-6xx {
+  color: #E88E75;
+  background-color: rgba(215, 122, 95, 0.22);
+}
+
+.joke-index-tag {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 농담 제목 */
+.joke-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  line-height: 1.35;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.025em;
+}
+
+/* 인용 메시지 박스 */
+.joke-message-box {
+  position: relative;
+  background-color: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.6rem 1.5rem 2rem;
+  margin-bottom: 2rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.joke-quote-icon {
+  position: absolute;
+  top: 1rem;
+  left: 0.75rem;
+  color: var(--color-text-light);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.joke-message-text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--color-text-main);
+  margin: 0;
+  word-break: keep-all;
+  position: relative;
+  z-index: 1;
+}
+
+/* 액션 버튼 그룹 */
+.joke-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-joke-random {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-primary);
+  color: #ffffff !important;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.75rem 1.6rem;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(var(--color-primary-rgb), 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-joke-random:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(var(--color-primary-rgb), 0.4);
+}
+
+.btn-joke-random:active {
+  transform: scale(0.97);
+}
+
+.btn-joke-random .dice-icon {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-joke-random.rolling .dice-icon {
+  transform: rotate(360deg) scale(1.15);
+}
+
+.btn-joke-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background-color: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.75rem 1.3rem;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-joke-copy:hover {
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-joke-copy.copied {
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+/* 하단 알림 뱃지 */
+.joke-toast-feedback {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-success);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 푸터 코멘트 */
+.joke-footer-note {
+  text-align: center;
+  margin-top: 2.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.joke-footer-note p {
+  margin-bottom: 0.25rem;
+}
+
+/* 반응형 모바일 최적화 */
+@media (max-width: 576px) {
+  .joke-topbar {
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    gap: 0.35rem;
+  }
+
+  .joke-topbar-actions {
+    gap: 0.35rem;
+  }
+
+  .joke-back-btn {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.8rem;
+    gap: 0.25rem;
+  }
+
+  .joke-create-btn {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.78rem;
+    gap: 0.25rem;
+  }
+
+  .joke-header-badge {
+    padding: 0.38rem 0.6rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+
+  .joke-main-card {
+    padding: 1.75rem 1.25rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .joke-title {
+    font-size: 1.25rem;
+  }
+
+  .joke-message-box {
+    padding: 1.25rem 1.25rem 1.25rem 1.75rem;
+  }
+
+  .joke-message-text {
+    font-size: 0.975rem;
+  }
+
+  .joke-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-joke-random,
+  .btn-joke-copy {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .joke-topbar {
+    gap: 0.25rem;
+  }
+
+  .joke-topbar-actions {
+    gap: 0.25rem;
+  }
+
+  .joke-back-btn {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .joke-create-btn {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .joke-header-badge {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.72rem;
+  }
+}
+
+/* 농담 작성 모달 내 이모지 팔레트 */
+.joke-emoji-trigger {
+  font-size: 1.4rem;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background-color: var(--color-surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.joke-emoji-trigger:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface-hover);
+  transform: scale(1.05);
+}
+
+.joke-emoji-palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.35rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  margin-top: 0.5rem;
+}
+
+.joke-emoji-item {
+  font-size: 1.25rem;
+  border: none;
+  background: none;
+  padding: 0.3rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joke-emoji-item:hover {
+  background-color: var(--color-surface-hover);
+  transform: scale(1.2);
+}
+
+.joke-emoji-item.active {
+  background-color: rgba(var(--color-primary-rgb), 0.15);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}

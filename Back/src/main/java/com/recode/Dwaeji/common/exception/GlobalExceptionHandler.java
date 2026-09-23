@@ -90,6 +90,30 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    // 요청 파라미터 또는 경로 변수 타입 불일치 예외 처리 (400)
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponseDto> handleMethodArgumentTypeMismatchException(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String msg = "잘못된 접근입니다. (관리자에게 문의하세요)";
+        systemMonitorService.addErrorLog(
+                ex.getMessage(),
+                "MethodArgumentTypeMismatchException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
+                HttpStatus.BAD_REQUEST.value(),
+                getReferer(request),
+                getClientIp(request)
+        );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDto(
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                        msg
+                ));
+    }
+
     // JSON 파싱 에러(잘못된 날짜/시간 형식 등)를 잡아냅니다.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {

@@ -6,7 +6,7 @@
   background-color: var(--color-bg-cream) !important;
   border-radius: var(--radius-xl) !important;
   padding: 28px 24px !important;
-  border: 1px solid var(--color-input-border) !important;
+  border: 1px solid var(--color-border) !important;
   box-shadow: var(--shadow-sm) !important;
 }
 
@@ -39,7 +39,7 @@
   width: 42px !important;
   height: 42px !important;
   background-color: var(--color-surface) !important;
-  border: 1px solid var(--color-input-border) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 14px !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -81,7 +81,7 @@
 
 .cal-today-btn {
   background-color: var(--color-surface) !important;
-  border: 1px solid var(--color-input-border) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 12px !important;
   height: 38px !important;
   padding: 0 12px !important;
@@ -157,7 +157,7 @@
   height: 74px !important;
   min-height: 74px !important;
   background-color: var(--color-surface) !important;
-  border: 1px solid var(--color-input-border) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 14px !important;
   display: flex !important;
   flex-direction: column !important;
@@ -210,10 +210,10 @@
   color: var(--color-info) !important;
 }
 
-/* Disabled (Other Month) - ?쇱옄 爰쇱쭚 ?놁씠 紐⑤뱺 移?洹좎씪 移대뱶 ?좎? */
+/* Disabled (Other Month) - ??�옄 ?�쇱�???�씠 紐⑤�?�?洹좎??移�?�??�? */
 .cal-cell-disabled {
   background-color: var(--color-surface-hover) !important;
-  border: 1px solid var(--color-input-border) !important;
+  border: 1px solid var(--color-border) !important;
   cursor: pointer !important;
   opacity: 0.72;
 }
@@ -223,7 +223,7 @@
 }
 
 /* ========================================================
-   ★ ACTIVE / SELECTED CELL (부드럽고 고급스러운 웜 하이라이트)
+   ??ACTIVE / SELECTED CELL (부?�럽�?고급?�러?????�이?�이??
    ======================================================== */
 .cal-cell-active {
   background: var(--color-primary-light) !important;
@@ -250,7 +250,7 @@
   fill: var(--color-primary) !important;
 }
 
-/* Today Cell (?ㅻ뒛 ?좎쭨 - 李⑤텇?섍퀬 ?뺢컝?????? */
+/* Today Cell (??�뒛 ?좎�? - 李⑤???��??�?��?????? */
 .cal-cell-today:not(.cal-cell-active) {
   background-color: var(--color-primary-light) !important;
   border: 1.5px solid var(--color-primary) !important;
@@ -309,8 +309,8 @@
 /* Dropdown Menu */
 .calendar-dropdown-menu {
   border-radius: 14px !important;
-  border: 1px solid var(--color-input-border) !important;
-  box-shadow: var(--shadow-md) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-sm) !important;
   padding: 6px !important;
   background-color: var(--color-surface) !important;
   min-width: 100px;

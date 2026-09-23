@@ -316,22 +316,27 @@ const Records = () => {
               const totalHours = calculateTotalHours(record.wrStartTime, record.wrEndTime, record.wrRestTime).toFixed(1);
               const isExpanded = expandedRecordId === record.wrIdx;
 
+              const hasRest = rt && (rt.hour > 0 || rt.minute > 0);
+              const restLabel = hasRest
+                ? `휴게 ${rt.hour}시간${rt.minute > 0 ? ` ${rt.minute}분` : ''}`
+                : null;
+
               return (
                 <Card 
                   key={record.wrIdx} 
-                  className={`border-0 shadow-sm rounded-4 mb-2 ${isExpanded ? 'mb-4' : ''}`}
+                  className="border-0 shadow-sm rounded-4 mb-2"
                   style={{ 
-                    transition: 'all 0.3s ease', 
+                    transition: 'border-color 0.2s ease', 
                     cursor: 'pointer',
                     backgroundColor: 'var(--color-surface)',
                     borderLeft: isExpanded ? '4px solid var(--color-primary)' : '4px solid transparent'
                   }}
                   onClick={() => setExpandedRecordId(isExpanded ? null : record.wrIdx)}
                 >
-                  <Card.Body className={isExpanded ? "p-4" : "p-3"}>
+                  <Card.Body className="p-3">
                     <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 className="fw-bolder mb-1 text-dark" style={{ letterSpacing: '-0.5px' }}>
+                      <div className="min-w-0 pe-2">
+                        <h5 className="fw-bolder mb-1" style={{ letterSpacing: '-0.5px', color: 'var(--color-text-main)' }}>
                           {(() => {
                             const d = new Date(record.wrDate);
                             if (isNaN(d)) return record.wrDate;
@@ -339,27 +344,37 @@ const Records = () => {
                             return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
                           })()}
                         </h5>
-                        <span className="text-muted small fw-medium d-flex align-items-center gap-1">
+                        <span className="text-muted small fw-medium d-flex align-items-center gap-1 flex-wrap">
                           {record.isMissing ? (
                             <span className="text-danger fw-bold"><RiTimeLine /> 미기재 ({record.assignedStartTime?.substring(0, 5)})</span>
                           ) : (
-                            <><RiTimeLine /> {sh}:{sm} - {eh}:{em}</>
-                          )}
-                        </span>
-                      </div>
-                      <div className="text-end d-flex align-items-center gap-3">
-                        <div>
-                          {record.isMissing ? (
-                            <Badge bg="danger" className="py-2 px-3 rounded-pill fw-bold" style={{ fontSize: '0.85rem' }}>미기재</Badge>
-                          ) : (
                             <>
-                              <h3 className="fw-black mb-0" style={{ color: 'var(--color-primary)', letterSpacing: '-0.5px' }}>
-                                {totalHours}<span className="fs-6 text-muted ms-1 fw-medium" style={{ letterSpacing: '0' }}>시간</span>
-                              </h3>
-                              {!isExpanded && record.wrRemarks && (
-                                <span className="badge mt-1" style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)', fontSize: '0.65rem' }}>비고 있음</span>
+                              <span className="d-inline-flex align-items-center gap-1">
+                                <RiTimeLine /> {sh}:{sm} - {eh}:{em}
+                              </span>
+                              {restLabel && (
+                                <span className="text-muted">· {restLabel}</span>
                               )}
                             </>
+                          )}
+                        </span>
+                        {!record.isMissing && record.wrRemarks && (
+                          <span
+                            className="badge mt-1"
+                            style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)', fontSize: '0.65rem' }}
+                          >
+                            비고 있음
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-end d-flex align-items-center gap-3 flex-shrink-0">
+                        <div>
+                          {record.isMissing ? (
+                            <Badge bg="danger" className="py-2 px-3 fw-bold" style={{ fontSize: '0.85rem', borderRadius: 'var(--radius-sm)' }}>미기재</Badge>
+                          ) : (
+                            <h3 className="fw-black mb-0" style={{ color: 'var(--color-primary)', letterSpacing: '-0.5px' }}>
+                              {totalHours}<span className="fs-6 text-muted ms-1 fw-medium" style={{ letterSpacing: '0' }}>시간</span>
+                            </h3>
                           )}
                         </div>
                         <div className="text-muted" style={{ transition: 'transform 0.3s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)' }}>
@@ -370,14 +385,14 @@ const Records = () => {
 
                     {/* Expandable Content */}
                     {isExpanded && (
-                      <div className="mt-3 pt-3 border-top" style={{ borderColor: 'var(--color-input-border)' }} onClick={(e) => e.stopPropagation()}>
+                      <div className="mt-3 pt-3 border-top" style={{ borderColor: 'var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex flex-column gap-2">
                           {record.isMissing ? (
                             <div className="text-center p-3">
                               <p className="text-muted mb-3 small fw-medium">이 날짜에 배정되었으나 근무 기록이 없습니다.</p>
                               <Button 
                                 variant="primary" 
-                                className="rounded-pill fw-bold px-4 py-2 shadow-sm border-0 d-flex align-items-center justify-content-center gap-2 mx-auto"
+                                className="fw-bold px-4 py-2 border-0 d-flex align-items-center justify-content-center gap-2 mx-auto"
                                 onClick={(e) => { e.stopPropagation(); handleOpenMissingRecord(record); }}
                               >
                                 <RiAddLine size={18} /> 기록 추가하기
@@ -385,42 +400,35 @@ const Records = () => {
                             </div>
                           ) : (
                             <>
-                              {rt && (rt.hour > 0 || rt.minute > 0) && (
-                                <div className="d-flex justify-content-between align-items-center p-2 px-3 rounded-3" style={{ backgroundColor: 'var(--color-input-bg)' }}>
-                                  <span className="text-muted small fw-bold">휴게시간</span>
-                                  <span className="text-dark small fw-medium">{rt.hour}시간 {rt.minute > 0 ? `${rt.minute}분` : ''}</span>
-                                </div>
-                              )}
-                              
                               {record.wrRemarks && (
-                                <div className="p-3 rounded-3" style={{ backgroundColor: 'var(--color-surface-hover)', border: '1px dashed var(--color-input-border)' }}>
+                                <div className="p-3 rounded-3" style={{ backgroundColor: 'var(--color-surface-hover)', border: '1px dashed var(--color-border)' }}>
                                   <span className="badge mb-2" style={{ backgroundColor: 'var(--color-text-light)', color: 'var(--color-surface)' }}>비고</span>
-                                  <div className="text-dark small fw-medium">{record.wrRemarks}</div>
+                                  <div className="small fw-medium" style={{ color: 'var(--color-text-main)' }}>{record.wrRemarks}</div>
                                 </div>
                               )}
 
                               <div className="d-flex justify-content-end mt-2">
                                 <Button 
                                   variant="light" 
-                                  className="rounded-pill fw-bold px-4 py-2 shadow-sm border"
+                                  className="fw-bold px-4 py-2 border"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const until = record.editableUntil || record.wrEditableUntil;
                                     const editable = record.isEditable !== false && record.isEditable !== 0;
-                                    const untilLabel = until
-                                      ? format(typeof until === 'string' ? parseISO(until.split('T')[0]) : parseISO(String(until).slice(0, 10)), 'yyyy년 MM월 dd일')
-                                      : null;
-                                    const msg = untilLabel
-                                      ? `수정 기한은 ${untilLabel} 23:59까지입니다. 이후에는 급여 담당자에게 직접 연락하세요.`
-                                      : '수정 기한이 지났습니다. 급여 담당자에게 직접 연락하세요.';
+                                    // 기한이 지난 기록만 경고 (예: 7·8월). 아직 기한 전(예: 9월 → 10/1 23:59)이면 안내 없이 수정 화면으로.
                                     if (!editable) {
+                                      const untilLabel = until
+                                        ? format(typeof until === 'string' ? parseISO(until.split('T')[0]) : parseISO(String(until).slice(0, 10)), 'yyyy년 MM월 dd일')
+                                        : null;
+                                      const msg = untilLabel
+                                        ? `수정 기한은 ${untilLabel} 23:59까지입니다. 이후에는 급여 담당자에게 직접 연락하세요.`
+                                        : '수정 기한이 지났습니다. 급여 담당자에게 직접 연락하세요.';
                                       alert(msg);
                                       return;
                                     }
-                                    if (untilLabel) alert(msg);
                                     navigate('/records/edit', { state: { id: record.wrIdx } });
                                   }}
-                                  style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', borderColor: 'var(--color-input-border)', backgroundColor: 'var(--color-input-bg)' }}
+                                  style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-input-bg)' }}
                                 >
                                   기록 수정하기
                                 </Button>

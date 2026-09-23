@@ -99,7 +99,7 @@ const AdminMain = () => {
                   </Badge>
                 )}
               </div>
-              <h3 className="fw-bold text-dark mb-1">
+              <h3 className="fw-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
                 {user?.name || '관리자'}님, 안녕하세요!
               </h3>
               <p className="text-muted mb-0 small">
@@ -110,7 +110,7 @@ const AdminMain = () => {
             <div className="d-flex align-items-center gap-2 flex-wrap">
               <Button
                 variant="primary"
-                className="rounded-pill fw-bold px-3 py-2 shadow-xs d-flex align-items-center gap-1"
+                className="fw-bold px-3 py-2 d-flex align-items-center gap-1"
                 onClick={() => navigate('/admin/weekly-assign')}
               >
                 <RiCalendarCheckLine size={18} />
@@ -118,7 +118,7 @@ const AdminMain = () => {
               </Button>
               <Button
                 variant="outline-secondary"
-                className="rounded-pill fw-bold px-3 py-2 d-flex align-items-center gap-1"
+                className="fw-bold px-3 py-2 d-flex align-items-center gap-1"
                 onClick={() => navigate('/admin/records')}
               >
                 <RiGroupLine size={18} />

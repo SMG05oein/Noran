@@ -1,27 +1,22 @@
-/* Warm Theme BottomNav */
+/* BottomNav — flat bar, active indicator */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
   background: var(--color-surface);
-  border-top: 1px solid var(--color-input-border);
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 8px 0;
-  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 0;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   z-index: 1010;
-  box-shadow: 0 -4px 20px rgba(80, 50, 35, 0.08);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-[data-bs-theme="dark"] .bottom-nav {
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 -1px 0 var(--color-border);
 }
 
 .bottom-nav.admin-theme {
-  border-top: 2px solid var(--color-primary);
+  box-shadow: inset 0 2px 0 var(--color-primary);
 }
 
 .nav-item {
@@ -31,13 +26,13 @@
   justify-content: center;
   text-decoration: none;
   color: var(--color-text-muted);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.15s ease;
   flex: 1;
-  margin: 0 6px;
-  padding: 6px 0;
-  border-radius: 12px;
+  margin: 0 4px;
+  padding: 4px 0;
+  border-radius: var(--radius-sm);
   position: relative;
 }
 
@@ -46,8 +41,8 @@
 }
 
 .nav-item .icon {
-  font-size: 1.45rem;
-  transition: transform 0.2s ease;
+  font-size: 1.35rem;
+  transition: transform 0.15s ease;
 }
 
 .nav-item.active {
@@ -57,8 +52,8 @@
 
 .nav-item.active .icon-wrapper {
   background: var(--color-primary-light);
-  padding: 4px 16px;
-  border-radius: 50rem;
+  padding: 3px 12px;
+  border-radius: var(--radius-sm);
   margin-bottom: 2px;
   display: flex;
   align-items: center;
@@ -66,13 +61,11 @@
 }
 
 .nav-item.active .icon {
-  transform: scale(1.08);
+  transform: none;
 }
 
-/* 데스크탑에서는 하단 바 숨김 */
 @media (min-width: 992px) {
   .bottom-nav {
     display: none !important;
   }
 }
-

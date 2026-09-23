@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Container, Button, Spinner, Form, Modal, Badge, OverlayTrigger, Popover } from 'react-bootstrap';
+import { Container, Button, Spinner, Form, Modal, Badge } from 'react-bootstrap';
 import { fetchWorkRequests, saveWorkSchedules } from '../api/workApi';
 import { fetchWorkPlaces, fetchAllUsers } from '../api/authApi';
 import { addDays, format, startOfWeek, endOfWeek, subWeeks, addWeeks, getWeekOfMonth, parseISO, getYear, getMonth, getDate, isSunday, isSaturday, getDay } from 'date-fns';
@@ -9,7 +9,12 @@ import { countPeak } from '../utils/shiftPeak';
 import { downloadWeeklyAssignExcel } from '../utils/weeklyAssignExcel';
 import AssignTimeInput from '../components/AssignTimeInput';
 import { openStartTimeForDate, toDateStr, normalizeScheduleStatus, resolveOriginFlags, resetShiftFields, withBaseline, isShiftDirty } from '../utils/shiftReset';
-import { RiArrowLeftSLine, RiArrowRightSLine, RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine } from 'react-icons/ri';
+import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine } from 'react-icons/ri';
+import PageHeader from '../components/ui/PageHeader';
+import StatusChip from '../components/ui/StatusChip';
+import SegmentedFilter from '../components/ui/SegmentedFilter';
+import WeekNavigator from '../components/ui/WeekNavigator';
+import StickyActionBar from '../components/ui/StickyActionBar';
 import './AdminMain.css';
 import './AdminWeeklyAssign.css';
 import Loading from '../components/Loading';
@@ -245,22 +250,37 @@ const AdminWeeklyAssign = () => {
     return map;
   }, [editSchedules, weekDays, currentWorkPlaceIdx]);
 
-  /** 주간 단위 확정 여부 (셀별이 아님) */
-  const weekAssignConfirmed = useMemo(() => {
+  /**
+   * 주간 배정 상태:
+   *   'unset'     - 배정된 출근 없음
+   *   'draft'     - 출근 있지만 isConfirmed=false (임시 저장 상태)
+   *   'partial'   - 일부 isConfirmed=true, 일부 신청 남아있음 (임시 배정 상태)
+   *   'confirmed' - 출근 모두 isConfirmed=true, 신청 셀 없음 (완전 확정)
+   */
+  const weekAssignStatus = useMemo(() => {
     let sawAttending = false;
-    let allConfirmed = true;
+    let hasConfirmed = false;
+    let hasUnconfirmed = false;
+    let hasPendingApply = false;
+
     Object.values(editSchedules).forEach(userDays => {
       Object.values(userDays).forEach(shifts => {
         (shifts || []).forEach(s => {
           if (Number(s.wsdWorkPlaceIdx || currentWorkPlaceIdx) !== Number(currentWorkPlaceIdx)) return;
-          if (s.wsdStatus !== '출근') return;
-          if (!s.wsdStartTime && !s.wsdIsOpen) return;
-          sawAttending = true;
-          if (!s.wsdIsConfirmed) allConfirmed = false;
+          if (s.wsdStatus === '출근' && (s.wsdStartTime || s.wsdIsOpen)) {
+            sawAttending = true;
+            if (s.wsdIsConfirmed) hasConfirmed = true;
+            else hasUnconfirmed = true;
+          }
+          if (s.wsdStatus === '신청') hasPendingApply = true;
         });
       });
     });
-    return sawAttending && allConfirmed;
+
+    if (!sawAttending) return 'unset';
+    if (hasUnconfirmed && !hasConfirmed) return 'draft';
+    if (hasConfirmed && (hasUnconfirmed || hasPendingApply)) return 'partial';
+    return 'confirmed';
   }, [editSchedules, currentWorkPlaceIdx]);
 
   const handlePickWeekDate = (value) => {
@@ -364,13 +384,41 @@ const AdminWeeklyAssign = () => {
     });
   };
 
-  const handleSaveAll = async (isConfirm = true) => {
-    if (!window.confirm(isConfirm ? "배정을 확정하시겠습니까? (알바생들에게 결과가 공개됩니다)" : "배정을 임시 저장하시겠습니까? (아직 알바생들에게 공개되지 않습니다)")) return;
+  /**
+   * mode: 'DRAFT' | 'PARTIAL' | 'CONFIRM'
+   *   DRAFT   - 임시 저장: 신청 셀 건드리지 않음, isConfirmed=false (workers 미공개)
+   *   PARTIAL - 임시 배정: 출근 셀만 isConfirmed=true, 신청 셀은 신청 그대로 유지 (부분 공개)
+   *   CONFIRM - 배정 확정: 출근 isConfirmed=true, 남은 신청 → 미출근 (완전 확정)
+   */
+  const handleSaveAll = async (mode = 'CONFIRM') => {
+    const MSG = {
+      DRAFT:   { confirm: "임시 저장하시겠습니까?\n(아직 알바생들에게 공개되지 않습니다)", done: "임시 저장이 완료되었습니다." },
+      PARTIAL: { confirm: "임시 배정하시겠습니까?\n(배정된 날은 알바생에게 공개되고, 미배정 날은 신청 상태로 유지됩니다)", done: "임시 배정이 완료되었습니다." },
+      CONFIRM: { confirm: "배정을 확정하시겠습니까?\n(알바생들에게 최종 결과가 공개됩니다)", done: "배정이 확정되었습니다." },
+    };
+
+    if (mode === 'CONFIRM' || mode === 'PARTIAL') {
+      const hasAnyAttending = Object.values(editSchedules).some(userDays =>
+        Object.values(userDays).some(shifts =>
+          shifts.some(s => {
+            if (s.wsdStatus !== '출근') return false;
+            const wpIdx = s.wsdWorkPlaceIdx || currentWorkPlaceIdx;
+            return Number(wpIdx) === Number(currentWorkPlaceIdx) && (s.wsdStartTime || s.wsdIsOpen);
+          })
+        )
+      );
+      if (!hasAnyAttending) {
+        alert('출근 배정된 알바생이 없습니다.\n최소 한 명 이상 배정한 후 진행해 주세요.');
+        return;
+      }
+    }
+
+    if (!window.confirm(MSG[mode].confirm)) return;
     setSaving(true);
 
     const payload = [];
     const attendingKeys = new Set();
-    const pendingOff = [];
+    const pendingOff = []; // CONFIRM 모드에서만 미출근 변환 대상
 
     Object.keys(editSchedules).forEach(uIdx => {
       Object.keys(editSchedules[uIdx]).forEach(dStr => {
@@ -392,13 +440,11 @@ const AdminWeeklyAssign = () => {
           if (!status) return;
 
           if (status === '신청') {
-            if (!isConfirm) return;
-            pendingOff.push({
-              userIdx: Number(uIdx),
-              date: dStr,
-              workPlaceIdx: wpIdx,
-              key,
-            });
+            // DRAFT, PARTIAL: 신청은 DB에 그대로 둠 (payload에 포함하지 않음)
+            // CONFIRM: 신청 → 미출근 변환 대상으로 수집
+            if (mode === 'CONFIRM') {
+              pendingOff.push({ userIdx: Number(uIdx), date: dStr, workPlaceIdx: wpIdx, key });
+            }
             return;
           }
 
@@ -412,33 +458,38 @@ const AdminWeeklyAssign = () => {
             status,
             startTime: startTimeRaw ? (startTimeRaw.match(/(\d{2}:\d{2})/) ? startTimeRaw.match(/(\d{2}:\d{2})/)[1] : startTimeRaw) : '',
             workPlaceIdx: wpIdx,
-            isConfirmed: isConfirm && status === '출근',
+            // DRAFT: isConfirmed=false / PARTIAL,CONFIRM: 출근만 isConfirmed=true
+            isConfirmed: (mode === 'PARTIAL' || mode === 'CONFIRM') && status === '출근',
             isOpen: shift.wsdIsOpen || false
           });
         });
       });
     });
 
-    pendingOff.forEach(item => {
-      if (attendingKeys.has(item.key)) return;
-      payload.push({
-        userIdx: item.userIdx,
-        date: item.date,
-        status: '미출근',
-        startTime: '',
-        workPlaceIdx: item.workPlaceIdx,
-        isConfirmed: false,
-        isOpen: false
+    // CONFIRM 모드: 출근이 없는 신청 셀 → 미출근
+    if (mode === 'CONFIRM') {
+      pendingOff.forEach(item => {
+        if (attendingKeys.has(item.key)) return;
+        payload.push({
+          userIdx: item.userIdx,
+          date: item.date,
+          status: '미출근',
+          startTime: '',
+          workPlaceIdx: item.workPlaceIdx,
+          isConfirmed: false,
+          isOpen: false
+        });
       });
-    });
+    }
 
     const startDateStr = format(currentWeekStart, 'yyyy-MM-dd');
     const endDateStr = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    const res = await saveWorkSchedules(payload, startDateStr, endDateStr, currentWorkPlaceIdx, isConfirm);
+    const isFullConfirm = mode === 'CONFIRM';
+    const res = await saveWorkSchedules(payload, startDateStr, endDateStr, currentWorkPlaceIdx, isFullConfirm, mode);
     setSaving(false);
     if (res.success) {
       const msg = typeof res.data === 'string' ? res.data : null;
-      alert(msg || (isConfirm ? "배정이 확정되었습니다." : "임시 저장이 완료되었습니다."));
+      alert(msg || MSG[mode].done);
       loadData();
     } else {
       alert(res.error || "저장에 실패했습니다.");
@@ -517,93 +568,60 @@ const AdminWeeklyAssign = () => {
   const mobileDateStr = mobileDate ? format(mobileDate, 'yyyy-MM-dd') : '';
 
   return (
-    <div className="admin-container bg-light min-vh-100 wat-page">
+    <div className="admin-container ui-page wat-page">
       <Container fluid className="px-3 px-md-4 py-3">
-        <div className="wat-toolbar">
-          <div className="wat-title-row">
-            <h4 className="fw-bold">주간 스케줄 배정</h4>
-          </div>
+        <PageHeader
+          title="주간 스케줄 배정"
+          status={
+            <StatusChip tone={weekAssignStatus}>
+              {{
+                unset: '배정 전',
+                draft: '임시 저장',
+                partial: '임시 배정',
+                confirmed: '확정',
+              }[weekAssignStatus]}
+            </StatusChip>
+          }
+        />
 
-          <div className="wat-controls">
-            {branches.length > 0 && (
-              <Form.Select
-                className="wat-branch-select"
-                value={selectedWpIdx || ''}
-                onChange={(e) => setSelectedWpIdx(e.target.value)}
-              >
-                {branches.map(b => (
-                  <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
-                ))}
-              </Form.Select>
-            )}
+        <div className="ui-toolbar-card">
+          {branches.length > 0 && (
+            <Form.Select
+              className="wat-branch-select"
+              value={selectedWpIdx || ''}
+              onChange={(e) => setSelectedWpIdx(e.target.value)}
+            >
+              {branches.map(b => (
+                <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
+              ))}
+            </Form.Select>
+          )}
 
-            <div className="wat-week-nav">
-              <Button variant="link" className="p-1" onClick={handlePrevWeek} aria-label="이전 주">
-                <RiArrowLeftSLine size={22} />
-              </Button>
-              <OverlayTrigger
-                trigger="click"
-                rootClose
-                placement="bottom"
-                overlay={
-                  <Popover id="week-pick-popover-test">
-                    <Popover.Body className="p-2">
-                      <Form.Control
-                        type="date"
-                        className="fw-bold"
-                        value={format(currentWeekStart, 'yyyy-MM-dd')}
-                        onChange={(e) => handlePickWeekDate(e.target.value)}
-                      />
-                    </Popover.Body>
-                  </Popover>
-                }
-              >
-                <button type="button" className="wat-week-label">
-                  <span className="text-primary small">{format(currentWeekStart, 'yyyy')}년 {getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차</span>
-                  <span className="small">{format(currentWeekStart, 'MM/dd')} ~ {format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MM/dd')}</span>
-                </button>
-              </OverlayTrigger>
-              <Button variant="link" className="p-1" onClick={handleNextWeek} aria-label="다음 주">
-                <RiArrowRightSLine size={22} />
-              </Button>
-              {!isThisWeek && (
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  className="wat-this-week-btn"
-                  onClick={handleGoThisWeek}
-                >
-                  이번 주
-                </Button>
-              )}
-            </div>
-          </div>
+          <WeekNavigator
+            labelTop={`${format(currentWeekStart, 'yyyy')}년 ${getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차`}
+            labelBottom={`${format(currentWeekStart, 'MM/dd')} ~ ${format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MM/dd')}`}
+            dateValue={format(currentWeekStart, 'yyyy-MM-dd')}
+            onPickDate={handlePickWeekDate}
+            onPrev={handlePrevWeek}
+            onNext={handleNextWeek}
+            showThisWeek={!isThisWeek}
+            onThisWeek={handleGoThisWeek}
+          />
 
-          <div className="wat-filters">
-            {FILTERS.map((radio) => (
-              <Button
-                key={radio.value}
-                type="button"
-                variant={filterType === radio.value ? 'primary' : 'outline-primary'}
-                className="wat-filter-btn"
-                onClick={() => setFilterType(radio.value)}
-              >
-                {radio.name}
-              </Button>
-            ))}
-            <span className={`wat-week-status ${weekAssignConfirmed ? 'is-confirmed' : 'is-pending'}`}>
-              주간 스케줄 배정: {weekAssignConfirmed ? '확정' : '확정 전'}
+          <SegmentedFilter
+            options={FILTERS.map(f => ({ value: f.value, label: f.name }))}
+            value={filterType}
+            onChange={setFilterType}
+          />
+        </div>
+
+        <div className="ui-legend" data-html2canvas-ignore="true">
+          {LEGEND.map(item => (
+            <span key={item.tone} className="ui-legend-item">
+              <span className={`ui-legend-swatch wat-legend-swatch ${item.tone}`} />
+              {item.label}
             </span>
-          </div>
-
-          <div className="wat-legend" data-html2canvas-ignore="true">
-            {LEGEND.map(item => (
-              <span key={item.tone} className="wat-legend-item">
-                <span className={`wat-legend-swatch ${item.tone}`} />
-                {item.label}
-              </span>
-            ))}
-          </div>
+          ))}
         </div>
 
         {loading ? <Loading /> : (
@@ -761,20 +779,46 @@ const AdminWeeklyAssign = () => {
           </>
         )}
 
-        <div className="wat-action-bar" data-html2canvas-ignore="true">
-          <Button variant="outline-secondary" onClick={handleDownloadExcel}>
-            <RiDownload2Line className="me-1" /> 엑셀
-          </Button>
-          <Button variant="outline-primary" onClick={() => setShowAddWorkerModal(true)}>
-            <RiUserAddLine className="me-1" /> 타지점
-          </Button>
-          <Button variant="outline-success" onClick={() => handleSaveAll(false)} disabled={saving || loading}>
-            {saving ? <Spinner size="sm" /> : '임시 저장'}
-          </Button>
-          <Button variant="primary" onClick={() => handleSaveAll(true)} disabled={saving || loading}>
-            {saving ? <Spinner size="sm" /> : '배정 확정'}
-          </Button>
-        </div>
+        <StickyActionBar
+          left={
+            <>
+              <Button variant="outline-secondary" onClick={handleDownloadExcel}>
+                <RiDownload2Line className="me-1" /> 엑셀
+              </Button>
+              <Button variant="outline-primary" onClick={() => setShowAddWorkerModal(true)}>
+                <RiUserAddLine className="me-1" /> 타지점
+              </Button>
+            </>
+          }
+          right={
+            <>
+              <Button
+                variant="outline-secondary"
+                onClick={() => handleSaveAll('DRAFT')}
+                disabled={saving || loading}
+                title="저장만 합니다. 알바생에게 공개되지 않습니다."
+              >
+                {saving ? <Spinner size="sm" /> : '임시 저장'}
+              </Button>
+              <Button
+                variant="outline-success"
+                onClick={() => handleSaveAll('PARTIAL')}
+                disabled={saving || loading}
+                title="배정된 날만 공개됩니다. 미배정 날은 신청 상태로 유지됩니다."
+              >
+                {saving ? <Spinner size="sm" /> : '임시 배정'}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => handleSaveAll('CONFIRM')}
+                disabled={saving || loading}
+                title="모든 날을 확정합니다. 미배정 신청은 미출근으로 처리됩니다."
+              >
+                {saving ? <Spinner size="sm" /> : '배정 확정'}
+              </Button>
+            </>
+          }
+        />
 
         <Modal show={showAddWorkerModal} onHide={() => setShowAddWorkerModal(false)} centered>
           <Modal.Header closeButton>

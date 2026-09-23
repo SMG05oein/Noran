@@ -166,29 +166,29 @@ const Main = () => {
           <div className="worker-hero-card">
             <div className="d-flex justify-content-between align-items-end gap-3">
               <div style={{ flex: '1 1 0%', minWidth: 0 }}>
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  <Badge bg="secondary" className="px-3 py-1 fw-bold d-inline-flex align-items-center gap-1 rounded-pill shadow-sm">
+                <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                  <Badge bg="secondary" className="px-2 py-1 fw-bold d-inline-flex align-items-center gap-1">
                     <RiStore2Line /> {actualBranchName}
                   </Badge>
                   {user?.userType && (
-                    <Badge bg="primary" className="px-2 py-1 rounded-pill shadow-sm">
+                    <Badge bg="primary" className="px-2 py-1">
                       {user.userType}
                     </Badge>
                   )}
                 </div>
                 <h3 className="worker-hero-title mb-1 text-truncate">
-                  안녕하세요, <span className="text-primary">{user?.name || '직원'}</span>님!
+                  안녕하세요, <span style={{ color: 'var(--color-primary)' }}>{user?.name || '직원'}</span>님!
                 </h3>
                 <p className="text-muted mb-0 small fw-semibold text-truncate">
                   {todayRecord
-                    ? '✨ 오늘 근무가 기록되었습니다.'
-                    : `💪 오늘도 활기찬 하루 보내세요!`}
+                    ? '오늘 근무가 기록되었습니다.'
+                    : '오늘도 활기찬 하루 보내세요!'}
                 </p>
               </div>
 
-              <div className="d-flex align-items-center gap-2" style={{ flexShrink: 0 }}>
+              <div className="d-flex flex-column flex-sm-row align-items-center gap-2" style={{ flexShrink: 0 }}>
                 {todayRecord ? (
-                  <div className="today-status-badge shadow-sm">
+                  <div className="today-status-badge">
                     <RiCalendarCheckLine size={18} />
                     <span className="d-none d-sm-inline ms-1">근무 완료</span>
                     <span className="d-inline d-sm-none ms-1">완료</span>
@@ -196,7 +196,7 @@ const Main = () => {
                 ) : (
                   <Button
                     variant="primary"
-                    className="quick-action-btn shadow-sm"
+                    className="quick-action-btn"
                     onClick={() => navigate('/records')}
                   >
                     <RiAddLine size={20} />
@@ -206,11 +206,12 @@ const Main = () => {
                 )}
                 <Button
                   variant="outline-secondary"
-                  className="quick-action-btn shadow-sm d-none d-md-inline-flex"
+                  className="quick-action-btn"
                   onClick={() => navigate('/requests')}
                 >
                   <RiCalendarCheckLine size={18} className="me-1" />
-                  <span>근무 신청</span>
+                  <span className="d-none d-sm-inline">근무 신청</span>
+                  <span className="d-inline d-sm-none">신청</span>
                 </Button>
               </div>
             </div>

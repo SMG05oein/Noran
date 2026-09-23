@@ -1,7 +1,7 @@
 /* Warm Theme Main.css */
 
 /* =========================================
-   공통: 아웃라인 버튼
+   ?????: ?????????? ?????
    ========================================= */
 .req-outline-btn {
   background: transparent !important;
@@ -30,7 +30,7 @@
 }
 
 /* =========================================
-   요일 선택 버튼
+   ????? ??? ?????
    ========================================= */
 .day-btn-off,
 .day-btn-off:hover,
@@ -79,34 +79,30 @@
 }
 
 .worker-hero-card {
-  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(232, 213, 191, 0.2) 100%);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-lg);
-  padding: 1.6rem 1.5rem;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.25rem;
+  box-shadow: none;
+  margin-bottom: 0.85rem;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-[data-bs-theme="dark"] .worker-hero-card {
-  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(215, 122, 95, 0.08) 100%);
 }
 
 .worker-hero-title {
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--color-text-main);
+  font-size: 1.25rem;
 }
 
 .worker-pay-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-lg);
-  padding: 1.35rem 1.5rem;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.25rem;
+  box-shadow: none;
+  margin-bottom: 0.85rem;
   position: relative;
   overflow: hidden;
 }
@@ -115,13 +111,13 @@
   content: '';
   position: absolute;
   inset: 0 auto 0 0;
-  width: 6px;
+  width: 4px;
   background: var(--color-primary);
-  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
 }
 
 .worker-pay-value {
-  font-size: 2rem;
+  font-size: 1.85rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1.15;
@@ -136,11 +132,11 @@
 
 .worker-stat-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-input-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 1.15rem 1.25rem;
-  box-shadow: var(--shadow-xs);
-  transition: box-shadow 0.2s ease;
+  padding: 1rem 1.1rem;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -148,21 +144,21 @@
 }
 
 .worker-stat-card:hover {
-  box-shadow: var(--shadow-sm);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
 }
 
 .stat-label {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text-muted);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.45rem;
   display: flex;
   align-items: center;
   gap: 0.35rem;
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.65rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.2;
@@ -170,7 +166,7 @@
 }
 
 .stat-unit {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   margin-left: 2px;
   color: var(--color-text-muted);
@@ -179,31 +175,32 @@
 .today-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-pill);
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   background: var(--color-success-bg);
   color: var(--color-success);
-  border: 1px solid rgba(93, 138, 104, 0.25);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
 }
 
 .quick-action-btn {
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-  padding: 0.65rem 1.25rem;
-  display: inline-flex;
+  border-radius: var(--radius-sm) !important;
+  font-weight: 700 !important;
+  padding: 0.5rem 0.9rem !important;
+  display: inline-flex !important;
   align-items: center;
-  gap: 0.4rem;
-  box-shadow: var(--shadow-xs);
-  transition: all 0.2s ease;
+  gap: 0.25rem;
+  box-shadow: none !important;
+  white-space: nowrap;
 }
 
 .req-history-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-input-border) !important;
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-md);
+  box-shadow: none;
 }
 
 .req-history-range {
@@ -222,8 +219,9 @@
 
 .req-icon-btn {
   background: var(--color-input-bg) !important;
-  border: 1px solid var(--color-input-border) !important;
+  border: 1px solid var(--color-border) !important;
   color: var(--color-text-muted) !important;
+  border-radius: var(--radius-sm) !important;
 }
 .req-icon-btn:hover {
   color: var(--color-primary) !important;
@@ -269,7 +267,7 @@
 
 .req-chip {
   display: block;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 0.28rem 0.15rem;
   font-size: 0.68rem;
   font-weight: 800;
@@ -309,7 +307,7 @@
   justify-content: center;
   min-width: 3.2rem;
   padding: 0.2rem 0.55rem;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 800;
 }
@@ -327,12 +325,13 @@
 }
 
 /* =========================================
-   근무 신청 폼
+   Request apply form
    ========================================= */
 .req-apply-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-input-border) !important;
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-md);
+  box-shadow: none;
 }
 
 .req-apply-week-label {
@@ -349,36 +348,77 @@
   margin-top: 0.15rem;
 }
 
+.req-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.req-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.req-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.req-legend-swatch.off {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.req-legend-swatch.applied {
+  background: var(--color-warning-bg);
+  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+}
+
+.req-legend-swatch.open {
+  background: var(--color-success-bg);
+  border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
 .req-apply-block {
   position: relative;
   background: var(--color-input-bg);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-lg);
-  padding: 0.9rem 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 0.8rem 0.95rem;
 }
 
 .req-place-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.4rem;
   margin-bottom: 0.85rem;
 }
 
 .req-place-chip {
-  border: 1px solid var(--color-input-border);
+  border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-main);
-  border-radius: 999px;
-  padding: 0.32rem 0.9rem;
+  border-radius: var(--radius-sm);
+  padding: 0.32rem 0.8rem;
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.3;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .req-place-chip.selected {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: var(--color-surface);
+  color: #ffffff;
 }
 
 .req-day-cell {
@@ -387,27 +427,32 @@
   justify-content: center;
   width: 100%;
   min-height: 2.6rem;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   padding: 0.7rem 0.15rem;
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 1.25;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .req-day-cell.off {
   background: var(--color-surface);
   color: var(--color-text-light);
+  border-color: var(--color-border);
 }
 
 .req-day-cell.applied {
   background: var(--color-warning-bg);
   color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 
 .req-day-cell.open {
   background: var(--color-success-bg);
   color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
 }
 
 /* Mobile & Tablet Responsiveness (up to lg breakpoint) */
@@ -423,10 +468,15 @@
 
   .worker-hero-card,
   .worker-pay-card {
-    padding: 1.2rem 1.25rem;
+    padding: 1rem 1.1rem;
   }
 
   .worker-pay-value {
-    font-size: 1.7rem;
+    font-size: 1.55rem;
+  }
+
+  .quick-action-btn {
+    padding: 0.45rem 0.7rem !important;
+    font-size: 0.85rem !important;
   }
 }

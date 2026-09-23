@@ -152,7 +152,7 @@ const PrivacyPolicy = () => {
 
           <div className="mb-4">
             <h5 className="fw-bold mb-3">10. 개인정보 보호책임자 및 담당 부서</h5>
-            <div className="bg-light p-3 rounded-3 small text-muted">
+            <div className="p-3 rounded-3 small text-muted" style={{ background: 'var(--color-input-bg)', border: '1px solid var(--color-border)' }}>
               <strong className="d-block mb-2">개인정보 보호책임자 (개인정보처리자 겸임)</strong>
               <ul className="mb-0" style={{ listStyleType: 'none', paddingLeft: 0 }}>
                 <li><strong>성명:</strong> 김민규</li>
@@ -198,7 +198,7 @@ const PrivacyPolicy = () => {
           </div>
 
           <div className="text-center mt-5">
-            <Button variant="secondary" onClick={() => navigate(-1)} className="rounded-pill px-4 fw-bold">
+            <Button variant="secondary" onClick={() => navigate(-1)} className="px-4 fw-bold">
               이전
             </Button>
           </div>

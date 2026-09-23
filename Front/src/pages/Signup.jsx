@@ -487,7 +487,7 @@ const Signup = () => {
                 </Form.Group>
 
                 {/* 약관 동의 */}
-                <div className="mb-4 p-3 bg-light rounded-3 border">
+                <div className="mb-4 p-3 rounded-3 border" style={{ background: 'var(--color-input-bg)', borderColor: 'var(--color-border)' }}>
                   <div className="d-flex align-items-center mb-3 pb-2 border-bottom">
                     <Form.Check
                       type="checkbox"
@@ -502,7 +502,7 @@ const Signup = () => {
                       }}
                       className="me-2"
                     />
-                    <Form.Label htmlFor="allConsent" className="fw-bold text-dark mb-0" style={{ cursor: 'pointer' }}>
+                    <Form.Label htmlFor="allConsent" className="fw-bold mb-0" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
                       전체 동의합니다.
                     </Form.Label>
                   </div>
@@ -520,13 +520,13 @@ const Signup = () => {
                           }}
                           className="me-2"
                         />
-                        <Form.Label htmlFor="termsConsent" className="text-dark mb-0 small" style={{ cursor: 'pointer' }}>
+                        <Form.Label htmlFor="termsConsent" className="mb-0 small" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
                           [필수] 근태관리시스템 이용규정 동의
                         </Form.Label>
                       </div>
                       <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-muted small text-decoration-none">[전체 보기]</a>
                     </div>
-                    <div className="border rounded p-2 bg-white small text-muted" style={{ height: '80px', overflowY: 'auto', fontSize: '0.75rem' }}>
+                    <div className="border rounded p-2 small text-muted" style={{ height: '80px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                       <strong>근태관리시스템 이용규정</strong><br/>
                       본 규정은 '노란돼지'가 소속 직원의 근태관리 업무 처리를 위해 도입한 내부 업무도구(전자적 근태관리시스템)의 이용 방법과 직원의 준수사항을 안내함을 목적으로 합니다.<br/>
                       (이용규정 전문은 [전체 보기]를 통해 확인하실 수 있습니다.)
@@ -546,13 +546,13 @@ const Signup = () => {
                           }}
                           className="me-2"
                         />
-                        <Form.Label htmlFor="privacyConsent" className="text-dark mb-0 small" style={{ cursor: 'pointer' }}>
+                        <Form.Label htmlFor="privacyConsent" className="mb-0 small" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
                           [필수] 개인정보 수집 및 이용 동의
                         </Form.Label>
                       </div>
                       <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-muted small text-decoration-none">[전체 보기]</a>
                     </div>
-                    <div className="border rounded p-2 bg-white small text-muted" style={{ height: '90px', overflowY: 'auto', fontSize: '0.75rem' }}>
+                    <div className="border rounded p-2 small text-muted" style={{ height: '90px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                       <strong>개인정보 수집 및 이용 동의</strong><br/>
                       1. 수집 항목: 이름, 아이디, 비밀번호(접근제어용), 생년월일, 휴대전화번호, 소속 지점, 은행명, 계좌번호, 예금주 등<br/>
                       2. 수집 목적: 서비스 회원가입 및 관리, 근태관리 및 근무 스케줄 배정, 급여 지급 및 정산<br/>
@@ -570,7 +570,7 @@ const Signup = () => {
                         onChange={(e) => setEmailConsent(e.target.checked)}
                         className="me-2"
                       />
-                      <Form.Label htmlFor="emailConsent" className="text-dark mb-0 small" style={{ cursor: 'pointer' }}>
+                      <Form.Label htmlFor="emailConsent" className="mb-0 small" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
                         [선택] 이메일 등 주요 공지사항 수신 동의
                       </Form.Label>
                     </div>

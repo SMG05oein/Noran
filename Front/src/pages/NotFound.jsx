@@ -26,7 +26,7 @@ const NotFound = () => {
               <RiRestaurantLine />
             </div>
             <h1 className="display-3 fw-bold text-primary mb-2" style={{ letterSpacing: '-0.05em' }}>404</h1>
-            <h3 className="fw-bold text-dark mb-3">페이지를 찾을 수 없습니다</h3>
+            <h3 className="fw-bold mb-3" style={{ color: 'var(--color-text-main)' }}>페이지를 찾을 수 없습니다</h3>
             <p className="text-muted mb-4 pb-2" style={{ lineHeight: '1.6' }}>
               존재하지 않는 페이지이거나 주소가 변경되었습니다.<br />
               입력하신 주소가 정확한지 다시 한 번 확인해 주세요.
@@ -35,7 +35,7 @@ const NotFound = () => {
               <Button 
                 variant="outline-secondary" 
                 size="lg" 
-                className="fw-bold px-4 rounded-pill d-flex align-items-center gap-1"
+                className="fw-bold px-4 d-flex align-items-center gap-1"
                 onClick={() => navigate(-1)}
               >
                 <RiArrowLeftLine /> 이전 화면
@@ -43,7 +43,7 @@ const NotFound = () => {
               <Button 
                 variant="primary" 
                 size="lg" 
-                className="fw-bold px-4 rounded-pill shadow-xs d-flex align-items-center gap-1"
+                className="fw-bold px-4 d-flex align-items-center gap-1"
                 onClick={handleGoHome}
               >
                 <RiHome4Line /> 홈으로 가기

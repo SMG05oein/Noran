@@ -1,15 +1,16 @@
-/* Warm Theme GNB Styling */
+/* GNB — bar active instead of filled pill */
 .custom-gnb {
   background-color: var(--color-surface) !important;
-  border-bottom: 1px solid var(--color-input-border) !important;
-  box-shadow: var(--shadow-sm);
-  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border) !important;
+  box-shadow: none;
+  padding: 0.55rem 0;
   transition: background-color 0.2s ease, border-color 0.2s ease;
   z-index: 1020;
 }
 
 .custom-gnb.admin-gnb {
-  border-bottom: 2px solid var(--color-primary) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 
 .gnb-brand {
@@ -19,12 +20,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: transform 0.2s ease;
   text-decoration: none;
-}
-
-.gnb-brand:hover {
-
 }
 
 .gnb-brand-highlight {
@@ -32,9 +28,9 @@
 }
 
 .gnb-branch-badge {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
   background-color: var(--color-secondary);
   color: var(--color-text-main);
   font-weight: 700;
@@ -42,13 +38,14 @@
 
 .gnb-link {
   font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  transition: color 0.15s ease, background-color 0.15s ease;
   text-align: center;
   color: var(--color-text-muted) !important;
-  border-radius: var(--radius-pill);
-  padding: 0.5rem 1.1rem !important;
-  margin: 0 0.15rem;
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.85rem !important;
+  margin: 0 0.1rem;
+  position: relative;
 }
 
 .gnb-link:hover {
@@ -57,59 +54,69 @@
 }
 
 .gnb-link.active-pill {
-  background-color: var(--color-primary) !important;
-  color: #ffffff !important;
-  box-shadow: var(--shadow-xs);
+  background-color: transparent !important;
+  color: var(--color-primary) !important;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.gnb-link.active-pill::after {
+  content: '';
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.15rem;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
 }
 
 .gnb-logout {
-  background-color: var(--color-input-bg) !important;
+  background-color: transparent !important;
   color: var(--color-text-main) !important;
   font-weight: 600;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-pill);
-  transition: all 0.2s ease;
-  padding: 0.5rem 1.1rem !important;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  padding: 0.4rem 0.9rem !important;
 }
 
 .gnb-logout:hover {
-
-  background-color: var(--color-secondary) !important;
-  border-color: var(--color-secondary) !important;
-  box-shadow: var(--shadow-xs);
+  background-color: var(--color-surface-hover) !important;
+  border-color: var(--color-border) !important;
 }
 
 .theme-toggle-btn {
-  background: var(--color-input-bg);
-  border: 1px solid var(--color-input-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   color: var(--color-text-main);
-  border-radius: var(--radius-pill);
-  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.7rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .theme-toggle-btn:hover {
-  background: var(--color-secondary);
-  border-color: var(--color-secondary);
+  background: var(--color-surface-hover);
 }
 
 .gnb-dropdown-wrapper {
-  margin: 0 0.15rem;
+  margin: 0 0.1rem;
 }
 
 .gnb-dropdown-wrapper .dropdown-toggle {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--color-text-muted) !important;
-  padding: 0.5rem 1.1rem !important;
-  border-radius: var(--radius-pill);
-  transition: all 0.2s ease;
+  padding: 0.4rem 0.85rem !important;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  position: relative;
 }
 
 .gnb-dropdown-wrapper .dropdown-toggle:hover {
@@ -118,9 +125,10 @@
 }
 
 .gnb-dropdown-wrapper.active-pill .dropdown-toggle {
-  background-color: var(--color-primary) !important;
-  color: #ffffff !important;
-  box-shadow: var(--shadow-xs);
+  background-color: transparent !important;
+  color: var(--color-primary) !important;
+  box-shadow: none;
+  font-weight: 700;
 }
 
 .gnb-offcanvas {
@@ -129,7 +137,7 @@
 
 .gnb-sheet-profile {
   background: var(--color-input-bg);
-  border: 1px solid var(--color-input-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1rem 1.1rem;
 }
@@ -141,10 +149,10 @@
   color: var(--color-text-main);
   font-weight: 700;
   text-decoration: none;
-  padding: 0.85rem 0.9rem;
-  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
-  border: 1px solid var(--color-input-border);
+  border: 1px solid var(--color-border);
 }
 
 .gnb-sheet-link:hover {

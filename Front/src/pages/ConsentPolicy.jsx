@@ -69,7 +69,7 @@ const ConsentPolicy = () => {
           </p>
 
           <div className="text-center mt-5">
-            <Button variant="secondary" onClick={() => navigate(-1)} className="rounded-pill px-4 fw-bold">
+            <Button variant="secondary" onClick={() => navigate(-1)} className="px-4 fw-bold">
               이전
             </Button>
           </div>

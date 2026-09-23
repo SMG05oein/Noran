@@ -272,10 +272,16 @@ export const compareWorkRecordExcel = async (file) => {
 };
 
 // 배열 구조 스케줄 등록/수정 (통합) - 관리자 전용
-export const saveWorkSchedules = async (requestDataArray, startDate, endDate, workPlaceIdx, confirmed = false) => {
+/**
+ * assignMode: 'DRAFT' | 'PARTIAL' | 'CONFIRM'
+ *   DRAFT   - 임시 저장: workers에게 미공개, 신청 셀 유지
+ *   PARTIAL - 임시 배정: 출근 셀 공개(isConfirmed=true), 신청 셀은 신청으로 유지
+ *   CONFIRM - 배정 확정: 출근 isConfirmed=true, 남은 신청 → 미출근
+ */
+export const saveWorkSchedules = async (requestDataArray, startDate, endDate, workPlaceIdx, confirmed = false, assignMode = 'CONFIRM') => {
   try {
     const response = await globalApiClient.post('/api/work-schedule/schedule', requestDataArray, {
-      params: { startDate, endDate, workPlaceIdx, confirmed }
+      params: { startDate, endDate, workPlaceIdx, confirmed, assignMode }
     });
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('workRequestsCache_') || key.startsWith('workRequestsMonthlyCache_')) {

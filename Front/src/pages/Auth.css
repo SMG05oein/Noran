@@ -62,13 +62,12 @@
 
 .auth-card {
   background: var(--color-surface) !important;
-  border: 1px solid var(--color-input-border) !important;
-  border-radius: var(--radius-xl) !important;
-  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-md) !important;
   z-index: 1;
   position: relative;
   overflow: hidden;
-  backdrop-filter: blur(12px);
 }
 
 .auth-header {
@@ -115,38 +114,37 @@
 
 .custom-input {
   background-color: var(--color-input-bg) !important;
-  border: 1.5px solid var(--color-input-border) !important;
-  border-radius: var(--radius-md) !important;
-  padding: 0.85rem 1.1rem !important;
-  font-size: 0.96rem !important;
+  border: 1px solid var(--color-input-border) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.95rem !important;
   font-weight: 500 !important;
-  transition: all 0.25s ease !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
   color: var(--color-input-text) !important;
 }
 
 .custom-input:focus {
   background-color: var(--color-input-bg-focus) !important;
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 0.25rem var(--color-primary-light) !important;
+  box-shadow: 0 0 0 3px var(--color-primary-light) !important;
 }
 
 .custom-btn {
   background: var(--color-primary) !important;
   border: none !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-sm) !important;
   font-weight: 700 !important;
-  font-size: 1.05rem !important;
-  padding: 0.9rem !important;
+  font-size: 1rem !important;
+  padding: 0.8rem !important;
   color: #ffffff !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: none !important;
+  transition: background-color 0.15s ease !important;
   letter-spacing: -0.01em;
 }
 
 .custom-btn:hover:not(:disabled) {
   background: var(--color-primary-hover) !important;
-
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: none !important;
 }
 
 .custom-btn:active:not(:disabled) {

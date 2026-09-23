@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { getMonthlyWorkApplyWorks, saveWorkApply, updateWorkApply } from '../api/workApi';
 import { fetchWorkPlaces } from '../api/authApi';
+import PageHeader from '../components/ui/PageHeader';
 import './Main.css';
 import Loading from '../components/Loading';
 
@@ -34,22 +35,20 @@ const cycleDayState = (block, day) => {
   };
 };
 
-const PlaceChips = ({ workPlaces, value, onChange }) => (
-  <div className="req-place-chips">
-    {workPlaces.map(wp => {
-      const selected = String(value) === String(wp.wpIdx);
-      return (
-        <button
-          key={wp.wpIdx}
-          type="button"
-          className={`req-place-chip${selected ? ' selected' : ''}`}
-          onClick={() => onChange(wp.wpIdx)}
-        >
-          {wp.wpName}
-        </button>
-      );
-    })}
-  </div>
+const PlaceSelect = ({ workPlaces, value, onChange }) => (
+  <Form.Group className="mb-3">
+    <Form.Label className="fw-bold text-muted small mb-1">근무지</Form.Label>
+    <Form.Select
+      className="custom-input"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {workPlaces.length === 0 && <option value="">지점 불러오는 중…</option>}
+      {workPlaces.map(wp => (
+        <option key={wp.wpIdx} value={wp.wpIdx}>{wp.wpName}</option>
+      ))}
+    </Form.Select>
+  </Form.Group>
 );
 
 const ApplyWeekGrid = ({ monday, block, onCycleDay }) => (
@@ -399,17 +398,23 @@ const Requests = () => {
 
   return (
     <Container className="py-4 py-md-5 mb-5">
-      <div className="mb-4">
-        <h2 className="fw-bold text-dark mb-1">근무 신청</h2>
-        <p className="text-muted small mb-0">칸을 눌러 신청하고, 한 번 더 누르면 오픈입니다.</p>
-      </div>
+      <PageHeader title="근무 신청" />
+      <p className="text-muted small mb-3" style={{ marginTop: '-0.35rem' }}>
+        칸을 눌러 신청하고, 한 번 더 누르면 오픈입니다.
+      </p>
 
-      <Card className="req-apply-card border-0 shadow-sm mb-5">
-        <Card.Body className="p-4 p-md-5">
+      <Card className="req-apply-card mb-4">
+        <Card.Body className="p-3 p-md-4">
           <Form onSubmit={handleSubmit}>
-            <div className="mb-4">
+            <div className="mb-3">
               <div className="req-apply-week-label">다음 주 {weekRangeLabel}</div>
               <div className="req-apply-week-hint">다음 주만 신청할 수 있습니다</div>
+            </div>
+
+            <div className="req-legend mb-3" aria-hidden="true">
+              <span className="req-legend-item"><span className="req-legend-swatch off" />—</span>
+              <span className="req-legend-item"><span className="req-legend-swatch applied" />신청</span>
+              <span className="req-legend-item"><span className="req-legend-swatch open" />오픈</span>
             </div>
 
             {requestBlocks.map((block) => (
@@ -425,7 +430,7 @@ const Requests = () => {
                   </Button>
                 )}
 
-                <PlaceChips
+                <PlaceSelect
                   workPlaces={workPlaces}
                   value={block.workPlaceIdx}
                   onChange={(wpIdx) => updateBlock(block.id, 'workPlaceIdx', wpIdx)}
@@ -444,14 +449,14 @@ const Requests = () => {
                   type="text"
                   value={globalRemarks}
                   onChange={(e) => setGlobalRemarks(e.target.value)}
-                  className="custom-input mb-4"
+                  className="custom-input mb-3"
                   placeholder="해당 주간에 전달할 메모"
               />
             </Form.Group>
             <Button
               type="button"
               variant="outline-secondary"
-              className="w-100 mb-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
+              className="w-100 mb-3 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
               onClick={handleAddBlock}
             >
               <RiAddLine size={20} /> 타 지점 추가 신청하기
@@ -463,16 +468,16 @@ const Requests = () => {
               </Alert>
             )}
 
-            <Button disabled={loading || nextWeekAlreadyApplied} type="submit" className="w-100 py-3 rounded-3 fw-bold fs-6 btn-primary">
+            <Button disabled={loading || nextWeekAlreadyApplied} type="submit" className="w-100 py-3 fw-bold fs-6 btn-primary">
               {loading ? '신청 중...' : nextWeekAlreadyApplied ? '이미 신청한 주' : '근무 신청서 일괄 제출하기'}
             </Button>
           </Form>
         </Card.Body>
       </Card>
 
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div className="d-flex align-items-center gap-2 text-dark fw-bold fs-5">
-          <RiFileList3Line className="text-primary" /> 내 신청 내역
+      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+        <div className="d-flex align-items-center gap-2 fw-bold fs-5" style={{ color: 'var(--color-text-main)' }}>
+          <RiFileList3Line style={{ color: 'var(--color-primary)' }} /> 내 신청 내역
         </div>
         <Form.Select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="custom-month-select fw-bold w-auto">
           {[...Array(12)].map((_, i) => {
@@ -486,7 +491,12 @@ const Requests = () => {
       {dataLoading ? <Loading /> : (
         <div className="d-flex flex-column gap-3">
           {weeklyGroups.length === 0 ? (
-            <div className="text-center py-5 rounded-4 border text-muted">신청 내역이 없습니다.</div>
+            <div
+              className="text-center py-5 text-muted"
+              style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}
+            >
+              신청 내역이 없습니다.
+            </div>
           ) : (
             weeklyGroups.map(([monDate, weekSchs]) => {
               const weekEnd = addDays(parseISO(monDate), 6);
@@ -503,8 +513,8 @@ const Requests = () => {
               });
 
               return (
-                <Card key={monDate} className="req-history-card border-0 shadow-sm">
-                  <Card.Body className="p-3 p-md-4">
+                <Card key={monDate} className="req-history-card">
+                  <Card.Body className="p-3">
                     <div className="d-flex justify-content-between align-items-start gap-2 mb-3">
                       <div>
                         <div className="req-history-range">
@@ -516,11 +526,11 @@ const Requests = () => {
                         </div>
                       </div>
                       <div className="d-flex gap-2 flex-shrink-0">
-                        <Button variant="light" className="req-icon-btn rounded-circle p-2" onClick={() => setViewingRequest({ monDate, weekSchs })}>
+                        <Button variant="light" className="req-icon-btn p-2" onClick={() => setViewingRequest({ monDate, weekSchs })}>
                           <RiEyeLine size={20} />
                         </Button>
                         {!weekSchs.some(isPublicAssignment) && (
-                          <Button variant="outline-warning" size="sm" className="rounded-3 fw-bold px-3" onClick={() => handleOpenEdit(monDate, weekSchs)}>
+                          <Button variant="outline-warning" size="sm" className="fw-bold px-3" onClick={() => handleOpenEdit(monDate, weekSchs)}>
                             수정
                           </Button>
                         )}
@@ -581,7 +591,12 @@ const Requests = () => {
             )}
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4">
+        <Modal.Body className="p-3 p-md-4">
+          <div className="req-legend mb-3" aria-hidden="true">
+            <span className="req-legend-item"><span className="req-legend-swatch off" />—</span>
+            <span className="req-legend-item"><span className="req-legend-swatch applied" />신청</span>
+            <span className="req-legend-item"><span className="req-legend-swatch open" />오픈</span>
+          </div>
           {editBlocks.map((block) => (
             <div key={block.id} className="req-apply-block mb-3">
               {editBlocks.length > 1 && (
@@ -594,7 +609,7 @@ const Requests = () => {
                 </Button>
               )}
 
-              <PlaceChips
+              <PlaceSelect
                 workPlaces={workPlaces}
                 value={block.workPlaceIdx}
                 onChange={(wpIdx) => setEditBlocks(prev => prev.map(b => b.id === block.id ? { ...b, workPlaceIdx: wpIdx } : b))}
@@ -653,9 +668,8 @@ const Requests = () => {
                 }, {})
               ).sort((a, b) => new Date(a.date) - new Date(b.date)).map(s => {
                 const dateObj = parseISO(s.date);
-                const isOther = s.wsdWorkPlaceIdx !== user?.workPlaceIdx;
                 return (
-                  <tr key={s.wsdIdx || s.date + Math.random()}>
+                  <tr key={s.wsdIdx || `${s.date}_${s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx}`}>
                     <td>{`${format(dateObj, 'MM/dd')} (${DAY_LABELS[getDay(dateObj)]})`}</td>
                     <td><span className={`req-status-badge ${isPublicAssignment(s) ? 'work' : s.wsdStatus === '신청' ? 'applied' : 'muted'}`}>{displayStatusLabel(s)}</span></td>
                     <td>{isPublicAssignment(s) ? (displayOpenTime(s, dateObj) || '-') : '-'}</td>

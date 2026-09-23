@@ -59,7 +59,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "    ) as nameSeq " +
                    "    FROM user u " +
                    "    WHERE u.user_name <> '탈퇴자_비식별화' " +
-                   "      AND (u.user_is_active IS NULL OR u.user_is_active <> 0) " +
                    ") numbered_u " +
                    "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
                    "LEFT JOIN work_place wp ON numbered_u.fk_work_place_idx = wp.wp_idx " +
@@ -111,7 +110,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "    ) as nameSeq " +
                    "    FROM user u " +
                    "    WHERE u.user_name <> '탈퇴자_비식별화' " +
-                   "      AND (u.user_is_active IS NULL OR u.user_is_active <> 0) " +
                    ") numbered_u " +
                    "LEFT JOIN user_type ut ON numbered_u.fk_ut_idx = ut.ut_idx " +
                    "LEFT JOIN work_place wp ON numbered_u.fk_work_place_idx = wp.wp_idx " +
@@ -125,8 +123,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         "WHERE (:isActive IS NULL OR numbered_u.user_is_active = :isActive) " +
                         "  AND (:wpIdx IS NULL OR numbered_u.fk_work_place_idx = :wpIdx) " +
                         "  AND (:userName IS NULL OR numbered_u.user_name LIKE CONCAT('%', :userName, '%')) " +
-                        "  AND numbered_u.user_name != '탈퇴자_비식별화' " +
-                        "  AND (numbered_u.user_is_active IS NULL OR numbered_u.user_is_active <> 0)",
+                        "  AND numbered_u.user_name != '탈퇴자_비식별화'",
            nativeQuery = true)
     Page<UserWithSeqProjection> searchAllEmployeesNative(
             @Param("isActive") Integer isActive,

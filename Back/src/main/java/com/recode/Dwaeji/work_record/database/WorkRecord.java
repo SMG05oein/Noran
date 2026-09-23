@@ -14,7 +14,13 @@ import java.time.LocalTime;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Work_record")
+@Table(
+        name = "Work_record",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_work_record_user_date_wp",
+                columnNames = {"fk_user_idx", "wr_date", "fk_work_place_idx"}
+        )
+)
 @Comment("근무 기록")
 @Getter
 @Setter

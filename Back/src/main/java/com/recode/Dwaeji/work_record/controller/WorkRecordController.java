@@ -58,7 +58,7 @@ public class WorkRecordController {
         return ResponseEntity.ok(workRecordService.getMonthlyWorkRecords(userDetails.getUsername(), year, month));
     }
 
-    @Operation(summary = "근무 기록 엑셀 다운로드", description = "특정 월(년/월)의 전체 또는 특정 지점 근무 기록을 엑셀 파일로 다운로드합니다. 관리자 전용.")
+    @Operation(summary = "근무 기록 엑셀 다운로드", description = "특정 월(년/월)의 근무 기록을 엑셀로 다운로드합니다. workPlaceIdx 없으면 근무지별 Sheet로 나눕니다. 관리자 전용.")
     @GetMapping("/excel")
     public ResponseEntity<byte[]> downloadExcel(
             @AuthenticationPrincipal UserDetails userDetails,

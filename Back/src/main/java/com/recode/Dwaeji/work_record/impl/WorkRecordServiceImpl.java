@@ -119,17 +119,22 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             assertEditable(requestDto.getWrDate());
         }
 
-        if (workRecordRepository.existsByUser_UserIdxAndWrDate(targetUser.getUserIdx(), requestDto.getWrDate())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 유저는 이 날짜에 이미 근무 기록이 존재합니다.");
-        }
-
-
         com.recode.Dwaeji.user.database.WorkPlace workPlace = null;
         if (requestDto.getWorkPlaceIdx() != null) {
             workPlace = workPlaceRepository.findById(requestDto.getWorkPlaceIdx()).orElse(null);
         }
         if (workPlace == null) {
             workPlace = targetUser.getWorkPlace(); // 기본값: 유저 소속 지점
+        }
+
+        if (workPlace != null
+                && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(
+                        targetUser.getUserIdx(), requestDto.getWrDate(), workPlace.getWpIdx())) {
+            boolean forSelf = requester.getUserIdx().equals(targetUser.getUserIdx());
+            String msg = forSelf
+                    ? "이 날짜·지점에 이미 근무 기록이 있습니다."
+                    : "해당 직원은 이 날짜·지점에 이미 근무 기록이 있습니다.";
+            throw new ResponseStatusException(HttpStatus.CONFLICT, msg);
         }
 
         WorkRecord workRecord = WorkRecord.builder()
@@ -172,7 +177,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         List<com.recode.Dwaeji.work_record.dto.ExcelCompareResponseDto> results = new ArrayList<>();
 
         for (com.recode.Dwaeji.work_record.dto.ExcelCompareRequestDto req : requestData) {
-            String status;
+            String status = "MISSING_IN_DB";
             WorkRecordResponseDto dbData = null;
             String msg = "";
 
@@ -182,13 +187,28 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 status = "USER_NOT_FOUND";
                 msg = "이름 및 연락처와 일치하는 사용자가 없습니다.";
             } else {
-                WorkRecord record = workRecordRepository.findByUser_UserIdxAndWrDate(user.getUserIdx(), req.getWrDate()).orElse(null);
-                if (record == null) {
+                java.util.List<WorkRecord> records = workRecordRepository.findByUser_UserIdxAndWrDate(user.getUserIdx(), req.getWrDate());
+                WorkRecord record = null;
+                if (records.isEmpty()) {
                     status = "MISSING_IN_DB";
                     msg = "DB에 해당 날짜의 근무 기록이 없습니다.";
+                } else if (records.size() == 1) {
+                    record = records.get(0);
+                } else if (req.getWpName() != null && !req.getWpName().isBlank()) {
+                    record = records.stream()
+                            .filter(r -> r.getWorkPlace() != null && req.getWpName().equals(r.getWorkPlace().getWpName()))
+                            .findFirst()
+                            .orElse(null);
+                    if (record == null) {
+                        status = "MISSING_IN_DB";
+                        msg = "DB에 해당 날짜·근무지의 근무 기록이 없습니다.";
+                    }
                 } else {
+                    status = "AMBIGUOUS";
+                    msg = "같은 날 여러 지점 기록이 있어 근무지 정보가 필요합니다.";
+                }
+                if (record != null) {
                     dbData = WorkRecordResponseDto.fromEntity(record, null);
-                    // Compare Time
                     boolean timeMatch = true;
                     if (req.getWrStartTime() != null && !req.getWrStartTime().equals(record.getWrStartTime())) timeMatch = false;
                     if (req.getWrEndTime() != null && !req.getWrEndTime().equals(record.getWrEndTime())) timeMatch = false;
@@ -221,7 +241,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         String sortProperty;
         switch (sortBy != null ? sortBy : "date") {
             case "userName": sortProperty = "user.userName"; break;
-            case "workPlace": sortProperty = "user.workPlace.wpName"; break;
+            case "workPlace": sortProperty = "workPlace.wpName"; break;
             case "date": sortProperty = "wrDate"; break;
             default: sortProperty = "wrDate"; break;
         }
@@ -372,10 +392,30 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             assertEditable(record.getWrDate());
         }
 
-        if (requestDto.getWrDate() != null && !requestDto.getWrDate().equals(record.getWrDate())) {
-            if (workRecordRepository.existsByUser_UserIdxAndWrDate(record.getUser().getUserIdx(), requestDto.getWrDate())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "변경하려는 날짜에 이미 근무 기록이 존재합니다.");
+        LocalDate newDate = requestDto.getWrDate() != null ? requestDto.getWrDate() : record.getWrDate();
+        com.recode.Dwaeji.user.database.WorkPlace newWp = record.getWorkPlace();
+        if (requestDto.getWorkPlaceIdx() != null) {
+            com.recode.Dwaeji.user.database.WorkPlace resolved = workPlaceRepository.findById(requestDto.getWorkPlaceIdx()).orElse(null);
+            if (resolved != null) {
+                newWp = resolved;
             }
+        }
+        Long newWpIdx = newWp != null ? newWp.getWpIdx() : null;
+        Long oldWpIdx = record.getWorkPlace() != null ? record.getWorkPlace().getWpIdx() : null;
+        boolean keyChanged = (requestDto.getWrDate() != null && !requestDto.getWrDate().equals(record.getWrDate()))
+                || (newWpIdx != null && !newWpIdx.equals(oldWpIdx));
+
+        if (keyChanged && newWpIdx != null
+                && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdxAndWrIdxNot(
+                        record.getUser().getUserIdx(), newDate, newWpIdx, record.getWrIdx())) {
+            boolean forSelf = requester.getUserIdx().equals(record.getUser().getUserIdx());
+            String msg = forSelf
+                    ? "이 날짜·지점에 이미 근무 기록이 있습니다."
+                    : "해당 직원은 이 날짜·지점에 이미 근무 기록이 있습니다.";
+            throw new ResponseStatusException(HttpStatus.CONFLICT, msg);
+        }
+
+        if (requestDto.getWrDate() != null && !requestDto.getWrDate().equals(record.getWrDate())) {
             record.setWrDate(requestDto.getWrDate());
         }
         
@@ -399,11 +439,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         if (requestDto.getWrRemarks() != null) {
             record.setWrRemarks(requestDto.getWrRemarks());
         }
-        if (requestDto.getWorkPlaceIdx() != null) {
-            com.recode.Dwaeji.user.database.WorkPlace newWp = workPlaceRepository.findById(requestDto.getWorkPlaceIdx()).orElse(null);
-            if (newWp != null) {
-                record.setWorkPlace(newWp);
-            }
+        if (newWp != null && (oldWpIdx == null || !newWp.getWpIdx().equals(oldWpIdx))) {
+            record.setWorkPlace(newWp);
         }
 
         workRecordRepository.save(record);
@@ -474,12 +511,16 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해당 이력은 삭제 기록이 아닙니다.");
         }
 
-        if (workRecordRepository.existsByUser_UserIdxAndWrDate(history.getTargetUser().getUserIdx(), history.getWrDate())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 유저는 이 날짜에 이미 근무 기록이 존재하여 복구할 수 없습니다.");
+        com.recode.Dwaeji.user.database.WorkPlace restoreWp = history.getTargetUser().getWorkPlace();
+        if (restoreWp != null
+                && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(
+                        history.getTargetUser().getUserIdx(), history.getWrDate(), restoreWp.getWpIdx())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 직원은 이 날짜·지점에 이미 근무 기록이 있어 복구할 수 없습니다.");
         }
 
         WorkRecord restoredRecord = WorkRecord.builder()
                 .user(history.getTargetUser())
+                .workPlace(restoreWp)
                 .wrDate(history.getWrDate())
                 .wrStartTime(history.getBeforeStartTime())
                 .wrEndTime(history.getBeforeEndTime())
@@ -589,47 +630,34 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
         List<WorkRecord> records;
         if (workPlaceIdx != null) {
-            records = workRecordRepository.findByUser_WorkPlace_WpIdxAndWrDateBetween(workPlaceIdx, startDate, endDate);
+            // 기록에 저장된 근무지 기준 (소속 지점이 아닌 실제 근무 지점)
+            records = workRecordRepository.findByWorkPlace_WpIdxAndWrDateBetween(workPlaceIdx, startDate, endDate);
         } else {
             records = workRecordRepository.findByWrDateBetween(startDate, endDate);
         }
 
-        // 첫 번째 시트: 근무 기록
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            org.apache.poi.ss.usermodel.Sheet sheet1 = workbook.createSheet(month + "월 근무기록");
-
-            // 헤더 생성 (QA: 이름/날짜/출퇴근/휴게/총근무시간, 알바생 시트 제외)
-            org.apache.poi.ss.usermodel.Row headerRow1 = sheet1.createRow(0);
-            String[] headers1 = {"No", "이름", "날짜", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
-            for (int i = 0; i < headers1.length; i++) {
-                headerRow1.createCell(i).setCellValue(headers1[i]);
-            }
-
-            int rowNum1 = 1;
+        // 전체: 근무지별 Sheet / 특정 지점: Sheet 1개 (그룹 키는 wpIdx, Sheet 순서는 wpIdx 오름차순)
+        Map<Long, List<WorkRecord>> byWpIdx = new TreeMap<>(Comparator.nullsLast(Long::compareTo));
+        if (workPlaceIdx != null) {
+            byWpIdx.put(workPlaceIdx, records);
+        } else {
             for (WorkRecord record : records) {
-                User user = record.getUser();
-                org.apache.poi.ss.usermodel.Row row = sheet1.createRow(rowNum1++);
-                String date = record.getWrDate() != null ? record.getWrDate().toString() : "";
-                String userName = user != null && user.getUserName() != null ? user.getUserName() : "";
-                String startTime = record.getWrStartTime() != null ? record.getWrStartTime().toString() : "";
-                String endTime = record.getWrEndTime() != null ? record.getWrEndTime().toString() : "";
-                String restTimeStr = record.getWrRestTime() != null ? record.getWrRestTime().toString() : "00:00";
-                String totalHours = formatTotalWorkHours(record.getWrStartTime(), record.getWrEndTime(), record.getWrRestTime());
-                row.createCell(0).setCellValue(rowNum1 - 1);
-                row.createCell(1).setCellValue(userName);
-                row.createCell(2).setCellValue(date);
-                row.createCell(3).setCellValue(startTime);
-                row.createCell(4).setCellValue(endTime);
-                row.createCell(5).setCellValue(restTimeStr);
-                row.createCell(6).setCellValue(totalHours);
+                Long key = record.getWorkPlace() != null ? record.getWorkPlace().getWpIdx() : null;
+                byWpIdx.computeIfAbsent(key, k -> new ArrayList<>()).add(record);
             }
-            if (rowNum1 > 1) {
-                sheet1.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, rowNum1 - 1, 0, headers1.length - 1));
+            if (byWpIdx.isEmpty()) {
+                byWpIdx.put(null, List.of());
             }
-            for (int i = 0; i < headers1.length; i++) {
-                sheet1.autoSizeColumn(i);
-                int currentWidth = sheet1.getColumnWidth(i);
-                sheet1.setColumnWidth(i, (int)(currentWidth * 1.3));
+        }
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            String[] headers = {"No", "이름", "근무지", "날짜", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
+            Set<String> usedSheetNames = new HashSet<>();
+            for (Map.Entry<Long, List<WorkRecord>> entry : byWpIdx.entrySet()) {
+                List<WorkRecord> sheetRecords = entry.getValue();
+                String baseName = resolveSheetName(entry.getKey(), sheetRecords, month, workPlaceIdx);
+                String sheetName = uniqueExcelSheetName(toExcelSheetName(baseName), usedSheetNames);
+                writeWorkRecordSheet(workbook.createSheet(sheetName), headers, sheetRecords);
             }
 
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
@@ -637,6 +665,82 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             return out.toByteArray();
         } catch (java.io.IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "엑셀 파일 생성 중 오류가 발생했습니다.");
+        }
+    }
+
+    private String resolveSheetName(Long wpIdx, List<WorkRecord> sheetRecords, int month, Long filterWpIdx) {
+        String fromRecord = sheetRecords.stream()
+                .map(r -> r.getWorkPlace() != null ? r.getWorkPlace().getWpName() : null)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        if (fromRecord != null) return fromRecord;
+        if (wpIdx != null) {
+            return workPlaceRepository.findById(wpIdx)
+                    .map(wp -> wp.getWpName() != null ? wp.getWpName() : "근무지")
+                    .orElse("근무지");
+        }
+        if (filterWpIdx == null && sheetRecords.isEmpty()) {
+            return month + "월 근무기록";
+        }
+        return "미소속";
+    }
+
+    private static String toExcelSheetName(String name) {
+        if (name == null || name.isBlank()) return "미소속";
+        // Excel sheet: max 31, 금지 문자 \ / ? * [ ]
+        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
+        if (cleaned.isEmpty()) cleaned = "미소속";
+        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
+    }
+
+    private static String uniqueExcelSheetName(String base, Set<String> used) {
+        String candidate = base;
+        int n = 2;
+        while (!used.add(candidate)) {
+            String suffix = " (" + n + ")";
+            int maxBase = Math.max(1, 31 - suffix.length());
+            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
+            n++;
+        }
+        return candidate;
+    }
+
+    private void writeWorkRecordSheet(org.apache.poi.ss.usermodel.Sheet sheet, String[] headers, List<WorkRecord> records) {
+        org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            headerRow.createCell(i).setCellValue(headers[i]);
+        }
+
+        int rowNum = 1;
+        for (WorkRecord record : records) {
+            User user = record.getUser();
+            org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
+            String date = record.getWrDate() != null ? record.getWrDate().toString() : "";
+            String userName = user != null && user.getUserName() != null ? user.getUserName() : "";
+            String wpName = record.getWorkPlace() != null && record.getWorkPlace().getWpName() != null
+                    ? record.getWorkPlace().getWpName()
+                    : "";
+            String startTime = record.getWrStartTime() != null ? record.getWrStartTime().toString() : "";
+            String endTime = record.getWrEndTime() != null ? record.getWrEndTime().toString() : "";
+            String restTimeStr = record.getWrRestTime() != null ? record.getWrRestTime().toString() : "00:00";
+            String totalHours = formatTotalWorkHours(record.getWrStartTime(), record.getWrEndTime(), record.getWrRestTime());
+            row.createCell(0).setCellValue(rowNum - 1);
+            row.createCell(1).setCellValue(userName);
+            row.createCell(2).setCellValue(wpName);
+            row.createCell(3).setCellValue(date);
+            row.createCell(4).setCellValue(startTime);
+            row.createCell(5).setCellValue(endTime);
+            row.createCell(6).setCellValue(restTimeStr);
+            row.createCell(7).setCellValue(totalHours);
+        }
+        if (rowNum > 1) {
+            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, rowNum - 1, 0, headers.length - 1));
+        }
+        for (int i = 0; i < headers.length; i++) {
+            sheet.autoSizeColumn(i);
+            int currentWidth = sheet.getColumnWidth(i);
+            sheet.setColumnWidth(i, (int) (currentWidth * 1.3));
         }
     }
 }

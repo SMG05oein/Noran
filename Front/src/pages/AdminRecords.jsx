@@ -33,6 +33,7 @@ const AdminRecords = () => {
   const [restHour, setRestHour] = useState('');
   const [restMin, setRestMin] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [editWorkPlaceIdx, setEditWorkPlaceIdx] = useState('');
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
@@ -142,17 +143,23 @@ const AdminRecords = () => {
     setEndHour(eh); setEndMin(em);
     setRestHour(rh); setRestMin(rm);
     setRemarks(r.wrRemarks || '');
+    setEditWorkPlaceIdx(r.workPlaceIdx != null ? String(r.workPlaceIdx) : '');
   };
 
   const handleSaveEdit = async () => {
     if (!editRecord) return;
+    if (!editWorkPlaceIdx) {
+      alert('근무지를 선택해주세요.');
+      return;
+    }
     setSaving(true);
     const payload = {
       ...editRecord,
       wrStartTime: `${startHour}:${startMin}`,
       wrEndTime: `${endHour}:${endMin}`,
       wrRestTime: `${restHour}:${restMin}`,
-      wrRemarks: remarks
+      wrRemarks: remarks,
+      workPlaceIdx: parseInt(editWorkPlaceIdx, 10)
     };
     // format date if array
     if (Array.isArray(payload.wrDate)) {
@@ -563,8 +570,40 @@ const AdminRecords = () => {
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold text-muted small">직원 및 날짜</Form.Label>
                 <div className="p-2 bg-light rounded-3">
-                  <span className="fw-bold text-primary">{editRecord.userName}({editRecord.workPlaceName || '지점'})</span> / {formatDateStr(editRecord.wrDate)}
+                  <span className="fw-bold text-primary">{editRecord.userName}</span> / {formatDateStr(editRecord.wrDate)}
                 </div>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold text-muted small">근무지</Form.Label>
+                <Form.Select
+                  value={editWorkPlaceIdx}
+                  onChange={(e) => setEditWorkPlaceIdx(e.target.value)}
+                  className="custom-input"
+                >
+                  <option value="">근무지 선택</option>
+                  {branches.filter((b) => b.wpIdx != null).map((b) => {
+                    const isHome = editRecord.userWorkPlaceName
+                      && b.wpName === editRecord.userWorkPlaceName;
+                    return (
+                      <option key={b.wpIdx} value={String(b.wpIdx)}>
+                        {b.wpName}{isHome ? ' (소속)' : ''}
+                      </option>
+                    );
+                  })}
+                </Form.Select>
+                {editWorkPlaceIdx && (() => {
+                  const selected = branches.find((b) => String(b.wpIdx) === String(editWorkPlaceIdx));
+                  const isHome = selected
+                    && editRecord.userWorkPlaceName
+                    && selected.wpName === editRecord.userWorkPlaceName;
+                  return (
+                    <div className={`small mt-1 fw-semibold ${isHome ? 'text-success' : 'text-warning'}`}>
+                      {isHome
+                        ? '소속 지점 근무'
+                        : `타지점 근무 (소속: ${editRecord.userWorkPlaceName || '-'})`}
+                    </div>
+                  );
+                })()}
               </Form.Group>
               <div className="d-flex gap-3 mb-3">
                 <Form.Group className="flex-fill">

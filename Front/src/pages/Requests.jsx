@@ -320,7 +320,14 @@ const Requests = () => {
       }
     });
 
-    setEditBlocks(Object.values(branchGroups).length > 0 ? Object.values(branchGroups) : [defaultBlock(Date.now())]);
+    const blocks = Object.values(branchGroups);
+    blocks.sort((a, b) => {
+      const home = Number(user?.workPlaceIdx);
+      const aHome = Number(a.workPlaceIdx) === home ? 0 : 1;
+      const bHome = Number(b.workPlaceIdx) === home ? 0 : 1;
+      return aHome - bHome;
+    });
+    setEditBlocks(blocks.length > 0 ? blocks : [defaultBlock(Date.now())]);
     const existingRemark = weekSchs.find(s => s.wsdRemarks || s.remarks)?.wsdRemarks || weekSchs.find(s => s.wsdRemarks || s.remarks)?.remarks || '';
     setEditGlobalRemarks(existingRemark);
     setEditTarget({ monDate, weekSchs });

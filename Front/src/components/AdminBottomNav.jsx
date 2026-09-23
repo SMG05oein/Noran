@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
 import { Dropdown } from 'react-bootstrap';
-import { RiBarChartBoxLine, RiHistoryLine, RiGroupLine, RiStore2Line, RiUserStarLine, RiUserSmileLine, RiMore2Line } from 'react-icons/ri';
+import { RiBarChartBoxLine, RiHistoryLine, RiGroupLine, RiStore2Line, RiUserStarLine, RiUserSmileLine, RiMore2Line, RiChatSmile2Line } from 'react-icons/ri';
 import './BottomNav.css';
 
 const CustomToggle = React.forwardRef(({ children, onClick, className }, ref) => (
@@ -20,7 +20,7 @@ const CustomToggle = React.forwardRef(({ children, onClick, className }, ref) =>
 
 const AdminBottomNav = () => {
   const location = useLocation();
-  const isMiscActive = ['/admin/workplaces', '/admin/user-types'].some(p => location.pathname.startsWith(p));
+  const isMiscActive = ['/admin/workplaces', '/admin/user-types', '/admin/board'].some(p => location.pathname.startsWith(p));
 
   return (
     <nav className="bottom-nav admin-theme d-lg-none" aria-label="관리자 모바일 하단 내비게이션">
@@ -47,6 +47,9 @@ const AdminBottomNav = () => {
           </Dropdown.Item>
           <Dropdown.Item as={Link} to="/admin/user-types" className="fw-bold py-2 text-dark">
             <RiUserStarLine className="me-2 text-primary" /> 직급
+          </Dropdown.Item>
+          <Dropdown.Item as={Link} to="/admin/board" className="fw-bold py-2 text-dark">
+            <RiChatSmile2Line className="me-2 text-primary" /> 게시판
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown>

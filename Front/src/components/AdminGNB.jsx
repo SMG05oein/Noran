@@ -56,6 +56,7 @@ const AdminGNB = () => {
             <Nav className="ms-auto align-items-center gap-1">
               <Nav.Link as={Link} to="/admin" className={`gnb-link ${location.pathname === '/admin' ? 'active-pill' : ''}`}>메인</Nav.Link>
               <Nav.Link as={Link} to="/admin/records" className={`gnb-link ${location.pathname.startsWith('/admin/records') ? 'active-pill' : ''}`}>기록</Nav.Link>
+              <Nav.Link as={Link} to="/admin/payroll" className={`gnb-link ${location.pathname.startsWith('/admin/payroll') ? 'active-pill' : ''}`}>급여</Nav.Link>
               <Nav.Link as={Link} to="/admin/employees" className={`gnb-link ${location.pathname.startsWith('/admin/employees') ? 'active-pill' : ''}`}>직원</Nav.Link>
               <NavDropdown
                 title="기타"

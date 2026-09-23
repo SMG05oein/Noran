@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
 import { Dropdown } from 'react-bootstrap';
-import { RiBarChartBoxLine, RiHistoryLine, RiGroupLine, RiStore2Line, RiUserStarLine, RiUserSmileLine, RiMore2Line, RiChatSmile2Line } from 'react-icons/ri';
+import { RiBarChartBoxLine, RiHistoryLine, RiMoneyDollarCircleLine, RiGroupLine, RiStore2Line, RiUserStarLine, RiUserSmileLine, RiMore2Line, RiChatSmile2Line } from 'react-icons/ri';
 import './BottomNav.css';
 
 const CustomToggle = React.forwardRef(({ children, onClick, className }, ref) => (
@@ -31,6 +31,10 @@ const AdminBottomNav = () => {
       <NavLink to="/admin/records" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
         <RiHistoryLine className="icon" />
         <span>기록</span>
+      </NavLink>
+      <NavLink to="/admin/payroll" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        <RiMoneyDollarCircleLine className="icon" />
+        <span>급여</span>
       </NavLink>
       <NavLink to="/admin/employees" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
         <RiGroupLine className="icon" />

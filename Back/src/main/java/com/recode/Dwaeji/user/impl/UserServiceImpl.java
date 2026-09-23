@@ -124,6 +124,10 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "탈퇴한 회원의 아이디는 보존 기간 동안 재사용할 수 없습니다.");
         }
 
+        if (isPhoneDuplicated(signupRequestDto.getUserPhone(), null)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 휴대폰 번호입니다.");
+        }
+
         // 연관 엔티티 조회
         // 강제로 근무 형태를 5로 고정
         com.recode.Dwaeji.user.database.UserType userType = userTypeRepository.findById(5L)
@@ -179,6 +183,11 @@ public class UserServiceImpl implements UserService {
         // 아카이브 테이블 확인 (탈퇴한 회원 아이디 재사용 방지)
         if (archivedUserRepository.findByUserId(lowerUserId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "탈퇴한 회원의 아이디는 보존 기간 동안 재사용할 수 없습니다.");
+        }
+
+        if (dto.getUserPhone() != null && !dto.getUserPhone().isEmpty()
+                && isPhoneDuplicated(dto.getUserPhone(), null)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 휴대폰 번호입니다.");
         }
 
         // 나이 체크 (만 15세 미만 등록 불가)
@@ -245,7 +254,10 @@ public class UserServiceImpl implements UserService {
             targetUser.setUserName(userUpdateDto.getUserName());
         }
         if (userUpdateDto.getUserPhone() != null && !userUpdateDto.getUserPhone().isEmpty()) {
-            targetUser.setUserPhone(userUpdateDto.getUserPhone());
+            if (isPhoneDuplicated(userUpdateDto.getUserPhone(), targetUserIdx)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 휴대폰 번호입니다.");
+            }
+            targetUser.setUserPhone(userUpdateDto.getUserPhone().trim());
         }
         if (userUpdateDto.getUserBirth() != null) {
             targetUser.setUserBirth(userUpdateDto.getUserBirth());
@@ -949,5 +961,17 @@ public class UserServiceImpl implements UserService {
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "직원 엑셀 생성 실패: " + ex.getMessage());
         }
+    }
+
+    /** 하이픈/공백 무시하고 휴대폰 번호 중복 여부. excludeUserIdx가 있으면 해당 유저는 제외(본인 수정). */
+    private boolean isPhoneDuplicated(String userPhone, Long excludeUserIdx) {
+        if (userPhone == null || userPhone.isBlank()) {
+            return false;
+        }
+        String phoneDigits = userPhone.replaceAll("[^0-9]", "");
+        if (phoneDigits.isEmpty()) {
+            return false;
+        }
+        return userRepository.countByPhoneDigitsExcluding(phoneDigits, excludeUserIdx) > 0;
     }
 }

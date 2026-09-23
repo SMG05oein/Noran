@@ -15,7 +15,17 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUserId(String userId);
     Optional<User> findByUserEmail(String userEmail);
+    Optional<User> findByUserPhone(String userPhone);
     Optional<User> findByUserNameAndUserPhone(String userName, String userPhone);
+
+    /** 하이픈 무시하고 휴대폰 번호 중복 여부 (excludeUserIdx가 있으면 해당 유저 제외) */
+    @Query(value = "SELECT COUNT(*) FROM user u " +
+            "WHERE REPLACE(IFNULL(u.user_phone, ''), '-', '') = :phoneDigits " +
+            "  AND (:excludeUserIdx IS NULL OR u.user_idx <> :excludeUserIdx)",
+           nativeQuery = true)
+    long countByPhoneDigitsExcluding(
+            @Param("phoneDigits") String phoneDigits,
+            @Param("excludeUserIdx") Long excludeUserIdx);
     List<User> findByWorkPlace_WpIdx(Long wpIdx);
     
     // 아카이빙 대상자 조회 (비활성화 상태이고 탈퇴일이 특정 날짜 이전인 유저)

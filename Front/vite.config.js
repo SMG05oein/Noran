@@ -28,6 +28,31 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('monaco-editor') || id.includes('@monaco-editor')) {
+              return 'vendor-monaco'
+            }
+            if (
+              id.includes('react-dom') ||
+              id.includes('react-router') ||
+              id.includes('/react/') ||
+              id.includes('\\react\\')
+            ) {
+              return 'vendor-react'
+            }
+            if (id.includes('bootstrap') || id.includes('react-bootstrap')) {
+              return 'vendor-bootstrap'
+            }
+            return 'vendor'
+          }
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       '/api': {

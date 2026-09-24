@@ -7,9 +7,9 @@ import { isHoliday } from 'holiday-kr';
 import useAuthStore from '../store/useAuthStore';
 import { countPeak } from '../utils/shiftPeak';
 import { downloadWeeklyAssignExcel } from '../utils/weeklyAssignExcel';
-import AssignTimeInput from '../components/AssignTimeInput';
+import AssignTimeInput, { BULK_LIST_OPTIONS } from '../components/AssignTimeInput';
 import { openStartTimeForDate, toDateStr, normalizeScheduleStatus, resolveOriginFlags, resetShiftFields, withBaseline, isShiftDirty } from '../utils/shiftReset';
-import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine } from 'react-icons/ri';
+import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine, RiQuestionLine } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 import StatusChip from '../components/ui/StatusChip';
 import SegmentedFilter from '../components/ui/SegmentedFilter';
@@ -92,6 +92,7 @@ const AdminWeeklyAssign = () => {
 
   const [addedWorkerUserIdxs, setAddedWorkerUserIdxs] = useState([]);
   const [showAddWorkerModal, setShowAddWorkerModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [selectedOtherUserIdx, setSelectedOtherUserIdx] = useState('');
   const [workerSearchTerm, setWorkerSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -151,7 +152,8 @@ const AdminWeeklyAssign = () => {
     let workerList = [];
     if (workerRes.success) {
       let list = workerRes.data?.content || (Array.isArray(workerRes.data) ? workerRes.data : []);
-      list = list.filter(u => u.userTypeIdx !== 1 && Number(u.is_admin ?? u.isAdmin ?? 0) !== 1);
+      // Prefer isAdmin flag (userTypeIdx is legacy and no longer returned by API)
+      list = list.filter(u => Number(u.is_admin ?? u.isAdmin ?? 0) !== 1);
       workerList = list;
       setAllUsers(list);
     }
@@ -288,16 +290,58 @@ const AdminWeeklyAssign = () => {
     setCurrentWeekStart(startOfWeek(parseISO(value), { weekStartsOn: 1 }));
   };
 
+  const resolveUserHomeWpIdx = (u) => (
+    u.workPlaceIdx ?? u.branchIdx ?? u.fkWorkPlaceIdx
+      ?? branches.find(b => b.wpName === u.workPlaceName)?.wpIdx
+      ?? null
+  );
+
+  const isActiveWorker = (u) => {
+    if (u.status === '퇴사') return false;
+    if (u.isActive === false) return false;
+    if (u.userIsActive === 0 || u.userIsActive === false) return false;
+    return true;
+  };
+
+  const isOnLeave = (u) => (
+    Number(u.userIsActive) === 2 || u.status === '휴직'
+  );
+
+  const isOtherBranchWorker = (u) =>
+    Number(resolveUserHomeWpIdx(u)) !== Number(currentWorkPlaceIdx);
+
+  const hasHomeBranchSchedule = (uid) => {
+    const userDays = editSchedules[uid];
+    if (!userDays) return false;
+    return Object.values(userDays).some((daySchs) =>
+      (daySchs || []).some(
+        (s) => Number(s.wsdWorkPlaceIdx || s.applyWorkPlaceIdx || currentWorkPlaceIdx) === Number(currentWorkPlaceIdx)
+      )
+    );
+  };
+
+  const isOtherWorkerOnGrid = (uid) => (
+    addedWorkerUserIdxs.some((id) => toUserIdx(id) === uid) || hasHomeBranchSchedule(uid)
+  );
+
+  const hasApplyAtHomeBranch = (uid) => {
+    const userDays = editSchedules[uid] || {};
+    return Object.values(userDays).flat().some((s) => {
+      if (Number(s.wsdWorkPlaceIdx || s.applyWorkPlaceIdx || currentWorkPlaceIdx) !== Number(currentWorkPlaceIdx)) {
+        return false;
+      }
+      return !!(s.originHadApply || s.originOpenApplied || s.wsdStatus === '신청');
+    });
+  };
+
   const renderUsers = useMemo(() => {
     let usersToShow = allUsers.filter(u => {
-      if (u.status === '퇴사' || u.isActive === false || u.userIsActive === 0) return false;
+      if (!isActiveWorker(u)) return false;
       const uid = toUserIdx(u.userIdx || u.id);
-      const wpIdx = u.workPlaceIdx || u.branchIdx || u.fkWorkPlaceIdx || branches.find(b => b.wpName === u.workPlaceName)?.wpIdx;
+      const wpIdx = resolveUserHomeWpIdx(u);
       const isHome = Number(wpIdx) === Number(currentWorkPlaceIdx);
-      const hasScheduleForHome = editSchedules[uid] && Object.values(editSchedules[uid]).some(daySchs =>
-          daySchs.some(s => Number(s.wsdWorkPlaceIdx || s.applyWorkPlaceIdx || wpIdx) === Number(currentWorkPlaceIdx))
-      );
-      const isAdded = addedWorkerUserIdxs.includes(uid) || addedWorkerUserIdxs.includes(u.userIdx);
+      const hasScheduleForHome = hasHomeBranchSchedule(uid);
+      const isAdded = addedWorkerUserIdxs.some((id) => toUserIdx(id) === uid);
       return isHome || hasScheduleForHome || isAdded;
     });
 
@@ -314,26 +358,93 @@ const AdminWeeklyAssign = () => {
       });
     }
 
+    // 본점 → 타지점 → 휴직(맨 밑), 같은 그룹 안에서는 이름순
+    usersToShow = [...usersToShow].sort((a, b) => {
+      const groupOf = (u) => {
+        if (isOnLeave(u)) return 2;
+        if (isOtherBranchWorker(u)) return 1;
+        return 0;
+      };
+      const ga = groupOf(a);
+      const gb = groupOf(b);
+      if (ga !== gb) return ga - gb;
+      return (a.userName || '').localeCompare(b.userName || '', 'ko');
+    });
+
     return usersToShow;
   }, [allUsers, editSchedules, currentWorkPlaceIdx, addedWorkerUserIdxs, filterType, branches]);
 
-  const resolveUserHomeWpIdx = (u) => (
-    u.workPlaceIdx || u.branchIdx || u.fkWorkPlaceIdx
-      || branches.find(b => b.wpName === u.workPlaceName)?.wpIdx
-      || null
-  );
+  const otherBranchCandidates = useMemo(() => {
+    const term = (workerSearchTerm || '').trim().toLowerCase();
+    return allUsers
+      .filter(isActiveWorker)
+      .filter((u) => Number(resolveUserHomeWpIdx(u)) !== Number(currentWorkPlaceIdx))
+      .filter((u) => {
+        if (!term) return true;
+        const name = (u.userName || '').toLowerCase();
+        const id = (u.userId || '').toLowerCase();
+        return name.includes(term) || id.includes(term);
+      })
+      .slice()
+      .sort((a, b) => {
+        const la = isOnLeave(a) ? 1 : 0;
+        const lb = isOnLeave(b) ? 1 : 0;
+        if (la !== lb) return la - lb;
+        return (a.userName || '').localeCompare(b.userName || '', 'ko');
+      });
+  }, [allUsers, branches, currentWorkPlaceIdx, workerSearchTerm]);
 
-  const isOtherBranchWorker = (u) =>
-    Number(resolveUserHomeWpIdx(u)) !== Number(currentWorkPlaceIdx);
+  const handleAddOtherWorker = () => {
+    const uid = toUserIdx(selectedOtherUserIdx);
+    if (uid == null || uid === '') {
+      alert('추가할 알바생을 선택해주세요.');
+      return;
+    }
+    if (isOtherWorkerOnGrid(uid)) {
+      alert('이미 목록에 추가된 알바생입니다.');
+      return;
+    }
+
+    setAddedWorkerUserIdxs((prev) => [...prev, uid]);
+    setFilterType('ALL');
+    const currentWeekDays = Array.from({ length: 7 }).map((_, i) =>
+      format(addDays(currentWeekStart, i), 'yyyy-MM-dd')
+    );
+    setEditSchedules((prev) => {
+      const nextUser = { ...(prev[uid] || {}) };
+      currentWeekDays.forEach((dt) => {
+        if (!nextUser[dt] || nextUser[dt].length === 0) {
+          nextUser[dt] = [createEmptyShift(uid, dt, currentWorkPlaceIdx, null)];
+        }
+      });
+      return { ...prev, [uid]: nextUser };
+    });
+    setShowAddWorkerModal(false);
+    setSelectedOtherUserIdx('');
+    setWorkerSearchTerm('');
+  };
 
   const handleRemoveOtherWorker = (u) => {
     if (!isOtherBranchWorker(u)) return;
+    const uid = toUserIdx(u.userIdx || u.id);
+    const adminOnly = !hasApplyAtHomeBranch(uid);
+
+    if (adminOnly) {
+      if (!window.confirm(`${u.userName}님을 목록에서 제거할까요?\n(신청 내역이 없어 행이 사라집니다)`)) return;
+      setAddedWorkerUserIdxs((prev) => prev.filter((id) => toUserIdx(id) !== uid));
+      setEditSchedules((prev) => {
+        const next = { ...prev };
+        delete next[uid];
+        return next;
+      });
+      return;
+    }
+
     if (!window.confirm(
       `${u.userName}님의 배정 내역을 초기화합니다.\n신청 내역은 유지되며, 배정 확정 시 미출근으로 처리됩니다.`
     )) return;
 
-    const uid = toUserIdx(u.userIdx || u.id);
-    // 목록에서 제거하지 않고 셀만 baseline으로 복원 → 신청 행이 남아 그리드에 계속 표시됨
+    // Keep row (has apply); reset cells to baseline
     setEditSchedules(prev => {
       const userDays = prev[uid];
       if (!userDays) return prev;
@@ -368,6 +479,78 @@ const AdminWeeklyAssign = () => {
       nextUser[dateStr] = arr;
       return { ...prev, [uid]: nextUser };
     });
+  };
+
+  /** 행(n)의 모든 요일 셀(y)에 동일 상태 일괄 적용. 미신청·빈 날은 제외. */
+  const handleBulkUpdateRow = (userIdx, userName, val) => {
+    if (!val) return;
+    const uid = toUserIdx(userIdx);
+    const userDays = editSchedules[uid] || {};
+    let cellCount = 0;
+    Object.values(userDays).forEach((shifts) => {
+      cellCount += (shifts || []).length;
+    });
+    if (cellCount === 0) {
+      alert(`${userName}님에게 적용할 칸이 없습니다.\n(미신청·빈 날은 일괄 대상이 아닙니다)`);
+      return;
+    }
+    if (!window.confirm(
+      `${userName}님 주간 ${cellCount}칸에 ${val}을(를) 일괄 적용할까요?`
+    )) return;
+
+    const isOff = val === '미출근';
+    const isOpen = val === '오픈';
+    setEditSchedules((prev) => {
+      const userDaysPrev = prev[uid];
+      if (!userDaysPrev) return prev;
+      const nextDays = {};
+      Object.keys(userDaysPrev).forEach((dt) => {
+        nextDays[dt] = (userDaysPrev[dt] || []).map((s) => {
+          if (isOff) {
+            return {
+              ...s,
+              wsdStartTime: '',
+              wsdStatus: '미출근',
+              wsdIsOpen: false,
+              wsdIsConfirmed: false,
+            };
+          }
+          if (isOpen) {
+            return {
+              ...s,
+              wsdStartTime: openStartTimeForDate(dt),
+              wsdStatus: '출근',
+              wsdIsOpen: true,
+              wsdIsConfirmed: false,
+            };
+          }
+          return {
+            ...s,
+            wsdStartTime: val,
+            wsdStatus: '출근',
+            wsdIsOpen: false,
+            wsdIsConfirmed: false,
+          };
+        });
+      });
+      return { ...prev, [uid]: nextDays };
+    });
+  };
+
+  const renderRowBulkInput = (u) => {
+    const uid = toUserIdx(u.userIdx);
+    return (
+      <AssignTimeInput
+        variant="button"
+        buttonLabel="일괄"
+        value=""
+        title="이 행 전체에 같은 상태 적용"
+        className="wat-bulk-btn"
+        minListWidth={112}
+        options={BULK_LIST_OPTIONS}
+        onPick={(val) => handleBulkUpdateRow(uid, u.userName, val)}
+      />
+    );
   };
 
   const handleRemoveShift = (userIdx, dateStr, id) => {
@@ -582,7 +765,17 @@ const AdminWeeklyAssign = () => {
               }[weekAssignStatus]}
             </StatusChip>
           }
-        />
+        >
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            className="rounded-pill px-3 d-inline-flex align-items-center gap-1"
+            onClick={() => setShowGuideModal(true)}
+          >
+            <RiQuestionLine size={16} />
+            사용 방법
+          </Button>
+        </PageHeader>
 
         <div className="ui-toolbar-card">
           {branches.length > 0 && (
@@ -651,14 +844,18 @@ const AdminWeeklyAssign = () => {
                 const uid = toUserIdx(u.userIdx);
                 const userRemark = schedules.find(s => toUserIdx(s.userIdx) === uid && s.wsdRemarks)?.wsdRemarks || '';
                 const other = isOtherBranchWorker(u);
+                const onLeave = isOnLeave(u);
                 return (
-                  <div key={uid} className="wat-mobile-card">
+                  <div key={uid} className={`wat-mobile-card${onLeave ? ' is-leave' : ''}`}>
                     <div className="wat-mobile-card-head">
-                      <div>
+                      <div className="wat-worker-info">
                         <div className="wat-worker-name">
                           {u.userName}
                           {Number(u.nameSeq) > 1 && (
                             <Badge bg="secondary" className="ms-1 align-middle">{u.nameSeq}</Badge>
+                          )}
+                          {onLeave && (
+                            <Badge bg="warning" text="dark" className="ms-1 align-middle">휴직</Badge>
                           )}
                         </div>
                         <div className="wat-worker-meta">
@@ -667,6 +864,7 @@ const AdminWeeklyAssign = () => {
                           )}
                           {userRemark && <span>비고: {userRemark}</span>}
                         </div>
+                        {renderRowBulkInput(u)}
                       </div>
                       {other && (
                         <Button
@@ -720,15 +918,19 @@ const AdminWeeklyAssign = () => {
                       const uid = toUserIdx(u.userIdx);
                       const userRemark = schedules.find(s => toUserIdx(s.userIdx) === uid && s.wsdRemarks)?.wsdRemarks || '';
                       const other = isOtherBranchWorker(u);
+                      const onLeave = isOnLeave(u);
                       return (
-                        <tr key={uid}>
+                        <tr key={uid} className={onLeave ? 'wat-row-leave' : undefined}>
                           <td className="wat-sticky-col">
                             <div className="wat-worker-head">
-                              <div>
+                              <div className="wat-worker-info">
                                 <div className="wat-worker-name">
                                   {u.userName}
                                   {Number(u.nameSeq) > 1 && (
                                     <Badge bg="secondary" className="ms-1 align-middle">{u.nameSeq}</Badge>
+                                  )}
+                                  {onLeave && (
+                                    <Badge bg="warning" text="dark" className="ms-1 align-middle">휴직</Badge>
                                   )}
                                 </div>
                                 <div className="wat-worker-meta">
@@ -739,6 +941,7 @@ const AdminWeeklyAssign = () => {
                                     <div><span className="fw-bold">비고:</span> {userRemark}</div>
                                   )}
                                 </div>
+                                {renderRowBulkInput(u)}
                               </div>
                               {other && (
                                 <Button
@@ -780,18 +983,18 @@ const AdminWeeklyAssign = () => {
         )}
 
         <StickyActionBar
-          left={
-            <>
-              <Button variant="outline-secondary" onClick={handleDownloadExcel}>
-                <RiDownload2Line className="me-1" /> 엑셀
-              </Button>
-              <Button variant="outline-primary" onClick={() => setShowAddWorkerModal(true)}>
-                <RiUserAddLine className="me-1" /> 타지점
-              </Button>
-            </>
-          }
           right={
             <>
+              <Button variant="success" onClick={handleDownloadExcel}>
+                <RiDownload2Line className="me-1" /> 엑셀
+              </Button>
+              <Button variant="outline-primary" onClick={() => {
+                setSelectedOtherUserIdx('');
+                setWorkerSearchTerm('');
+                setShowAddWorkerModal(true);
+              }}>
+                <RiUserAddLine className="me-1" /> 타지점
+              </Button>
               <Button
                 variant="outline-secondary"
                 onClick={() => handleSaveAll('DRAFT')}
@@ -839,62 +1042,135 @@ const AdminWeeklyAssign = () => {
               </div>
             </Form.Group>
             <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-              {allUsers
-                .filter(u => u.status !== '퇴사' && u.isActive !== false)
-                .filter(u => {
-                  const wpIdx = u.workPlaceIdx || u.branchIdx || u.fkWorkPlaceIdx || branches.find(b => b.wpName === u.workPlaceName)?.wpIdx;
-                  return Number(wpIdx) !== Number(currentWorkPlaceIdx);
-                })
-                .filter(u => u.userName?.includes(workerSearchTerm) || u.userId?.includes(workerSearchTerm))
-                .map(u => (
+              {otherBranchCandidates.map(u => {
+                const uid = toUserIdx(u.userIdx || u.id);
+                const already = isOtherWorkerOnGrid(uid);
+                const selected = !already && toUserIdx(selectedOtherUserIdx) === uid;
+                const onLeave = isOnLeave(u);
+                return (
                   <div
-                    key={u.userIdx}
-                    className={`p-2 border rounded-2 d-flex justify-content-between align-items-center ${selectedOtherUserIdx === u.userIdx ? 'border-primary bg-primary bg-opacity-10' : ''}`}
-                    onClick={() => setSelectedOtherUserIdx(u.userIdx)}
-                    style={{ cursor: 'pointer' }}
+                    key={uid}
+                    className={`p-2 border rounded-2 d-flex justify-content-between align-items-center ${selected ? 'border-primary bg-primary bg-opacity-10' : ''} ${already || onLeave ? 'opacity-75' : ''}`}
+                    onClick={() => {
+                      if (already) return;
+                      setSelectedOtherUserIdx(uid);
+                    }}
+                    style={{ cursor: already ? 'default' : 'pointer' }}
                   >
                     <div>
                       <span className="fw-bold">{u.userName}</span>
                       {Number(u.nameSeq) > 1 && (
                         <Badge bg="secondary" className="ms-1">{u.nameSeq}</Badge>
                       )}
-                      <Badge bg="secondary" className="ms-2">{u.workPlaceName}</Badge>
+                      <Badge bg="secondary" className="ms-2">{u.workPlaceName || '지점 미상'}</Badge>
+                      {onLeave && (
+                        <Badge bg="warning" text="dark" className="ms-1">휴직</Badge>
+                      )}
                     </div>
-                    {selectedOtherUserIdx === u.userIdx && <RiAddLine className="text-primary" />}
+                    {already ? (
+                      <Badge bg="success">추가됨</Badge>
+                    ) : (
+                      selected && <RiAddLine className="text-primary" />
+                    )}
                   </div>
-                ))}
-              {allUsers
-                .filter(u => u.status !== '퇴사' && u.isActive !== false)
-                .filter(u => {
-                  const wpIdx = u.workPlaceIdx || u.branchIdx || u.fkWorkPlaceIdx || branches.find(b => b.wpName === u.workPlaceName)?.wpIdx;
-                  return Number(wpIdx) !== Number(currentWorkPlaceIdx);
-                })
-                .filter(u => u.userName?.includes(workerSearchTerm) || u.userId?.includes(workerSearchTerm)).length === 0 && (
+                );
+              })}
+              {otherBranchCandidates.length === 0 && (
                 <div className="text-center text-muted small py-3">해당하는 알바생이 없습니다.</div>
               )}
             </div>
           </Modal.Body>
           <Modal.Footer className="border-0">
             <Button variant="light" onClick={() => setShowAddWorkerModal(false)}>취소</Button>
-            <Button variant="primary" onClick={() => {
-              if (selectedOtherUserIdx && !addedWorkerUserIdxs.includes(selectedOtherUserIdx)) {
-                const uid = toUserIdx(selectedOtherUserIdx);
-                setAddedWorkerUserIdxs(prev => [...prev, uid]);
-                const currentWeekDays = Array.from({ length: 7 }).map((_, i) => format(addDays(currentWeekStart, i), 'yyyy-MM-dd'));
-                setEditSchedules(prev => {
-                  const nextUser = { ...(prev[uid] || {}) };
-                  currentWeekDays.forEach(dt => {
-                    if (!nextUser[dt] || nextUser[dt].length === 0) {
-                      nextUser[dt] = [createEmptyShift(uid, dt, currentWorkPlaceIdx, null)];
-                    }
-                  });
-                  return { ...prev, [uid]: nextUser };
-                });
-              }
-              setShowAddWorkerModal(false);
-              setSelectedOtherUserIdx('');
-            }}>
+            <Button variant="primary" onClick={handleAddOtherWorker}>
               추가하기
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        <Modal
+          show={showGuideModal}
+          onHide={() => setShowGuideModal(false)}
+          centered
+          size="lg"
+          scrollable
+        >
+          <Modal.Header closeButton>
+            <Modal.Title className="fw-bold fs-5 d-flex align-items-center gap-2">
+              <RiQuestionLine size={20} className="text-primary" />
+              주간 스케줄 배정 사용 방법
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="wat-guide-body">
+            <div className="wat-guide">
+              <div className="wat-guide-alert">
+                <div className="wat-guide-alert-title">한눈에 보기</div>
+                <p className="mb-0 small">
+                  지점·주차를 고른 뒤 셀에서 출근 시간과 오픈을 맞추고, 하단의 <strong>임시 저장 → 임시 배정 → 배정 확정</strong> 순으로 저장하세요.
+                  알바생에게 최종 공개되는 것은 <strong>배정 확정</strong>(또는 임시 배정의 출근 셀)입니다.
+                </p>
+              </div>
+
+              <h6 className="wat-guide-title">1. 화면 구성</h6>
+              <ul className="wat-guide-list">
+                <li><strong>지점 선택:</strong> 배정할 매장을 고릅니다.</li>
+                <li><strong>주차 이동:</strong> 화살표·날짜 선택·이번 주로 주를 바꿉니다.</li>
+                <li><strong>필터:</strong> 전체 / 출근 / 미출근으로 행을 좁혀 봅니다.</li>
+                <li><strong>상태 칩:</strong> 배정 전 · 임시 저장 · 임시 배정 · 확정 — 현재 주의 공개 상태를 나타냅니다.</li>
+                <li><strong>피크(P):</strong> 해당 날짜에 출근으로 잡힌 인원 수입니다.</li>
+              </ul>
+
+              <h6 className="wat-guide-title">2. 셀 상태 의미</h6>
+              <ul className="wat-guide-list">
+                <li><strong>미신청:</strong> 알바생이 아직 신청하지 않았고, 배정도 없는 날입니다.</li>
+                <li><strong>신청:</strong> 알바생이 근무를 신청한 상태입니다. 아직 출근으로 확정되지 않았습니다.</li>
+                <li><strong>신청 · 오픈:</strong> 오픈으로 신청했으나, 아직 오픈 출근 체크가 안 된 상태입니다.</li>
+                <li><strong>출근:</strong> 시간과 오픈을 맞춰 배정한 상태입니다.</li>
+                <li><strong>미출근:</strong> 신청은 있었으나 최종적으로 출근하지 않는 날로 처리된 상태입니다.</li>
+              </ul>
+
+              <h6 className="wat-guide-title">3. 배정하는 방법</h6>
+              <ul className="wat-guide-list">
+                <li>출근 시간을 입력하거나 <strong>오픈</strong>을 체크하면 해당 셀이 출근 배정으로 잡힙니다. 오픈을 켜면 시작 시간은 자동으로 맞춰지고 수동 수정은 잠깁니다.</li>
+                <li><strong>일괄:</strong> 알바생 이름 아래 작은 버튼으로 그 행의 신청·배정 칸에 같은 상태(오픈 · 미출근 · 출근 시간)를 한꺼번에 넣을 수 있습니다. 칸별 수정은 그대로 가능하며, 미신청·빈 날은 대상에서 제외됩니다.</li>
+                <li>잘못 고친 셀은 초기화(되돌리기) 버튼으로 원래 신청/배정 상태로 되돌릴 수 있습니다. 신청 내역 자체는 유지됩니다.</li>
+              </ul>
+
+              <h6 className="wat-guide-title">4. 저장 3모드 (가장 중요)</h6>
+              <ul className="wat-guide-list">
+                <li>
+                  <strong>임시 저장:</strong> 작업 내용을 서버에만 저장합니다.
+                  알바생에게는 <strong>공개되지 않습니다</strong>. 신청 셀은 그대로 둡니다.
+                </li>
+                <li>
+                  <strong>임시 배정:</strong> 이미 출근으로 맞춘 날만 알바생에게 공개합니다.
+                  아직 안 맞춘 신청 날은 <strong>신청 상태 그대로</strong> 유지됩니다.
+                </li>
+                <li>
+                  <strong>배정 확정:</strong> 해당 주를 최종 확정합니다.
+                  출근으로 맞춘 날은 공개되고, <strong>남은 신청은 미출근으로 바뀝니다</strong>.
+                </li>
+              </ul>
+              <p className="wat-guide-note small mb-3">
+                권장 순서: 임시 저장으로 초안 다듬기 → 일부만 먼저 공개할 때 임시 배정 → 주간 마감 시 배정 확정.
+              </p>
+
+              <h6 className="wat-guide-title">5. 타 지점 · 엑셀</h6>
+              <ul className="wat-guide-list mb-0">
+                <li><strong>타지점:</strong> 다른 매장 알바생을 이번 주 그리드에 추가해 파견 배정할 수 있습니다.</li>
+                <li><strong>타지점 행 초기화:</strong> 타지점 알바생 행의 × 버튼으로 처리합니다. 신청이 있으면 배정만 되돌리고 행은 남고, 관리자가 넣기만 한 경우(신청 없음)는 목록에서 제거됩니다.</li>
+                <li><strong>엑셀:</strong> 현재 화면의 주간 배정표를 다운로드합니다. (엑셀 파일은 클릭 시 별도로 로드됩니다.)</li>
+              </ul>
+            </div>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button
+              variant="primary"
+              size="sm"
+              className="rounded-pill px-4 fw-bold"
+              onClick={() => setShowGuideModal(false)}
+            >
+              확인
             </Button>
           </Modal.Footer>
         </Modal>

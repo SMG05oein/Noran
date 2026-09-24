@@ -30,11 +30,10 @@ public class DevIpAllowlistFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(DevIpAllowlistFilter.class);
 
     private final DevIpAccessService ipAccessService;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public DevIpAllowlistFilter(DevIpAccessService ipAccessService, ObjectMapper objectMapper) {
+    public DevIpAllowlistFilter(DevIpAccessService ipAccessService) {
         this.ipAccessService = ipAccessService;
-        this.objectMapper = objectMapper;
     }
 
     @Override

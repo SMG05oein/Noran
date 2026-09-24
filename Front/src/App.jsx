@@ -10,6 +10,7 @@ import AdminBottomNav from './components/AdminBottomNav';
 import Footer from './components/Footer';
 import DevRoute from './components/DevRoute';
 import NoticeModal from './components/NoticeModal';
+import DevIpOtpGate from './components/DevIpOtpGate';
 import Loading from './components/Loading';
 import './App.css';
 
@@ -111,6 +112,7 @@ function App() {
   return (
     <>
       <NoticeModal />
+      <DevIpOtpGate />
       <Suspense fallback={PageFallback}>
         <Routes>
           <Route path="/login" element={<Login />} />

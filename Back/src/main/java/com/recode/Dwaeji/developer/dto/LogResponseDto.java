@@ -18,4 +18,6 @@ public class LogResponseDto {
     private String message;
     private List<String> logs;
     private Integer totalLines;
+    private Integer matchedLines;
+    private Boolean filtered;
 }

@@ -1,6 +1,7 @@
 package com.recode.Dwaeji.common.exception;
 
 import com.recode.Dwaeji.common.dto.ErrorResponseDto;
+import com.recode.Dwaeji.developer.exception.DevIpOtpRequiredException;
 import com.recode.Dwaeji.developer.service.SystemMonitorService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Map;
 
 @RestControllerAdvice
 @RequiredArgsConstructor
@@ -44,6 +47,22 @@ public class GlobalExceptionHandler {
             return auth.getName();
         }
         return "로그인 전";
+    }
+
+    /** 로그인 자격증명 통과 후 IP 미일치 → OTP 필요 (필터와 동일 body) */
+    @ExceptionHandler(DevIpOtpRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleDevIpOtpRequired(DevIpOtpRequiredException ex, HttpServletRequest request) {
+        systemMonitorService.addErrorLog(
+                ex.getMessage(),
+                "DevIpOtpRequiredException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
+                HttpStatus.FORBIDDEN.value(),
+                getReferer(request),
+                getClientIp(request)
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getBody());
     }
 
     // 우리가 서비스 로직에서 던지는 ResponseStatusException을 잡아냅니다. (예: "아이디 또는 비밀번호가 잘못되었습니다.")

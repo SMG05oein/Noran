@@ -1,58 +1,47 @@
 package com.recode.Dwaeji.developer.service;
 
 import com.recode.Dwaeji.developer.dto.LogResponseDto;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class DeveloperLogService {
 
-    public LogResponseDto getRecentLogs(int lines) {
+    public LogResponseDto getRecentLogs(int lines, String level, String keyword) {
         if (lines <= 0) {
             lines = 200;
         }
 
-        // 1. 로그 파일 경로 탐색 (운영 서버 경로 및 로컬 개발용 경로)
-        String[] candidatePaths = {
-                "/home/MinJava/build/libs/app.log",
-                "./logs/app.log",
-                "./app.log"
-        };
-
-        File logFile = null;
-        for (String path : candidatePaths) {
-            File file = new File(path);
-            if (file.exists() && file.isFile()) {
-                logFile = file;
-                break;
-            }
-        }
-
+        File logFile = findLogFile();
         if (logFile == null) {
             return LogResponseDto.builder()
                     .available(false)
                     .message("로그 파일(app.log)을 찾을 수 없습니다.")
                     .logs(Collections.emptyList())
                     .totalLines(0)
+                    .matchedLines(0)
+                    .filtered(false)
                     .build();
         }
 
-        // 2. Ring Buffer(Deque)를 사용해 메모리 효율적으로 하위 N줄만 추출
-        Deque<String> buffer = new ArrayDeque<>(lines);
-        try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
+        // Read a larger window then filter, so filters still return up to `lines` matches.
+        int readWindow = Math.max(lines * 20, lines);
+        Deque<String> buffer = new ArrayDeque<>(readWindow);
+        try (BufferedReader reader = new BufferedReader(new FileReader(logFile, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (buffer.size() >= lines) {
+                if (buffer.size() >= readWindow) {
                     buffer.pollFirst();
                 }
                 buffer.addLast(line);
@@ -63,15 +52,58 @@ public class DeveloperLogService {
                     .message("로그 파일 읽기 중 오류 발생: " + e.getMessage())
                     .logs(Collections.emptyList())
                     .totalLines(0)
+                    .matchedLines(0)
+                    .filtered(false)
                     .build();
         }
 
-        List<String> logs = new ArrayList<>(buffer);
+        List<String> raw = new ArrayList<>(buffer);
+        boolean hasFilter = (level != null && !level.isBlank()) || (keyword != null && !keyword.isBlank());
+        List<String> filtered = raw.stream()
+                .filter(l -> matchLevel(l, level))
+                .filter(l -> matchKeyword(l, keyword))
+                .collect(Collectors.toList());
+
+        int matched = filtered.size();
+        List<String> out = filtered;
+        if (out.size() > lines) {
+            out = out.subList(out.size() - lines, out.size());
+        }
+
         return LogResponseDto.builder()
                 .available(true)
                 .message("성공적으로 로그를 조회했습니다.")
-                .logs(logs)
-                .totalLines(logs.size())
+                .logs(out)
+                .totalLines(out.size())
+                .matchedLines(matched)
+                .filtered(hasFilter)
                 .build();
+    }
+
+    public File findLogFile() {
+        String[] candidatePaths = {
+                "/home/MinJava/build/libs/app.log",
+                "./logs/app.log",
+                "./app.log"
+        };
+        for (String path : candidatePaths) {
+            File file = new File(path);
+            if (file.exists() && file.isFile()) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+    private static boolean matchLevel(String line, String level) {
+        if (level == null || level.isBlank()) return true;
+        String lv = level.trim().toUpperCase(Locale.ROOT);
+        String upper = line.toUpperCase(Locale.ROOT);
+        return upper.contains(" " + lv + " ") || upper.contains("[" + lv + "]") || upper.contains(" " + lv + ":");
+    }
+
+    private static boolean matchKeyword(String line, String keyword) {
+        if (keyword == null || keyword.isBlank()) return true;
+        return line.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
     }
 }

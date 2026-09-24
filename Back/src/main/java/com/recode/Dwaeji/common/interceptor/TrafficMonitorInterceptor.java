@@ -38,7 +38,7 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
         String endpointPath = pattern != null ? pattern : uri;
 
         // Record detailed endpoint call metrics
-        systemMonitorService.recordEndpointCall(endpointPath, request.getMethod(), duration);
+        systemMonitorService.recordEndpointCall(endpointPath, request.getMethod(), duration, response.getStatus());
 
         // If an unhandled exception occurred, log error
         if (ex != null) {

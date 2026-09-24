@@ -3,7 +3,7 @@ import { Container, Button, Badge, Spinner, Form, Alert } from 'react-bootstrap'
 import { devLogin } from '../api/devAuthApi';
 import useDevAuthStore from '../store/useDevAuthStore';
 
-const MaintenanceOverlay = ({ onRecheck, checking }) => {
+const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, scheduledEnd }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [devId, setDevId] = useState('');
   const [devPw, setDevPw] = useState('');
@@ -11,6 +11,18 @@ const MaintenanceOverlay = ({ onRecheck, checking }) => {
   const [loginError, setLoginError] = useState('');
   
   const loginStore = useDevAuthStore((state) => state.devLogin);
+
+  const formatRange = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d.toLocaleString('ko-KR');
+  };
+
+  const displayMessage = message?.trim()
+    || '현재 시스템 성능 향상 및 신규 기능 반영을 위한 긴급 점검 작업이 진행되고 있습니다.\n점검이 완료되는 대로 더욱 안정적인 서비스로 돌아오겠습니다.';
+
+  const startLabel = formatRange(scheduledStart);
+  const endLabel = formatRange(scheduledEnd);
 
   const handleDevLogin = async (e) => {
     e.preventDefault();
@@ -120,9 +132,8 @@ const MaintenanceOverlay = ({ onRecheck, checking }) => {
                   서비스 이용 일시 중단 안내
                 </h3>
 
-                <p className="text-secondary leading-relaxed mb-4" style={{ fontSize: '0.95rem' }}>
-                  현재 시스템 성능 향상 및 신규 기능 반영을 위한 긴급 점검 작업이 진행되고 있습니다.<br />
-                  점검이 완료되는 대로 더욱 안정적인 서비스로 돌아오겠습니다.
+                <p className="text-secondary leading-relaxed mb-4" style={{ fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>
+                  {displayMessage}
                 </p>
 
                 <div
@@ -133,10 +144,18 @@ const MaintenanceOverlay = ({ onRecheck, checking }) => {
                     <span className="text-white">점검 대상:</span>
                     <span className="fw-semibold text-info">근무관리 전 기능</span>
                   </div>
-                  <div className="d-flex justify-content-between">
+                  <div className="d-flex justify-content-between mb-1">
                     <span className="text-white">상태:</span>
                     <span className="fw-semibold text-danger">접근 제한 중</span>
                   </div>
+                  {(startLabel || endLabel) && (
+                    <div className="d-flex justify-content-between">
+                      <span className="text-white">예정:</span>
+                      <span className="fw-semibold text-info text-end">
+                        {startLabel || '?'} ~ {endLabel || '?'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <Button

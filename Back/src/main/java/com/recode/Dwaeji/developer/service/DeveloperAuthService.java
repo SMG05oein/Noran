@@ -5,7 +5,10 @@ import com.recode.Dwaeji.developer.database.Developer;
 import com.recode.Dwaeji.developer.database.DeveloperRepository;
 import com.recode.Dwaeji.developer.dto.DevLoginRequestDto;
 import com.recode.Dwaeji.developer.dto.DevLoginResponseDto;
+import com.recode.Dwaeji.developer.exception.DevIpOtpRequiredException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,11 +18,17 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class DeveloperAuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(DeveloperAuthService.class);
+
     private final DeveloperRepository developerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final DevIpAccessService ipAccessService;
 
-    public DevLoginResponseDto login(DevLoginRequestDto request) {
+    /**
+     * 1) 아이디·비번 확인 → 2) IP(또는 X-Dev-Ip-Token) 확인 → JWT 발급
+     */
+    public DevLoginResponseDto login(DevLoginRequestDto request, String clientIp, String ipTokenHeader) {
         String devId = request.getDevId();
         if (devId != null) {
             devId = devId.toLowerCase();
@@ -42,6 +51,12 @@ public class DeveloperAuthService {
             if (!passwordEncoder.matches(request.getDevPw(), developer.getDevPw())) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
             }
+        }
+
+        // 자격증명 통과 후 IP 검사
+        if (!ipAccessService.isAccessGranted(clientIp, ipTokenHeader)) {
+            log.warn("[DEV IP] login credentials OK but IP blocked from {}", clientIp);
+            throw new DevIpOtpRequiredException(ipAccessService.otpRequiredBody());
         }
 
         // ROLE_DEVELOPER 토큰 생성 (authType은 "DEVELOPER"로 설정)

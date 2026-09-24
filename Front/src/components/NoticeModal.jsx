@@ -10,6 +10,7 @@ const NoticeModal = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [show, setShow] = useState(false);
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [maintenanceInfo, setMaintenanceInfo] = useState(null);
   const [checking, setChecking] = useState(false);
   const location = useLocation();
 
@@ -20,6 +21,7 @@ const NoticeModal = () => {
     if (location.pathname.startsWith('/dev')) {
       setShow(false);
       setIsMaintenance(false);
+      setMaintenanceInfo(null);
       return;
     }
 
@@ -33,17 +35,24 @@ const NoticeModal = () => {
         if (!isBypassed) {
           // 점검 모드가 ON이고 현재 세션에서 우회(로그인)하지 않은 경우 차단
           setIsMaintenance(true);
+          setMaintenanceInfo({
+            message: statusRes.data.message || null,
+            scheduledStart: statusRes.data.scheduledStart || null,
+            scheduledEnd: statusRes.data.scheduledEnd || null,
+          });
           setShow(false);
           setChecking(false);
           return;
         } else {
           // 우회된 상태라면 유지 중인 차단막을 해제합니다.
           setIsMaintenance(false);
+          setMaintenanceInfo(null);
         }
       } else {
         // 점검 모드가 OFF되면 우회 플래그 초기화 (다시 켜졌을 때 차단하기 위함)
         sessionStorage.removeItem('maintenance_bypassed');
         setIsMaintenance(false);
+        setMaintenanceInfo(null);
       }
 
       // ② 점검 모드가 OFF일 때, 로그인(/login) 및 회원가입(/signup) 페이지는 공지사항 팝업을 띄우지 않고 종료
@@ -135,7 +144,15 @@ const NoticeModal = () => {
 
 
   if (isMaintenance) {
-    return <MaintenanceOverlay onRecheck={checkAndLoadNotices} checking={checking} />;
+    return (
+      <MaintenanceOverlay
+        onRecheck={checkAndLoadNotices}
+        checking={checking}
+        message={maintenanceInfo?.message}
+        scheduledStart={maintenanceInfo?.scheduledStart}
+        scheduledEnd={maintenanceInfo?.scheduledEnd}
+      />
+    );
   }
 
   if (!show || notices.length === 0) return null;

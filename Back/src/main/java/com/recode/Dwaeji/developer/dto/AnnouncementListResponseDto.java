@@ -15,5 +15,8 @@ import java.util.List;
 @Builder
 public class AnnouncementListResponseDto {
     private Boolean maintenanceMode;
+    private String message;
+    private String scheduledStart;
+    private String scheduledEnd;
     private List<AnnouncementResponseDto> notices;
 }

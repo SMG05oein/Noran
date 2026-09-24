@@ -16,4 +16,5 @@ public class TopEndpointDto {
     private String method;
     private Long count;
     private Double avgResponseTimeMs;
+    private Long maxResponseTimeMs;
 }

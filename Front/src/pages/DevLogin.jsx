@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
-import useThemeStore from '../store/useThemeStore';
 import { devLogin } from '../api/devAuthApi';
 import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
 
@@ -10,10 +9,6 @@ const DevLogin = () => {
   const [devPw, setDevPw] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    // 삭제됨: App.jsx와의 충돌 방지 위해 인라인 속성으로 대체
-  }, []);
 
   const login = useDevAuthStore((state) => state.devLogin);
   const navigate = useNavigate();
@@ -28,11 +23,11 @@ const DevLogin = () => {
     try {
       const response = await devLogin(devId, devPw);
       if (response.success) {
-        login({ 
-          devId: response.data.devId, 
-          devName: response.data.devName, 
+        login({
+          devId: response.data.devId,
+          devName: response.data.devName,
           isTempPw: response.data.isTempPw,
-          tokens: { accessToken: response.data.accessToken } 
+          tokens: { accessToken: response.data.accessToken },
         });
         navigate('/dev/dashboard');
       } else {
@@ -48,7 +43,7 @@ const DevLogin = () => {
   return (
     <div className="auth-container" data-bs-theme="dark" style={{ backgroundColor: 'var(--color-bg-cream)' }}>
       <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', zIndex: 1 }}>
-        <div className="w-100" style={{ maxWidth: "400px" }}>
+        <div className="w-100" style={{ maxWidth: '400px' }}>
           <Card className="shadow-lg border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
             <Card.Body className="p-5">
               <h2 className="text-center mb-4 fw-bold" style={{ color: '#00d2ff' }}>Developer Portal</h2>
@@ -74,8 +69,14 @@ const DevLogin = () => {
                     style={{ backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a' }}
                   />
                 </Form.Group>
-                <Button disabled={loading} className="w-100 mb-3" style={{ backgroundColor: '#00d2ff', border: 'none', color: '#000', fontWeight: 'bold' }} type="submit" size="lg">
-                  {loading ? <Spinner as="span" animation="border" size="sm" /> : "Access"}
+                <Button
+                  disabled={loading}
+                  className="w-100 mb-3"
+                  style={{ backgroundColor: '#00d2ff', border: 'none', color: '#000', fontWeight: 'bold' }}
+                  type="submit"
+                  size="lg"
+                >
+                  {loading ? <Spinner as="span" animation="border" size="sm" /> : 'Access'}
                 </Button>
               </Form>
             </Card.Body>

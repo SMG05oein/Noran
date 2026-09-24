@@ -3,23 +3,38 @@ import { Card, Button, Form, Table, Badge, Modal, Alert, Spinner, Row, Col } fro
 import {
   fetchAnnouncements,
   createAnnouncement,
+  updateAnnouncement,
   toggleAnnouncement,
   deleteAnnouncement,
-  toggleMaintenanceMode
+  toggleMaintenanceMode,
 } from '../api/devAuthApi';
 
+const emptyForm = {
+  title: '',
+  content: '',
+  startDate: '',
+  endDate: '',
+  isActive: true,
+};
+
 const AnnouncementManager = () => {
-  const [data, setData] = useState({ maintenanceMode: false, notices: [] });
+  const [data, setData] = useState({
+    maintenanceMode: false,
+    message: '',
+    scheduledStart: null,
+    scheduledEnd: null,
+    notices: [],
+  });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Modal State
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [maintMessage, setMaintMessage] = useState('');
+  const [scheduledStart, setScheduledStart] = useState('');
+  const [scheduledEnd, setScheduledEnd] = useState('');
+
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyForm);
   const [errorMsg, setErrorMsg] = useState('');
 
   const loadData = async () => {
@@ -28,8 +43,14 @@ const AnnouncementManager = () => {
     if (res.success && res.data) {
       setData({
         maintenanceMode: res.data.maintenanceMode || false,
-        notices: res.data.notices || []
+        message: res.data.message || '',
+        scheduledStart: res.data.scheduledStart || null,
+        scheduledEnd: res.data.scheduledEnd || null,
+        notices: res.data.notices || [],
       });
+      setMaintMessage(res.data.message || '');
+      setScheduledStart(toLocalInput(res.data.scheduledStart));
+      setScheduledEnd(toLocalInput(res.data.scheduledEnd));
     }
     setLoading(false);
   };
@@ -37,6 +58,20 @@ const AnnouncementManager = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const toLocalInput = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const toIsoOrNull = (local) => {
+    if (!local) return null;
+    const d = new Date(local);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
 
   const handleMaintenanceToggle = async () => {
     const nextState = !data.maintenanceMode;
@@ -46,32 +81,78 @@ const AnnouncementManager = () => {
     if (!window.confirm(confirmMsg)) return;
 
     setActionLoading(true);
-    const res = await toggleMaintenanceMode(nextState);
+    const res = await toggleMaintenanceMode(nextState, {
+      message: maintMessage || undefined,
+      scheduledStart: toIsoOrNull(scheduledStart) || undefined,
+      scheduledEnd: toIsoOrNull(scheduledEnd) || undefined,
+    });
     if (res.success) {
-      setData((prev) => ({ ...prev, maintenanceMode: res.data.maintenanceMode }));
+      setData((prev) => ({
+        ...prev,
+        maintenanceMode: res.data.maintenanceMode,
+        message: res.data.message || '',
+        scheduledStart: res.data.scheduledStart || null,
+        scheduledEnd: res.data.scheduledEnd || null,
+      }));
     } else {
       alert(res.error || '점검 모드 변경 실패');
     }
     setActionLoading(false);
   };
 
-  const handleCreateSubmit = async (e) => {
+  const handleSaveSchedule = async () => {
+    setActionLoading(true);
+    const res = await toggleMaintenanceMode(data.maintenanceMode, {
+      message: maintMessage || '',
+      scheduledStart: toIsoOrNull(scheduledStart) || undefined,
+      scheduledEnd: toIsoOrNull(scheduledEnd) || undefined,
+    });
+    if (res.success) {
+      await loadData();
+      alert('점검 설정이 저장되었습니다.');
+    } else {
+      alert(res.error || '저장 실패');
+    }
+    setActionLoading(false);
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setErrorMsg('');
+    setShowModal(true);
+  };
+
+  const openEdit = (notice) => {
+    setEditingId(notice.id);
+    setForm({
+      title: notice.title || '',
+      content: notice.content || '',
+      startDate: notice.startDate ? String(notice.startDate).substring(0, 10) : '',
+      endDate: notice.endDate ? String(notice.endDate).substring(0, 10) : '',
+      isActive: !!notice.isActive,
+    });
+    setErrorMsg('');
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) {
+    if (!form.title.trim() || !form.content.trim()) {
       setErrorMsg('제목과 내용을 모두 입력해 주세요.');
       return;
     }
 
     setActionLoading(true);
     setErrorMsg('');
-    const res = await createAnnouncement(title, content, isActive, startDate, endDate);
+    const res = editingId
+      ? await updateAnnouncement(editingId, form.title, form.content, form.isActive, form.startDate, form.endDate)
+      : await createAnnouncement(form.title, form.content, form.isActive, form.startDate, form.endDate);
+
     if (res.success) {
-      setShowAddModal(false);
-      setTitle('');
-      setContent('');
-      setStartDate('');
-      setEndDate('');
-      setIsActive(true);
+      setShowModal(false);
+      setForm(emptyForm);
+      setEditingId(null);
       loadData();
     } else {
       setErrorMsg(res.error);
@@ -81,70 +162,107 @@ const AnnouncementManager = () => {
 
   const handleToggleNotice = async (id) => {
     const res = await toggleAnnouncement(id);
-    if (res.success) {
-      loadData();
-    } else {
-      alert(res.error || '상태 변경 실패');
-    }
+    if (res.success) loadData();
+    else alert(res.error || '상태 변경 실패');
   };
 
   const handleDeleteNotice = async (id) => {
     if (!window.confirm('정말 이 공지사항을 삭제하시겠습니까?')) return;
     const res = await deleteAnnouncement(id);
-    if (res.success) {
-      loadData();
-    } else {
-      alert(res.error || '삭제 실패');
-    }
+    if (res.success) loadData();
+    else alert(res.error || '삭제 실패');
   };
 
   return (
     <Row className="g-4">
-      {/* 점검 모드 제어 카어 */}
       <Col md={12}>
         <Card
           className="shadow-sm border-0 rounded-4"
           style={{
             backgroundColor: data.maintenanceMode ? '#3d1a24' : '#2b2b40',
             color: '#fff',
-            borderLeft: data.maintenanceMode ? '5px solid #ff4d4f' : '5px solid #52c41a'
+            borderLeft: data.maintenanceMode ? '5px solid #ff4d4f' : '5px solid #52c41a',
           }}
         >
-          <Card.Body className="d-flex justify-content-between align-items-center py-4 px-4">
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <h5 className="fw-bold mb-0">서비스 긴급 점검 모드 (Maintenance Mode)</h5>
-                {data.maintenanceMode ? (
-                  <Badge bg="danger" className="px-3 py-2 fs-6">🔴 점검 모드 가동 중</Badge>
-                ) : (
-                  <Badge bg="success" className="px-3 py-2 fs-6">🟢 정상 서비스 작동 중</Badge>
-                )}
+          <Card.Body className="py-4 px-4">
+            <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+              <div>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <h5 className="fw-bold mb-0">서비스 긴급 점검 모드 (Maintenance Mode)</h5>
+                  {data.maintenanceMode ? (
+                    <Badge bg="danger" className="px-3 py-2 fs-6">점검 모드 가동 중</Badge>
+                  ) : (
+                    <Badge bg="success" className="px-3 py-2 fs-6">정상 서비스 작동 중</Badge>
+                  )}
+                </div>
+                <p className="text-secondary mb-0 small">
+                  {data.maintenanceMode
+                    ? '현재 일반 사용자 앱/웹 접속 시 점검 안내 페이지가 노출됩니다.'
+                    : '점검 모드를 켜면 앱의 일반 기능이 차단되고 점검 배너가 표시됩니다.'}
+                </p>
               </div>
-              <p className="text-secondary mb-0 small">
-                {data.maintenanceMode
-                  ? '현재 일반 사용자 앱/웹 접속 시 점검 안내 페이지가 노출됩니다.'
-                  : '점검 모드를 켜면 앱의 일반 기능이 차단되고 점검 배너가 표시됩니다.'}
-              </p>
+              <Button
+                variant={data.maintenanceMode ? 'success' : 'danger'}
+                size="lg"
+                className="fw-bold px-4 rounded-pill shadow-sm"
+                onClick={handleMaintenanceToggle}
+                disabled={actionLoading || loading}
+              >
+                {actionLoading ? <Spinner animation="border" size="sm" /> : data.maintenanceMode ? '점검 모드 해제' : '점검 모드 실행'}
+              </Button>
             </div>
-            <Button
-              variant={data.maintenanceMode ? 'success' : 'danger'}
-              size="lg"
-              className="fw-bold px-4 rounded-pill shadow-sm"
-              onClick={handleMaintenanceToggle}
-              disabled={actionLoading || loading}
-            >
-              {actionLoading ? <Spinner animation="border" size="sm" /> : data.maintenanceMode ? '점검 모드 해제' : '점검 모드 실행'}
-            </Button>
+
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">점검 사유 메시지</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    value={maintMessage}
+                    onChange={(e) => setMaintMessage(e.target.value)}
+                    placeholder="사용자에게 표시할 점검 안내 문구"
+                    style={{ backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a' }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={5}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">예약 시작</Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    value={scheduledStart}
+                    onChange={(e) => setScheduledStart(e.target.value)}
+                    style={{ backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a', colorScheme: 'dark' }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={5}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">예약 종료</Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    value={scheduledEnd}
+                    onChange={(e) => setScheduledEnd(e.target.value)}
+                    style={{ backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a', colorScheme: 'dark' }}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={2} className="d-flex align-items-end">
+                <Button variant="outline-info" className="w-100" onClick={handleSaveSchedule} disabled={actionLoading}>
+                  설정 저장
+                </Button>
+              </Col>
+            </Row>
           </Card.Body>
         </Card>
       </Col>
 
-      {/* 공지사항 목록 카드 */}
       <Col md={12}>
         <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
           <Card.Header className="d-flex justify-content-between align-items-center py-3" style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}>
             <span className="fw-bold fs-5">공지사항 관리</span>
-            <Button variant="info" className="fw-bold" onClick={() => setShowAddModal(true)}>
+            <Button variant="info" className="fw-bold" onClick={openCreate}>
               + 새 공지사항 등록
             </Button>
           </Card.Header>
@@ -164,7 +282,7 @@ const AnnouncementManager = () => {
                       <th style={{ width: '150px' }}>게시 기간</th>
                       <th style={{ width: '100px' }} className="text-center">상태</th>
                       <th style={{ width: '120px' }}>작성일시</th>
-                      <th style={{ width: '150px' }} className="text-center">관리</th>
+                      <th style={{ width: '200px' }} className="text-center">관리</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -178,9 +296,9 @@ const AnnouncementManager = () => {
                         <td className="text-muted small">
                           {notice.startDate || notice.endDate ? (
                             <>
-                              {notice.startDate ? notice.startDate.substring(0, 10).replace(/-/g, '.') : ''}
+                              {notice.startDate ? String(notice.startDate).substring(0, 10).replace(/-/g, '.') : ''}
                               {' ~ '}
-                              {notice.endDate ? notice.endDate.substring(0, 10).replace(/-/g, '.') : ''}
+                              {notice.endDate ? String(notice.endDate).substring(0, 10).replace(/-/g, '.') : ''}
                             </>
                           ) : (
                             '-'
@@ -198,9 +316,17 @@ const AnnouncementManager = () => {
                         </td>
                         <td className="text-center">
                           <Button
+                            variant="outline-info"
+                            size="sm"
+                            className="me-1 py-0 px-2"
+                            onClick={() => openEdit(notice)}
+                          >
+                            수정
+                          </Button>
+                          <Button
                             variant={notice.isActive ? 'warning' : 'outline-success'}
                             size="sm"
-                            className="me-2 py-0 px-2"
+                            className="me-1 py-0 px-2"
                             onClick={() => handleToggleNotice(notice.id)}
                           >
                             {notice.isActive ? '숨기기' : '노출하기'}
@@ -226,21 +352,19 @@ const AnnouncementManager = () => {
         </Card>
       </Col>
 
-      {/* 새 공지사항 등록 모달 */}
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered>
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton style={{ backgroundColor: '#2b2b40', color: '#fff', borderBottom: '1px solid #3f3f5a' }}>
-          <Modal.Title className="fw-bold text-info">새 공지사항 등록</Modal.Title>
+          <Modal.Title className="fw-bold text-info">{editingId ? '공지사항 수정' : '새 공지사항 등록'}</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ backgroundColor: '#1e1e2d', color: '#fff' }}>
           {errorMsg && <Alert variant="danger" className="py-2">{errorMsg}</Alert>}
-          <Form onSubmit={handleCreateSubmit}>
+          <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold">공지 제목</Form.Label>
               <Form.Control
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="예: 정기 서버 점검 안내"
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 required
                 style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a' }}
               />
@@ -250,9 +374,8 @@ const AnnouncementManager = () => {
               <Form.Control
                 as="textarea"
                 rows={4}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="공지할 세부 내용을 입력하세요."
+                value={form.content}
+                onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                 required
                 style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a' }}
               />
@@ -263,8 +386,8 @@ const AnnouncementManager = () => {
                   <Form.Label className="fw-bold">게시 시작일 (선택)</Form.Label>
                   <Form.Control
                     type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    value={form.startDate}
+                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
                     style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a', colorScheme: 'dark' }}
                   />
                 </Form.Group>
@@ -274,8 +397,8 @@ const AnnouncementManager = () => {
                   <Form.Label className="fw-bold">게시 종료일 (선택)</Form.Label>
                   <Form.Control
                     type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    value={form.endDate}
+                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
                     style={{ backgroundColor: '#2b2b40', color: '#fff', border: '1px solid #3f3f5a', colorScheme: 'dark' }}
                   />
                 </Form.Group>
@@ -285,16 +408,16 @@ const AnnouncementManager = () => {
               <Form.Check
                 type="checkbox"
                 id="notice-active-checkbox"
-                label="즉시 노출 (활성화)"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
+                label="노출 (활성화)"
+                checked={form.isActive}
+                onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
                 className="fw-semibold text-info"
               />
             </Form.Group>
             <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={() => setShowAddModal(false)}>취소</Button>
+              <Button variant="secondary" onClick={() => setShowModal(false)}>취소</Button>
               <Button variant="info" type="submit" disabled={actionLoading}>
-                {actionLoading ? <Spinner animation="border" size="sm" /> : '등록하기'}
+                {actionLoading ? <Spinner animation="border" size="sm" /> : editingId ? '수정하기' : '등록하기'}
               </Button>
             </div>
           </Form>

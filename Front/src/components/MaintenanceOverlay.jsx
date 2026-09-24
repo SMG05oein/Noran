@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Container, Button, Badge, Spinner, Form, Alert } from 'react-bootstrap';
 import { devLogin } from '../api/devAuthApi';
+import { promptDevIpOtp } from '../api/devIpToken';
 import useDevAuthStore from '../store/useDevAuthStore';
 
 const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, scheduledEnd }) => {
@@ -25,14 +26,25 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
   const endLabel = formatRange(scheduledEnd);
 
   const handleDevLogin = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!devId.trim() || !devPw.trim()) return setLoginError('아이디와 비밀번호를 입력해주세요.');
 
     setLoginLoading(true);
     setLoginError('');
 
     try {
-      const response = await devLogin(devId, devPw);
+      let response = await devLogin(devId, devPw);
+
+      if (!response.success && response.code === 'DEV_IP_OTP_REQUIRED') {
+        try {
+          await promptDevIpOtp();
+          response = await devLogin(devId, devPw);
+        } catch {
+          setLoginError('IP 인증이 취소되었거나 완료되지 않았습니다.');
+          return;
+        }
+      }
+
       if (response.success) {
         loginStore({ 
           devId: response.data.devId, 
@@ -47,7 +59,7 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
       } else {
         setLoginError(response.error || '개발자 로그인에 실패했습니다.');
       }
-    } catch (err) {
+    } catch {
       setLoginError('서버 오류가 발생했습니다.');
     } finally {
       setLoginLoading(false);

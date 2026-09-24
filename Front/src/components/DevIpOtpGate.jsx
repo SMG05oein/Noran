@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Modal, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { requestDevIpOtp, verifyDevIpOtp } from '../api/devAuthApi';
 import {
@@ -23,20 +23,7 @@ const DevIpOtpGate = () => {
     return () => clearInterval(t);
   }, [cooldown]);
 
-  const openModal = useCallback(() => {
-    setShow(true);
-    setError('');
-    setCode('');
-  }, []);
-
-  useEffect(() => subscribeDevIpOtpRequired(openModal), [openModal]);
-
-  const handleClose = () => {
-    setShow(false);
-    cancelDevIpOtp('cancelled');
-  };
-
-  const handleRequest = async () => {
+  const handleRequest = useCallback(async () => {
     setSending(true);
     setError('');
     const res = await requestDevIpOtp();
@@ -48,6 +35,20 @@ const DevIpOtpGate = () => {
       if (res.status === 429) setCooldown(60);
     }
     setSending(false);
+  }, []);
+
+  const openModal = useCallback(() => {
+    setShow(true);
+    setError('');
+    setCode('');
+    handleRequest();
+  }, [handleRequest]);
+
+  useEffect(() => subscribeDevIpOtpRequired(openModal), [openModal]);
+
+  const handleClose = () => {
+    setShow(false);
+    cancelDevIpOtp('cancelled');
   };
 
   const handleVerify = async (e) => {

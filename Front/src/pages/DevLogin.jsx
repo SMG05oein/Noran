@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
 import { devLogin } from '../api/devAuthApi';
+import { promptDevIpOtp } from '../api/devIpToken';
 import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
 
 const DevLogin = () => {
@@ -14,14 +15,25 @@ const DevLogin = () => {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!devId.trim() || !devPw.trim()) return setError('아이디와 비밀번호를 입력해주세요.');
 
     setLoading(true);
     setError('');
 
     try {
-      const response = await devLogin(devId, devPw);
+      let response = await devLogin(devId, devPw);
+
+      if (!response.success && response.code === 'DEV_IP_OTP_REQUIRED') {
+        try {
+          await promptDevIpOtp();
+          response = await devLogin(devId, devPw);
+        } catch {
+          setError('IP 인증이 취소되었거나 완료되지 않았습니다.');
+          return;
+        }
+      }
+
       if (response.success) {
         login({
           devId: response.data.devId,
@@ -33,7 +45,7 @@ const DevLogin = () => {
       } else {
         setError(response.error || '개발자 로그인에 실패했습니다.');
       }
-    } catch (err) {
+    } catch {
       setError('서버 오류가 발생했습니다.');
     } finally {
       setLoading(false);

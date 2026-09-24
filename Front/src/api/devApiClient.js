@@ -44,8 +44,14 @@ devApiClient.interceptors.response.use(
       isDevIpOtpRequiredError(error)
     ) {
       try {
-        await waitForDevIpOtp();
+        const ipToken = await waitForDevIpOtp();
         config.__ipOtpRetried = true;
+        config.headers = config.headers || {};
+        if (ipToken) {
+          config.headers[DEV_IP_OTP_HEADER] = ipToken;
+        } else {
+          config.headers[DEV_IP_OTP_HEADER] = getDevIpToken();
+        }
         return devApiClient(config);
       } catch {
         return Promise.reject(error);

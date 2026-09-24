@@ -29,6 +29,9 @@ import { RiSearchLine, RiDownload2Line } from 'react-icons/ri';
 import useAuthStore from '../store/useAuthStore';
 import './AdminMain.css';
 
+const SHOW_BANK_COLS_KEY = 'adminUsers.showBankCols';
+const SHOW_ACCOUNT_PLAIN_KEY = 'adminUsers.showAccountPlain';
+
 const formatPhoneNumber = (value) => {
   if (!value) return '';
   const num = value.replace(/[^0-9]/g, '');
@@ -36,6 +39,24 @@ const formatPhoneNumber = (value) => {
   if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
   return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
 };
+
+const readLocalFlag = (key) => {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const writeLocalFlag = (key, value) => {
+  try {
+    localStorage.setItem(key, value ? '1' : '0');
+  } catch { /* ignore */ }
+};
+
+/** 목록 API의 기재 여부 플래그 ("기재" | null) */
+const hasAccountOnList = (userAccountNumber) =>
+  userAccountNumber != null && userAccountNumber !== '';
 
 const AdminUsers = () => {
   const { user: me } = useAuthStore();
@@ -62,6 +83,11 @@ const AdminUsers = () => {
   const [sortDir, setSortDir] = useState('asc');
   const [copyToast, setCopyToast] = useState('');
   const [banks, setBanks] = useState([]);
+  const [showBankCols, setShowBankCols] = useState(() => readLocalFlag(SHOW_BANK_COLS_KEY));
+  const [showAccountPlain, setShowAccountPlain] = useState(() => readLocalFlag(SHOW_ACCOUNT_PLAIN_KEY));
+  /** 원문 조회 시 현재 페이지 캐시 (userIdx → 계좌번호) */
+  const [accountPlainByIdx, setAccountPlainByIdx] = useState({});
+  const [accountPlainLoading, setAccountPlainLoading] = useState(false);
   const [excelDownloading, setExcelDownloading] = useState(false);
 
   // 체크박스 다중 선택 상태
@@ -123,6 +149,57 @@ const AdminUsers = () => {
   const canViewSensitive = myRole?.utCanViewSensitive === 1;
   const canEditSensitive = myRole?.utCanEditSensitive === 1;
   const canExportExcel = myRole?.utCanExportExcel === 1;
+  const bankColsVisible = canViewSensitive && showBankCols;
+  const accountPlainVisible = bankColsVisible && showAccountPlain;
+
+  const bankNameByCode = useMemo(() => {
+    const map = {};
+    for (const bank of banks) {
+      const code = bank.bankCode ?? bank.code;
+      if (code != null && code !== '') {
+        map[String(code)] = bank.bankName || bank.name || String(code);
+      }
+    }
+    return map;
+  }, [banks]);
+
+  const resolveBankLabel = (u) => {
+    const code = u.bankCode || u.userBank;
+    if (code == null || code === '') return '-';
+    return bankNameByCode[String(code)] || String(code);
+  };
+
+  const clearAccountPlain = () => {
+    setAccountPlainByIdx({});
+    setAccountPlainLoading(false);
+  };
+
+  const handleShowBankColsChange = (show) => {
+    if (!canViewSensitive) return;
+    setShowBankCols(show);
+    writeLocalFlag(SHOW_BANK_COLS_KEY, show);
+    if (!show) {
+      setShowAccountPlain(false);
+      writeLocalFlag(SHOW_ACCOUNT_PLAIN_KEY, false);
+      clearAccountPlain();
+    }
+  };
+
+  const handleShowAccountPlainChange = (show) => {
+    if (!canViewSensitive || !showBankCols) return;
+    setShowAccountPlain(show);
+    writeLocalFlag(SHOW_ACCOUNT_PLAIN_KEY, show);
+    if (!show) clearAccountPlain();
+  };
+
+  const resolveAccountCell = (u) => {
+    if (!hasAccountOnList(u.userAccountNumber)) return '미기재';
+    if (!accountPlainVisible) return '기재';
+    const plain = accountPlainByIdx[u.userIdx];
+    if (plain != null && plain !== '') return plain;
+    if (accountPlainLoading) return '…';
+    return '기재';
+  };
 
   const loadUsers = async (skipCache = false) => {
     setLoading(true);
@@ -210,6 +287,47 @@ const AdminUsers = () => {
   useEffect(() => {
     loadUsers();
   }, [selectedRole, page, selectedBranch, activeStatus, isArchivedMode, sortBy, sortDir]);
+
+  // 계좌번호 원문 조회 ON일 때만 현재 페이지(기재 행) sensitive-info 로드
+  useEffect(() => {
+    if (!accountPlainVisible) {
+      clearAccountPlain();
+      return undefined;
+    }
+
+    const targets = users.filter(
+      (u) => u.userIdx != null && hasAccountOnList(u.userAccountNumber)
+    );
+    if (targets.length === 0) {
+      clearAccountPlain();
+      return undefined;
+    }
+
+    let cancelled = false;
+    setAccountPlainLoading(true);
+    setAccountPlainByIdx({});
+
+    (async () => {
+      const entries = await Promise.all(
+        targets.map(async (u) => {
+          const res = await getSensitiveInfo(u.userIdx);
+          const no = res.success ? (res.data?.userAccountNumber || '') : '';
+          return [u.userIdx, no];
+        })
+      );
+      if (cancelled) return;
+      const next = {};
+      for (const [idx, no] of entries) {
+        if (no) next[idx] = no;
+      }
+      setAccountPlainByIdx(next);
+      setAccountPlainLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountPlainVisible, users]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -585,7 +703,55 @@ const AdminUsers = () => {
               </Form>
             </div>
 
-            <div className="d-flex gap-2 align-items-center ms-auto">
+            <div className="d-flex gap-2 align-items-center ms-auto flex-wrap">
+               {canViewSensitive && (
+                 <div className="bank-sensitive-controls d-flex flex-column flex-md-row gap-2">
+                  {showBankCols && (
+                     <div className="bank-sensitive-row">
+                       <span className="bank-sensitive-label">계좌번호</span>
+                       <div className="bank-sensitive-seg" role="radiogroup" aria-label="계좌번호 원문">
+                         <input
+                           type="radio"
+                           id="account-plain-show"
+                           name="accountPlainRadio"
+                           checked={showAccountPlain}
+                           onChange={() => handleShowAccountPlainChange(true)}
+                         />
+                         <label htmlFor="account-plain-show">원문 조회</label>
+                         <input
+                           type="radio"
+                           id="account-plain-hide"
+                           name="accountPlainRadio"
+                           checked={!showAccountPlain}
+                           onChange={() => handleShowAccountPlainChange(false)}
+                         />
+                         <label htmlFor="account-plain-hide">숨김</label>
+                       </div>
+                     </div>
+                   )}
+                   <div className="bank-sensitive-row">
+                     <span className="bank-sensitive-label">은행정보</span>
+                     <div className="bank-sensitive-seg" role="radiogroup" aria-label="은행정보 표시">
+                       <input
+                         type="radio"
+                         id="bank-cols-show"
+                         name="bankColsRadio"
+                         checked={showBankCols}
+                         onChange={() => handleShowBankColsChange(true)}
+                       />
+                       <label htmlFor="bank-cols-show">보기</label>
+                       <input
+                         type="radio"
+                         id="bank-cols-hide"
+                         name="bankColsRadio"
+                         checked={!showBankCols}
+                         onChange={() => handleShowBankColsChange(false)}
+                       />
+                       <label htmlFor="bank-cols-hide">숨김</label>
+                     </div>
+                   </div>
+                 </div>
+               )}
                {canExportExcel && (
                  <Button variant="success" className="fw-bold px-3 py-2 rounded-3 shadow-sm" onClick={handleDownloadUsersExcel} disabled={excelDownloading}>
                    <RiDownload2Line className="me-1" />
@@ -618,6 +784,12 @@ const AdminUsers = () => {
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
                           이름 {renderSortIcon('name')}
                         </th>
+                        {bankColsVisible && (
+                          <>
+                            <th>은행</th>
+                            <th>계좌</th>
+                          </>
+                        )}
                         <th>아이디</th>
                         <th>시급</th>
                         <th>연락처</th>
@@ -648,6 +820,12 @@ const AdminUsers = () => {
                               )}
                             </span>
                           </td>
+                          {bankColsVisible && (
+                            <>
+                              <td className="small">{resolveBankLabel(u)}</td>
+                              <td className="small font-monospace">{resolveAccountCell(u)}</td>
+                            </>
+                          )}
                           <td
                             className="text-muted small"
                             style={{ cursor: 'pointer' }}
@@ -690,7 +868,7 @@ const AdminUsers = () => {
                       ))}
                       {users.length === 0 && (
                         <tr>
-                          <td colSpan={9} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
+                          <td colSpan={9 + (bankColsVisible ? 2 : 0) + (activeStatus === 'INACTIVE' ? 1 : 0)} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
                         </tr>
                       )}
                     </tbody>
@@ -820,7 +998,7 @@ const AdminUsers = () => {
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
                 <InputGroup>
-                  <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="숫자만 입력" disabled={!canEditSensitive || (editAccountNo === '기재' && !sensitiveDataLoaded)} />
+                  <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="계좌번호 입력" disabled={!canEditSensitive || (editAccountNo === '기재' && !sensitiveDataLoaded)} />
                   {canViewSensitive && !sensitiveDataLoaded && editAccountNo === '기재' && (
                     <Button variant="outline-danger" onClick={handleRevealSensitive} disabled={sensitiveLoading} className="fw-bold px-3">
                       {sensitiveLoading ? <Spinner size="sm" /> : '원문 조회'}

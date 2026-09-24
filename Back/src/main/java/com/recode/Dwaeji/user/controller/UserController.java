@@ -56,7 +56,7 @@ public class UserController {
     public ResponseEntity<String> updateUser(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx,
-            @RequestBody UserUpdateDto userUpdateDto) {
+            @Valid @RequestBody UserUpdateDto userUpdateDto) {
         
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");

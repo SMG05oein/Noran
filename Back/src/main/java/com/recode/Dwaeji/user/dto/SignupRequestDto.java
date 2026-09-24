@@ -28,6 +28,7 @@ public class SignupRequestDto {
     private String userPw;
 
     @NotBlank(message = "이름을 입력해주세요.")
+    @Pattern(regexp = "^[ㄱ-ㅎㅏ-ㅣ가-힣]+$", message = "이름에는 한글만 입력할 수 있습니다. (띄어쓰기, 숫자, 영문 등 불가)")
     private String userName;
 
     @NotBlank(message = "전화번호를 입력해주세요.")

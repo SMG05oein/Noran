@@ -531,3 +531,76 @@
   color: var(--color-text-muted) !important;
 }
 
+/* 직원관리 — 은행/계좌 표시 라디오 */
+.bank-sensitive-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.bank-sensitive-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.bank-sensitive-label {
+  flex: 0 0 auto;
+  min-width: 3.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+
+.bank-sensitive-seg {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 2px;
+  background: var(--color-input-bg, var(--color-bg-cream));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.bank-sensitive-seg input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.bank-sensitive-seg label {
+  margin: 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bank-sensitive-seg label:hover {
+  color: var(--color-text-main);
+}
+
+.bank-sensitive-seg input[type="radio"]:checked + label {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.bank-sensitive-seg input[type="radio"]:focus-visible + label {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  outline-offset: 1px;
+}
+
+

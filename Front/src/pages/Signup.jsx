@@ -465,9 +465,9 @@ const Signup = () => {
                   <Form.Control
                     type="text"
                     value={userAccountNumber}
-                    onChange={(e) => setUserAccountNumber(e.target.value.replace(/[^0-9-]/g, ''))}
+                    onChange={(e) => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
                     ref={accountNumRef}
-                    placeholder="계좌번호 (숫자와 하이픈만)"
+                    placeholder="계좌번호 입력"
                     className="custom-input"
                   />
                 </Form.Group>

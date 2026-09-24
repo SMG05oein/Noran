@@ -430,7 +430,7 @@ const MyPage = () => {
             </Form.Group>
             
             <Form.Group className="mb-4">
-              <Form.Label className="fw-bold text-muted small">계좌번호 (숫자만) <span className="text-danger">*</span></Form.Label>
+              <Form.Label className="fw-bold text-muted small">계좌번호 <span className="text-danger">*</span></Form.Label>
               <div className="d-flex gap-2">
                 <Form.Control
                   type="text"

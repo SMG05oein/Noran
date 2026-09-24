@@ -196,12 +196,17 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                     ? false
                     : Boolean.TRUE.equals(dto.getIsConfirmed());
 
+            OpenShiftRules.NormalizedOpen openNorm =
+                    OpenShiftRules.normalizeScheduleOpen(dto.getDate(), dto.getIsOpen(), dto.getStartTime());
+            String resolvedStart = openNorm.startTime();
+            boolean resolvedOpen = openNorm.isOpen();
+
             if (matched != null && (toDelete.contains(matched) || !assignMode.replacesWholeRange())) {
                 matched.setWsdStatus(dto.getStatus());
-                matched.setWsdStartTime(dto.getStartTime());
+                matched.setWsdStartTime(resolvedStart);
                 matched.setWorkPlace(wp);
                 matched.setWsdIsConfirmed(confirmedFlag);
-                matched.setWsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()));
+                matched.setWsdIsOpen(resolvedOpen);
                 toSave.add(matched);
                 toDelete.remove(matched);
             } else if (matched == null) {
@@ -209,18 +214,18 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         .user(targetUser)
                         .wsdDate(dto.getDate())
                         .wsdStatus(dto.getStatus())
-                        .wsdStartTime(dto.getStartTime())
+                        .wsdStartTime(resolvedStart)
                         .workPlace(wp)
                         .wsdIsConfirmed(confirmedFlag)
-                        .wsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()))
+                        .wsdIsOpen(resolvedOpen)
                         .build();
                 toSave.add(newSchedule);
             } else {
                 matched.setWsdStatus(dto.getStatus());
-                matched.setWsdStartTime(dto.getStartTime());
+                matched.setWsdStartTime(resolvedStart);
                 matched.setWorkPlace(wp);
                 matched.setWsdIsConfirmed(confirmedFlag);
-                matched.setWsdIsOpen(Boolean.TRUE.equals(dto.getIsOpen()));
+                matched.setWsdIsOpen(resolvedOpen);
                 toSave.add(matched);
                 toDelete.remove(matched);
             }
@@ -717,6 +722,11 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 if (date.isBefore(startDate) || date.isAfter(endDate)) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "신청 기간을 벗어난 날짜(" + date + ")가 포함되어 있습니다.");
+                }
+                // 오픈 신청: 날짜별 공식 오픈 시각만 허용(평일 16:00 / 주말·공휴 10:00).
+                // apply DTO에 시각 필드는 없으나, 오픈 플래그 남용 방지용으로 규칙 존재 여부를 서버에서 확정.
+                if (dto.getOpenApplied() != null && dto.getOpenApplied()) {
+                    OpenShiftRules.expectedOpenStart(date);
                 }
                 String key = date + "_" + dto.getWorkPlaceIdx();
                 if (!applyKeySet.add(key)) {

@@ -5,6 +5,7 @@ import com.recode.Dwaeji.user.database.UserType;
 import com.recode.Dwaeji.user.database.WorkPlace;
 import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
+import com.recode.Dwaeji.work_apply_work.OpenShiftRules;
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
 import com.recode.Dwaeji.work_apply_work.database.AssignMode;
 import com.recode.Dwaeji.work_apply_work.database.WorkApply;

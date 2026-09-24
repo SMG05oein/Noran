@@ -66,6 +66,10 @@ public class WorkRecord {
     @Comment("근무 비고")
     private String wrRemarks;
 
+    @Column(name = "wr_created_by")
+    @Comment("등록자 userIdx (관리자 대리 등록 시 관리자)")
+    private Long wrCreatedBy;
+
     @CreatedDate
     @Column(name = "wr_created_at", nullable = false, updatable = false)
     @Comment("생성 일시")

@@ -3,6 +3,9 @@ package com.recode.Dwaeji.work_record.controller;
 import com.recode.Dwaeji.work_record.dto.WorkRecordRequestDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordResponseDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
+import com.recode.Dwaeji.work_record.dto.ExcelCompareResolveRequestDto;
+import com.recode.Dwaeji.work_record.dto.ExcelCompareUploadResponseDto;
+import com.recode.Dwaeji.work_record.excelcompare.ExcelCompareService;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,9 +16,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.time.LocalDate;
 
 @Tag(name = "근무 기록 API", description = "근무 기록(출퇴근) 생성, 조회, 수정, 삭제 API")
 @RestController
@@ -24,14 +27,15 @@ import java.time.LocalDate;
 public class WorkRecordController {
 
     private final WorkRecordService workRecordService;
+    private final ExcelCompareService excelCompareService;
 
     @Operation(summary = "근무 기록 생성", description = "새로운 근무 기록을 생성합니다. 일반 유저는 본인의 기록만 생성 가능하며, 관리자는 대리 작성이 가능합니다.")
     @PostMapping
-    public ResponseEntity<String> createWorkRecord(
+    public ResponseEntity<WorkRecordResponseDto> createWorkRecord(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody WorkRecordRequestDto requestDto) {
-        workRecordService.createWorkRecord(userDetails.getUsername(), requestDto);
-        return ResponseEntity.ok("근무 기록이 생성되었습니다.");
+        WorkRecordResponseDto created = workRecordService.createWorkRecord(userDetails.getUsername(), requestDto);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(created);
     }
 
     @Operation(summary = "전체 근무 기록 조회", description = "일반 유저는 본인의 기록만, 관리자는 전체 기록 또는 특정 지점/이름의 기록을 조회합니다.")
@@ -80,13 +84,61 @@ public class WorkRecordController {
                 .body(excelBytes);
     }
 
-    @Operation(summary = "엑셀 업로드 기록 대조", description = "프론트엔드에서 파싱한 엑셀 데이터를 DB와 대조하여 일치 여부를 반환합니다.")
-    @PostMapping("/excel-compare")
-    public ResponseEntity<java.util.List<com.recode.Dwaeji.work_record.dto.ExcelCompareResponseDto>> compareExcelRecords(
+    @Operation(summary = "엑셀 대조 전용 템플릿 다운로드", description = "헤더: 날짜,이름,근무지,출근,퇴근,휴게")
+    @GetMapping("/excel-compare/template")
+    public ResponseEntity<byte[]> downloadCompareTemplate(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        byte[] bytes = excelCompareService.buildTemplate();
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", "work_record_compare_template.xlsx");
+        return ResponseEntity.ok().headers(headers).body(bytes);
+    }
+
+    @Operation(summary = "엑셀 대조 시작", description = "multipart 업로드. 컬럼 오류·동명이인·완료(phase) 반환. 관리자 전용.")
+    @PostMapping(value = "/excel-compare", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ExcelCompareUploadResponseDto> startExcelCompare(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody java.util.List<com.recode.Dwaeji.work_record.dto.ExcelCompareRequestDto> requestData) {
-        if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(workRecordService.compareExcelRecords(userDetails.getUsername(), requestData));
+            @RequestParam("file") MultipartFile file,
+            @RequestParam int year,
+            @RequestParam int month) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        ExcelCompareUploadResponseDto body = excelCompareService.startCompare(
+                userDetails.getUsername(), file, year, month);
+        if ("COLUMN_ERROR".equals(body.getPhase())) {
+            return ResponseEntity.badRequest().body(body);
+        }
+        return ResponseEntity.ok(body);
+    }
+
+    @Operation(summary = "엑셀 대조 동명이인 해소 후 비교", description = "sessionId + rowIndex→userIdx 선택 후 비교 재개")
+    @PostMapping("/excel-compare/resolve")
+    public ResponseEntity<ExcelCompareUploadResponseDto> resolveExcelCompare(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody ExcelCompareResolveRequestDto request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(excelCompareService.resolveAndCompare(userDetails.getUsername(), request));
+    }
+
+    @Operation(summary = "엑셀 대조 결과 다운로드", description = "DONE phase 이후 sessionId로 결과 xlsx 다운로드")
+    @GetMapping("/excel-compare/result")
+    public ResponseEntity<byte[]> downloadExcelCompareResult(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam String sessionId) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        byte[] bytes = excelCompareService.downloadResult(userDetails.getUsername(), sessionId);
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", "work_record_compare_result.xlsx");
+        return ResponseEntity.ok().headers(headers).body(bytes);
     }
 
     @Operation(summary = "특정 근무 기록 단건 조회", description = "ID(wrIdx)를 통해 특정 근무 기록을 조회합니다.")

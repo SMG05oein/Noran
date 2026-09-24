@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -95,6 +96,8 @@ public class PayrollServiceImpl implements PayrollService {
                 Agg a = new Agg();
                 a.userIdx = id;
                 a.userName = user.getUserName();
+                a.userId = user.getUserId();
+                a.userPhone = user.getUserPhone();
                 a.workPlaceName = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : null;
                 a.hourlyWage = user.getUserHourlyWage();
                 return a;
@@ -111,6 +114,8 @@ public class PayrollServiceImpl implements PayrollService {
             rows.add(PayrollRowDto.builder()
                     .userIdx(agg.userIdx)
                     .userName(agg.userName)
+                    .userId(agg.userId)
+                    .userPhone(agg.userPhone)
                     .nameSeq(seq != null ? seq : 1L)
                     .workPlaceName(agg.workPlaceName)
                     .hourlyWage(wage)
@@ -214,6 +219,7 @@ public class PayrollServiceImpl implements PayrollService {
 
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
             String[] headers = {"이름", "세전", ""};
+            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
             for (Map.Entry<Long, List<WorkRecord>> entry : byWpIdx.entrySet()) {
                 List<PayrollRowDto> sheetRows = aggregateByUser(entry.getValue(), true);
@@ -223,7 +229,7 @@ public class PayrollServiceImpl implements PayrollService {
 
                 String baseName = resolveSheetName(entry.getKey(), entry.getValue(), month, workPlaceIdx);
                 String sheetName = uniqueExcelSheetName(toExcelSheetName(baseName), usedSheetNames);
-                writePayrollSheet(workbook.createSheet(sheetName), headers, sheetRows);
+                writePayrollSheet(workbook.createSheet(sheetName), headers, sheetRows, dark);
             }
 
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
@@ -274,7 +280,8 @@ public class PayrollServiceImpl implements PayrollService {
     private void writePayrollSheet(
             org.apache.poi.ss.usermodel.Sheet sheet,
             String[] headers,
-            List<PayrollRowDto> rows) {
+            List<PayrollRowDto> rows,
+            com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark) {
         org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
         for (int i = 0; i < headers.length; i++) {
             headerRow.createCell(i).setCellValue(headers[i]);
@@ -283,12 +290,13 @@ public class PayrollServiceImpl implements PayrollService {
         int rowNum = 1;
         for (PayrollRowDto dto : rows) {
             org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(dto.getUserName() != null ? dto.getUserName() : "");
-            if (dto.getPreTaxPay() != null) {
-                row.createCell(1).setCellValue(dto.getPreTaxPay());
-            } else {
-                row.createCell(1).setCellValue(0);
+            String name = dto.getUserName() != null ? dto.getUserName() : "";
+            if (dto.getNameSeq() != null && dto.getNameSeq() > 1 && dto.getUserIdx() != null) {
+                name = name.isEmpty() ? "#" + dto.getUserIdx() : name + " #" + dto.getUserIdx();
             }
+            row.createCell(0).setCellValue(name);
+            int preTax = dto.getPreTaxPay() != null ? dto.getPreTaxPay() : 0;
+            row.createCell(1).setCellValue(String.format(Locale.KOREA, "%,d원", preTax));
             row.createCell(2).setCellValue("");
         }
         if (rowNum > 1) {
@@ -299,11 +307,14 @@ public class PayrollServiceImpl implements PayrollService {
             int currentWidth = sheet.getColumnWidth(i);
             sheet.setColumnWidth(i, (int) (currentWidth * 1.3));
         }
+        com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, Math.max(rowNum - 1, 0), headers.length);
     }
 
     private static class Agg {
         Long userIdx;
         String userName;
+        String userId;
+        String userPhone;
         String workPlaceName;
         Integer hourlyWage;
         long totalMinutes;

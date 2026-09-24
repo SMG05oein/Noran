@@ -253,21 +253,94 @@ export const fetchDailySchedule = async (dateStr, workPlaceIdx = null) => {
   }
 };
 
-// 근무 기록 엑셀 대조 (업로드)
-export const compareWorkRecordExcel = async (file) => {
+const triggerXlsxDownload = (blobData, filename) => {
+  const blob = new Blob([blobData], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.parentNode.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
+const mapExcelComparePhase = (data = {}) => ({
+  phase: data.phase || null,
+  sessionId: data.sessionId || null,
+  messages: data.messages || [],
+  statusCounts: data.statusCounts || null,
+  totalCount: data.totalCount != null ? data.totalCount : null,
+  data,
+});
+
+const parseExcelCompareError = (error, fallback) => {
+  const data = error.response?.data;
+  if (data && typeof data === 'object' && data.phase) {
+    return {
+      success: false,
+      ...mapExcelComparePhase(data),
+      error: (data.messages && data.messages[0]) || fallback,
+      status: error.response?.status,
+    };
+  }
+  const errMsg =
+    data?.msg ||
+    (typeof data === 'string' ? data : null) ||
+    fallback;
+  return { success: false, error: errMsg, status: error.response?.status };
+};
+
+/** 근무 기록 엑셀 대조 템플릿 다운로드 */
+export const downloadExcelCompareTemplate = async () => {
+  try {
+    const response = await globalApiClient.get('/api/work-record/excel-compare/template', {
+      responseType: 'blob',
+    });
+    triggerXlsxDownload(response.data, '근무기록_대조_템플릿.xlsx');
+    return { success: true };
+  } catch (error) {
+    console.error('엑셀 대조 템플릿 다운로드 실패:', error);
+    return { success: false, error: '템플릿 다운로드 중 오류가 발생했습니다.' };
+  }
+};
+
+/**
+ * 근무 기록 엑셀 대조 시작 (multipart).
+ * phase: COLUMN_ERROR | DONE
+ */
+export const startExcelCompare = async (file, year, month) => {
   try {
     const formData = new FormData();
     formData.append('file', file);
-    
     const response = await globalApiClient.post('/api/work-record/excel-compare', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      params: { year, month },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return { success: true, data: response.data };
+    return {
+      success: true,
+      ...mapExcelComparePhase(response.data || {}),
+    };
   } catch (error) {
-    const errMsg = error.response?.data?.msg || '엑셀 대조 및 업로드에 실패했습니다.';
-    return { success: false, error: errMsg };
+    return parseExcelCompareError(error, '엑셀 대조에 실패했습니다.');
+  }
+};
+
+/** 엑셀 대조 결과 다운로드 */
+export const downloadExcelCompareResult = async (sessionId, year, month) => {
+  try {
+    const response = await globalApiClient.get('/api/work-record/excel-compare/result', {
+      params: { sessionId },
+      responseType: 'blob',
+    });
+    const label = year && month ? `_${year}년_${month}월` : '';
+    triggerXlsxDownload(response.data, `근무기록_대조결과${label}.xlsx`);
+    return { success: true };
+  } catch (error) {
+    console.error('엑셀 대조 결과 다운로드 실패:', error);
+    return { success: false, error: '결과 다운로드 중 오류가 발생했습니다.' };
   }
 };
 
@@ -327,7 +400,6 @@ export const updateWorkApply = async (startDate, endDate, applyDataArray) => {
   }
 };
 
-
 // 근무 기록 엑셀 다운로드
 export const downloadWorkRecordExcel = async (year, month, workPlaceIdx) => {
   try {
@@ -339,19 +411,7 @@ export const downloadWorkRecordExcel = async (year, month, workPlaceIdx) => {
       responseType: 'blob',
     });
 
-    const blob = new Blob([response.data], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    });
-
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `근무기록_${year}년_${month}월.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
-    window.URL.revokeObjectURL(url);
-
+    triggerXlsxDownload(response.data, `근무기록_${year}년_${month}월.xlsx`);
     return { success: true };
   } catch (error) {
     console.error("엑셀 다운로드 실패:", error);

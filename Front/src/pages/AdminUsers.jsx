@@ -643,7 +643,9 @@ const AdminUsers = () => {
                               onClick={() => openEditModal(u)}
                             >
                               {u.userName}
-                              {Number(u.nameSeq) > 1 && <Badge bg="secondary" className="ms-1">{u.nameSeq}</Badge>}
+                              {Number(u.nameSeq) > 1 && u.userIdx != null && (
+                                <Badge bg="secondary" className="ms-1">#{u.userIdx}</Badge>
+                              )}
                             </span>
                           </td>
                           <td

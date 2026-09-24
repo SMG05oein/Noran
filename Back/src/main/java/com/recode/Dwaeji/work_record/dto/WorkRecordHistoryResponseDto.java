@@ -27,5 +27,7 @@ public class WorkRecordHistoryResponseDto {
     private LocalTime afterStartTime;
     private LocalTime afterEndTime;
     private LocalTime afterRestTime;
+    /** CREATE | UPDATE | DELETE | RESTORE */
+    private String actionType;
     private LocalDateTime wrhCreatedAt;
 }

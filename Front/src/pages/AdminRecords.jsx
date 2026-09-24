@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Modal, Form, Badge } from 'react-bootstrap';
-import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, createWorkRecord, deleteWorkRecord, restoreWorkRecord } from '../api/workApi';
-import { fetchWorkPlaces, fetchAdminWorkers } from '../api/authApi';
+import { useNavigate } from 'react-router-dom';
+import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, deleteWorkRecord, restoreWorkRecord } from '../api/workApi';
+import { fetchWorkPlaces } from '../api/authApi';
 import { format } from 'date-fns';
-import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiStore2Line, RiRefreshLine, RiArrowRightSLine } from 'react-icons/ri';
+import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiStore2Line, RiRefreshLine, RiArrowRightSLine, RiFileExcel2Line, RiAddLine } from 'react-icons/ri';
 import PaginationBar from '../components/PaginationBar';
 import Loading from '../components/Loading';
+import AdminCreateRecordModal from '../components/AdminCreateRecordModal';
 import './AdminMain.css';
 
 const AdminRecords = () => {
+  const navigate = useNavigate();
   const [selectedWpIdx, setSelectedWpIdx] = useState(null); // null이면 전체
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [workRecords, setWorkRecords] = useState([]);
@@ -44,19 +47,7 @@ const AdminRecords = () => {
   const [historySearchTerm, setHistorySearchTerm] = useState('');
   const [historySearchInput, setHistorySearchInput] = useState('');
 
-  // 추가 모달 관련 상태
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createWorkers, setCreateWorkers] = useState([]);
-  const [createWorkerSearch, setCreateWorkerSearch] = useState('');
-  const [createRecord, setCreateRecord] = useState({
-    userIdx: '',
-    wpIdx: '',
-    wrDate: format(new Date(), 'yyyy-MM-dd'),
-    startHour: '09', startMin: '00',
-    endHour: '18', endMin: '00',
-    restHour: '01', restMin: '00',
-    remarks: ''
-  });
 
   const loadBranches = async () => {
     const branchRes = await fetchWorkPlaces();
@@ -184,44 +175,6 @@ const AdminRecords = () => {
       loadData();
     } else {
       alert(res.error || '삭제에 실패했습니다.');
-    }
-  };
-
-  const openCreateModal = async () => {
-    setShowCreateModal(true);
-    // 직원 목록 불러오기
-    const res = await fetchAdminWorkers();
-    if (res.success) {
-      setCreateWorkers(Array.isArray(res.data) ? res.data : (res.data.content || []));
-    }
-  };
-
-  const handleCreateRecord = async () => {
-    if (!createRecord.userIdx) return alert('직원을 선택해주세요.');
-    if (!createRecord.wrDate) return alert('날짜를 선택해주세요.');
-
-    setSaving(true);
-    const payload = {
-      userIdx: parseInt(createRecord.userIdx, 10),
-      wrDate: createRecord.wrDate,
-      wrStartTime: `${createRecord.startHour}:${createRecord.startMin}:00`,
-      wrEndTime: `${createRecord.endHour}:${createRecord.endMin}:00`,
-      wrRestTime: `${createRecord.restHour}:${createRecord.restMin}:00`,
-      wrRemarks: createRecord.remarks
-    };
-
-    const res = await createWorkRecord(payload);
-    setSaving(false);
-    if (res.success) {
-      alert('근무 기록이 추가되었습니다.');
-      setShowCreateModal(false);
-      setCreateRecord({
-        ...createRecord,
-        remarks: ''
-      });
-      loadData();
-    } else {
-      alert(res.error || '추가에 실패했습니다.');
     }
   };
 
@@ -392,9 +345,9 @@ const AdminRecords = () => {
               <Button 
                 variant="primary" 
                 className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
-                onClick={openCreateModal}
+                onClick={() => setShowCreateModal(true)}
               >
-                새 기록 추가
+                <RiAddLine size={16} /> 새 기록 추가
               </Button>
               <Button 
                 variant="outline-info" 
@@ -424,6 +377,14 @@ const AdminRecords = () => {
               >
                 <RiDownload2Line size={16} />
                 {downloading ? '다운로드 중...' : '엑셀 다운로드'}
+              </Button>
+              <Button
+                variant="outline-success"
+                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs"
+                onClick={() => navigate('/admin/records/excel-compare')}
+              >
+                <RiFileExcel2Line size={16} />
+                엑셀 대조
               </Button>
             </div>
           </div>
@@ -514,8 +475,8 @@ const AdminRecords = () => {
                             <td><Badge bg="light" className="text-dark border">{r.workPlaceName || '-'}</Badge></td>
                             <td>
                               <span className="fw-bold text-primary">{r.userName || `사원(${r.userIdx})`}</span>
-                              {Number(r.nameSeq) > 1 && (
-                                <Badge bg="secondary" className="ms-1">{r.nameSeq}</Badge>
+                              {Number(r.nameSeq) > 1 && r.userIdx != null && (
+                                <Badge bg="secondary" className="ms-1">#{r.userIdx}</Badge>
                               )}
                             </td>
                             <td>{formatTimeStr(r.wrStartTime)}</td>
@@ -718,85 +679,16 @@ const AdminRecords = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 새 기록 추가 모달 */}
-      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold fs-5">새 근무 기록 추가</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4">
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">직원 선택</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="직원 이름 검색..."
-                value={createWorkerSearch}
-                onChange={e => setCreateWorkerSearch(e.target.value)}
-                className="custom-input mb-2"
-              />
-              <Form.Select 
-                value={createRecord.userIdx} 
-                onChange={e => setCreateRecord({...createRecord, userIdx: e.target.value})} 
-                className="custom-input"
-                htmlSize={3}
-              >
-                <option value="" disabled>직원을 선택하세요</option>
-                {createWorkers
-                  .filter(w => (w.userName || '').toLowerCase().includes(createWorkerSearch.toLowerCase()))
-                  .map(w => (
-                  <option key={w.userIdx} value={w.userIdx}>{w.userName} ({w.email})</option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">근무 날짜</Form.Label>
-              <Form.Control 
-                type="date" 
-                value={createRecord.wrDate} 
-                onChange={e => setCreateRecord({...createRecord, wrDate: e.target.value})} 
-                className="custom-input"
-              />
-            </Form.Group>
-
-            <div className="d-flex gap-3 mb-3">
-              <Form.Group className="flex-fill">
-                <Form.Label className="fw-bold text-muted small">출근 시간</Form.Label>
-                <div className="d-flex align-items-center gap-1">
-                  <Form.Control type="number" min="0" max="23" value={createRecord.startHour} onChange={e => setCreateRecord({...createRecord, startHour: e.target.value.padStart(2, '0')})} className="custom-input" /> :
-                  <Form.Control type="number" min="0" max="59" value={createRecord.startMin} onChange={e => setCreateRecord({...createRecord, startMin: e.target.value.padStart(2, '0')})} className="custom-input" />
-                </div>
-              </Form.Group>
-              <Form.Group className="flex-fill">
-                <Form.Label className="fw-bold text-muted small">퇴근 시간</Form.Label>
-                <div className="d-flex align-items-center gap-1">
-                  <Form.Control type="number" min="0" max="23" value={createRecord.endHour} onChange={e => setCreateRecord({...createRecord, endHour: e.target.value.padStart(2, '0')})} className="custom-input" /> :
-                  <Form.Control type="number" min="0" max="59" value={createRecord.endMin} onChange={e => setCreateRecord({...createRecord, endMin: e.target.value.padStart(2, '0')})} className="custom-input" />
-                </div>
-              </Form.Group>
-            </div>
-            
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold text-muted small">휴게 시간 (시:분)</Form.Label>
-              <div className="d-flex align-items-center gap-1 w-50">
-                <Form.Control type="number" min="0" max="23" value={createRecord.restHour} onChange={e => setCreateRecord({...createRecord, restHour: e.target.value.padStart(2, '0')})} className="custom-input" /> :
-                <Form.Control type="number" min="0" max="59" value={createRecord.restMin} onChange={e => setCreateRecord({...createRecord, restMin: e.target.value.padStart(2, '0')})} className="custom-input" />
-              </div>
-            </Form.Group>
-            
-            <Form.Group className="mb-2">
-              <Form.Label className="fw-bold text-muted small">메모</Form.Label>
-              <Form.Control as="textarea" rows={2} value={createRecord.remarks} onChange={e => setCreateRecord({...createRecord, remarks: e.target.value})} className="custom-input" />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCreateModal(false)} className="rounded-3">취소</Button>
-          <Button variant="primary" onClick={handleCreateRecord} disabled={saving} className="fw-bold">
-            {saving ? <Spinner as="span" animation="border" size="sm" /> : '추가하기'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <AdminCreateRecordModal
+        show={showCreateModal}
+        onHide={() => setShowCreateModal(false)}
+        onCreated={() => {
+          setShowCreateModal(false);
+          loadData();
+        }}
+        branches={branches}
+        selectedMonth={selectedMonth}
+      />
 
     </div>
   );

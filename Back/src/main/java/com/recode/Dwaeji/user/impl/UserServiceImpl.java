@@ -634,33 +634,7 @@ public class UserServiceImpl implements UserService {
         org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage = 
                 userRepository.searchWorkersNative(isActive, workPlaceIdx, userName, pageable);
 
-        return projPage.map(p -> {
-            String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
-            if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
-                hasAccount = "기재";
-            }
-            
-            return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
-                    .userIdx(p.getUserIdx())
-                    .userId(p.getUserId())
-                    .userName(p.getUserName())
-                    .userEmail(p.getUserEmail())
-                    .userBirth(p.getUserBirth())
-                    .userPhone(p.getUserPhone())
-                    .userTypeName(p.getUserTypeName())
-                    .fkUtIdx(p.getFkUtIdx())
-                    .workPlaceName(p.getWorkPlaceName())
-                    .workPlaceIdx(p.getWorkPlaceIdx())
-                    .userIsActive(p.getUserIsActive())
-                    .userAccountName(p.getUserAccountName())
-                    .userAccountNumber(hasAccount)
-                    .userBank(p.getUserBank())
-                    .userHourlyWage(p.getUserHourlyWage())
-                    .userWithdrawnAt(p.getUserWithdrawnAt())
-                    .isAdmin(p.getIsAdmin())
-                    .nameSeq(p.getNameSeq())
-                    .build();
-        });
+        return mapUserProjectionsWithNameCount(projPage);
     }
 
     @Override
@@ -699,11 +673,32 @@ public class UserServiceImpl implements UserService {
         org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage =
                 userRepository.searchAllEmployeesNative(isActive, workPlaceIdx, userName, pageable);
 
+        return mapUserProjectionsWithNameCount(projPage);
+    }
+
+    /**
+     * nameSeq = 동일 실명 활성 인원 수.
+     * 동명이인 N명이면 전원(첫 조회분 포함) nameSeq = N (&gt; 1) → Front #userIdx 배지.
+     */
+    private org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> mapUserProjectionsWithNameCount(
+            org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage) {
+        java.util.Map<Long, Long> nameCountByUserIdx = new java.util.HashMap<>();
+        for (com.recode.Dwaeji.user.repository.UserWithSeqProjection p : projPage.getContent()) {
+            if (p.getUserIdx() == null) continue;
+            nameCountByUserIdx.computeIfAbsent(p.getUserIdx(), id -> {
+                Long c = userRepository.findNameSeqByUserIdx(id);
+                return (c != null && c > 0) ? c : 1L;
+            });
+        }
+
         return projPage.map(p -> {
             String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
             if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
                 hasAccount = "기재";
             }
+            Long nameCount = p.getUserIdx() != null
+                    ? nameCountByUserIdx.getOrDefault(p.getUserIdx(), 1L)
+                    : 1L;
 
             return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
                     .userIdx(p.getUserIdx())
@@ -723,7 +718,7 @@ public class UserServiceImpl implements UserService {
                     .userHourlyWage(p.getUserHourlyWage())
                     .userWithdrawnAt(p.getUserWithdrawnAt())
                     .isAdmin(p.getIsAdmin())
-                    .nameSeq(p.getNameSeq())
+                    .nameSeq(nameCount)
                     .build();
         });
     }
@@ -933,6 +928,7 @@ public class UserServiceImpl implements UserService {
 
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
             String[] headers = {"No", "소속", "이름", "아이디", "시급", "연락처", "상태"};
+            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
             for (Map.Entry<String, List<User>> e : byWp.entrySet()) {
                 org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet(e.getKey());
                 org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
@@ -951,6 +947,7 @@ public class UserServiceImpl implements UserService {
                     row.createCell(6).setCellValue(status);
                 }
                 for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
+                com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, Math.max(r - 1, 0), headers.length);
             }
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             workbook.write(out);

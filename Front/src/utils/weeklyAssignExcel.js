@@ -151,7 +151,9 @@ export const downloadWeeklyAssignExcel = async ({
   users.forEach((u, rowIdx) => {
     const uid = toUserIdx(u.userIdx ?? u.id);
     const rawName = u.userName || '';
-    const name = Number(u.nameSeq) > 1 ? `${rawName} (${u.nameSeq})` : rawName;
+    const name = Number(u.nameSeq) > 1 && uid != null
+      ? `${rawName} #${uid}`
+      : rawName;
     const bg = rowIdx % 2 === 0 ? BG_ROW_A : BG_ROW_B;
     const dayCells = weekDays.map((d) => {
       const dateStr = format(d, 'yyyy-MM-dd');

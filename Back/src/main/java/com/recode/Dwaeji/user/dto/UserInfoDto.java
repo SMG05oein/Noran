@@ -43,7 +43,7 @@ public class UserInfoDto {
     private Integer isAdmin;
     
     private Integer emailConsentAgreed;
-    /** 동명이인 구분 (ROW_NUMBER) */
+    /** 동명이인 플래그: 동일 실명 활성 인원 수. &gt;1 이면 관리자 UI에 #userIdx */
     private Long nameSeq;
 
     public static UserInfoDto fromEntity(User user) {

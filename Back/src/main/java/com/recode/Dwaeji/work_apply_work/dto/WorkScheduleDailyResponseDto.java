@@ -21,7 +21,7 @@ public class WorkScheduleDailyResponseDto {
     private Long wsdIdx;
     private Long userIdx;
     private String userName; // 순수 이름 (전화번호 미포함)
-    private Long nameSeq; // 동명이인: PARTITION BY name ORDER BY created_at, idx
+    private Long nameSeq; // 동명이인 플래그: 동일 실명 활성 인원 수 (>1 → #userIdx)
     private String workPlaceName; // 알바생 소속 지점
     private LocalDate date;
 

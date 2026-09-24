@@ -468,9 +468,8 @@ export const gatheringApi = {
   // ==========================================
   // 5. 익명 열람 (Unmask) API — 관리자 전용
   // ==========================================
-  // 익명 작성자 실명 열람 + 감사 로그 저장
+  // 관리자 단건/전체 열람 로그 (POST | all)
   // POST /api/gathering/admin/unmask
-  // body: { targetType, targetId, targetUserId, reason }
   unmaskPost: async ({ targetType, targetId, targetUserId, reason }) => {
     try {
       const res = await globalApiClient.post('/api/gathering/admin/unmask', {
@@ -479,11 +478,26 @@ export const gatheringApi = {
         targetUserId,
         reason
       });
-      return res.data; // { realAuthorName, authorName, ... }
+      return res.data; // { realAuthorName, ... }
     } catch {
-      // Fallback: 백엔드 미연동 시 콘솔에만 기록
       console.warn('[unmask fallback]', { targetType, targetId, targetUserId, reason });
       return { realAuthorName: null };
+    }
+  },
+
+  // POST/COMMENT 실명 열람 + 감사 로그
+  // POST /api/gathering/admin/audit/reveal
+  unmaskReveal: async ({ targetType, targetId, reason }) => {
+    try {
+      const res = await globalApiClient.post('/api/gathering/admin/audit/reveal', {
+        targetType,
+        targetId,
+        reason
+      });
+      return res.data; // { realName, targetId, ... }
+    } catch {
+      console.warn('[unmask reveal fallback]', { targetType, targetId, reason });
+      return { realName: null };
     }
   }
 };

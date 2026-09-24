@@ -2,7 +2,6 @@ package com.recode.Dwaeji.work_record.dto;
 
 import lombok.Builder;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,14 +18,12 @@ import java.time.LocalTime;
 @Builder
 public class WorkRecordRequestDto {
     private LocalDate wrDate;
-    
-    @JsonFormat(pattern = "HH:mm")
+
+    // ISO parsing: accepts both HH:mm and HH:mm:ss
     private LocalTime wrStartTime;
-    
-    @JsonFormat(pattern = "HH:mm")
+
     private LocalTime wrEndTime;
-    
-    @JsonFormat(pattern = "HH:mm")
+
     private LocalTime wrRestTime;
     
     @Size(max = 255, message = "비고는 255자 이하여야 합니다.")

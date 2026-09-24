@@ -22,6 +22,9 @@ import './AdminMain.css';
 import './AdminBoard.css';
 import Loading from '../components/Loading';
 
+const UNMASK_POLICY =
+  '이 행위는 "신고 조사 / 규정 위반 조치" 사유로만 허용됩니다.';
+
 const AdminBoard = () => {
   // 활성 탭: 'posts' | 'tags' | 'reports' (기본: 게시글 & 댓글 관리)
   const [activeTab, setActiveTab] = useState('posts');
@@ -42,6 +45,12 @@ const AdminBoard = () => {
   const [includeDeleted, setIncludeDeleted] = useState(false); // 삭제된 글 포함 토글
   const [showRealAuthor, setShowRealAuthor] = useState(false); // 익명 전체 열람 토글
   const [unmaskedRows, setUnmaskedRows] = useState({}); // { postId: realAuthorName } 행별 열람 상태
+  const [unmaskedComments, setUnmaskedComments] = useState({}); // { commentId: realAuthorName }
+  const [unmaskModal, setUnmaskModal] = useState(null); // { type: 'row'|'all', post? }
+  const [unmaskReason, setUnmaskReason] = useState('');
+  const [unmaskSubmitting, setUnmaskSubmitting] = useState(false);
+  const [unmaskReasons, setUnmaskReasons] = useState({}); // { postId: reason }
+  const [globalUnmaskReason, setGlobalUnmaskReason] = useState('');
   const [viewCommentsPost, setViewCommentsPost] = useState(null); // 댓글 확인 모달용
   const [postComments, setPostComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -171,40 +180,113 @@ const AdminBoard = () => {
     }
   };
 
-  // 행별 익명 실명 열람 (개별 로그 저장)
-  const handleUnmaskRow = async (post) => {
-    if (unmaskedRows[post.id] !== undefined) return;
-    try {
-      const result = await gatheringApi.unmaskPost({
-        targetType: 'POST',
-        targetId: post.id,
-        targetUserId: post.userIdx || post.userId || 0,
-        reason: `관리자 ${adminName} 열람`
-      });
-      const realName = result?.realAuthorName || result?.authorName || post.authorName || '(열람 실패)';
-      setUnmaskedRows((prev) => ({ ...prev, [post.id]: realName }));
-    } catch {
-      setUnmaskedRows((prev) => ({ ...prev, [post.id]: post.authorName || '(열람 오류)' }));
-    }
+  // 익명 댓글 실명 열람 (게시글 열람에 연동)
+  const unmaskAnonymousComments = async (postId, comments, reasonPrefix) => {
+    const anon = (comments || []).filter((c) => c.isAnonymous && unmaskedComments[c.id] === undefined);
+    if (anon.length === 0) return;
+
+    const next = {};
+    await Promise.all(
+      anon.map(async (c) => {
+        const reason = `${reasonPrefix} · 댓글 #${c.id} 실명 열람`;
+        try {
+          const result = await gatheringApi.unmaskReveal({
+            targetType: 'COMMENT',
+            targetId: c.id,
+            reason,
+          });
+          next[c.id] = result?.realName || result?.realAuthorName || c.authorName || '(열람 실패)';
+        } catch {
+          next[c.id] = c.authorName || '(열람 오류)';
+        }
+      })
+    );
+    setUnmaskedComments((prev) => ({ ...prev, ...next }));
   };
 
-  // 전체 열람 토글 핸들러 (전체 열람 로그 저장)
-  const handleToggleShowRealAuthor = async (checked) => {
+  const closeUnmaskModal = () => {
+    if (unmaskSubmitting) return;
+    setUnmaskModal(null);
+    setUnmaskReason('');
+  };
+
+  // 행별 익명 실명 열람 — 사유 입력 모달 오픈
+  const handleUnmaskRow = (post) => {
+    if (unmaskedRows[post.id] !== undefined) return;
+    setUnmaskReason('');
+    setUnmaskModal({ type: 'row', post });
+  };
+
+  // 전체 열람 토글 — 켤 때만 사유 입력 모달
+  const handleToggleShowRealAuthor = (checked) => {
     if (checked) {
-      try {
-        await gatheringApi.unmaskPost({
-          targetType: 'all',
-          targetId: 9,
-          targetUserId: 0,
-          reason: '관리자 전체 열람'
-        });
-      } catch {
-        // 로그 실패해도 UI 전환
+      setUnmaskReason('');
+      setUnmaskModal({ type: 'all' });
+      return;
+    }
+    setShowRealAuthor(false);
+    setUnmaskedRows({});
+    setUnmaskedComments({});
+    setUnmaskReasons({});
+    setGlobalUnmaskReason('');
+  };
+
+  const submitUnmask = async () => {
+    const reason = unmaskReason.trim();
+    if (!reason) {
+      alert('열람 사유를 입력해 주세요.');
+      return;
+    }
+    if (!unmaskModal) return;
+
+    setUnmaskSubmitting(true);
+    try {
+      if (unmaskModal.type === 'row') {
+        const post = unmaskModal.post;
+        try {
+          const result = await gatheringApi.unmaskPost({
+            targetType: 'POST',
+            targetId: post.id,
+            targetUserId: post.userIdx || post.userId || 0,
+            reason,
+          });
+          const realName = result?.realAuthorName || result?.authorName || post.authorName || '(열람 실패)';
+          setUnmaskedRows((prev) => ({ ...prev, [post.id]: realName }));
+          setUnmaskReasons((prev) => ({ ...prev, [post.id]: reason }));
+
+          try {
+            const comments = await gatheringApi.getComments(post.id);
+            await unmaskAnonymousComments(post.id, comments || [], reason);
+            if (viewCommentsPost?.id === post.id) {
+              setPostComments(comments || []);
+            }
+          } catch (err) {
+            console.error('댓글 실명 열람 연동 실패:', err);
+          }
+        } catch {
+          setUnmaskedRows((prev) => ({ ...prev, [post.id]: post.authorName || '(열람 오류)' }));
+        }
+      } else {
+        try {
+          await gatheringApi.unmaskPost({
+            targetType: 'all',
+            targetId: 9,
+            targetUserId: 0,
+            reason,
+          });
+        } catch {
+          // 로그 실패해도 UI 전환
+        }
+        setShowRealAuthor(true);
+        setGlobalUnmaskReason(reason);
+        if (viewCommentsPost && postComments.length > 0) {
+          await unmaskAnonymousComments(viewCommentsPost.id, postComments, reason);
+        }
       }
-      setShowRealAuthor(true);
-    } else {
-      setShowRealAuthor(false);
-      setUnmaskedRows({});
+      setUnmaskModal(null);
+      setUnmaskReason('');
+    } finally {
+      setUnmaskSubmitting(false);
     }
   };
 
@@ -214,6 +296,14 @@ const AdminBoard = () => {
     try {
       const data = await gatheringApi.getComments(post.id);
       setPostComments(data || []);
+      const postUnmasked = unmaskedRows[post.id] !== undefined || showRealAuthor;
+      if (postUnmasked) {
+        const reasonPrefix =
+          unmaskReasons[post.id] ||
+          globalUnmaskReason ||
+          `관리자 ${adminName} 게시글 #${post.id} 실명 열람`;
+        await unmaskAnonymousComments(post.id, data || [], reasonPrefix);
+      }
     } catch (err) {
       console.error('댓글 목록 조회 실패:', err);
       setPostComments([]);
@@ -582,7 +672,6 @@ const AdminBoard = () => {
                   className="ms-2 small align-self-center user-select-none"
                   checked={showRealAuthor}
                   onChange={(e) => {
-                    if (e.target.checked && !window.confirm(`전체 익명 작성자의 실명을 확인합니다.\n이 행위는 "신고 조사 / 규정 위반 철시" 사유로만 허용되며,\n열람 기록이 저장됩니다.\n계속 진행하시겠습니까?`)) return;
                     handleToggleShowRealAuthor(e.target.checked);
                   }}
                 />
@@ -779,6 +868,60 @@ const AdminBoard = () => {
       {/* ========================================================
           모달 1: 신고 세부 확인 모달
          ======================================================== */}
+      {/* 실명 열람 사유 입력 */}
+      <Modal show={Boolean(unmaskModal)} onHide={closeUnmaskModal} centered backdrop="static">
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fw-bold fs-6">
+            {unmaskModal?.type === 'all' ? '전체 실명 확인' : '익명 실명 확인'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <p className="mb-2 text-dark small">익명 작성자의 실명을 확인합니다.</p>
+          <p className="mb-3 text-danger small fw-semibold">{UNMASK_POLICY}</p>
+          {unmaskModal?.type === 'row' && unmaskModal.post && (
+            <p className="mb-3 text-muted small">
+              대상 게시글 #{unmaskModal.post.id}
+              {unmaskModal.post.title ? ` · ${unmaskModal.post.title}` : ''}
+            </p>
+          )}
+          <Form.Group controlId="unmaskReasonInput">
+            <Form.Label className="fw-semibold small">
+              열람 사유 <span className="text-danger">*</span>
+            </Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={unmaskReason}
+              onChange={(e) => setUnmaskReason(e.target.value)}
+              placeholder="예: 신고 조사 — 게시글 #12 규정 위반 여부 확인"
+              disabled={unmaskSubmitting}
+              autoFocus
+            />
+            <Form.Text className="text-muted">
+              입력한 내용이 감사 로그에 그대로 기재됩니다.
+            </Form.Text>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer className="border-top">
+          <Button
+            variant="secondary"
+            className="rounded-pill px-3"
+            onClick={closeUnmaskModal}
+            disabled={unmaskSubmitting}
+          >
+            취소
+          </Button>
+          <Button
+            variant="warning"
+            className="rounded-pill px-3"
+            onClick={submitUnmask}
+            disabled={unmaskSubmitting || !unmaskReason.trim()}
+          >
+            {unmaskSubmitting ? '처리 중…' : '실명 확인'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       <Modal show={Boolean(selectedReport)} onHide={() => setSelectedReport(null)} centered>
         <Modal.Header closeButton className="border-bottom">
           <Modal.Title className="fw-bold fs-6">
@@ -872,42 +1015,49 @@ const AdminBoard = () => {
               className="d-flex flex-column gap-2"
               style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}
             >
-              {postComments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="p-3 border rounded-3 d-flex align-items-center justify-content-between bg-white"
-                >
-                  <div>
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                      {comment.isAnonymous && !showRealAuthor ? (
-                        <span className="small text-muted fst-italic">익명</span>
-                      ) : (
-                        <>
-                          <span className="fw-bold small">{comment.authorName}</span>
-                          {comment.isAnonymous && (
-                            <span className="badge bg-warning-subtle text-warning border border-warning" style={{ fontSize: '0.65rem' }}>
-                              실명열람
-                            </span>
-                          )}
-                        </>
-                      )}
-                      <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                        {comment.createdAt ? new Date(comment.createdAt).toLocaleString() : ''}
-                      </span>
-                    </div>
-                    <div className="text-dark small">{comment.content}</div>
-                  </div>
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    className="rounded-pill px-2 py-1 ms-3 flex-shrink-0"
-                    onClick={() => handleDeleteComment(comment.id)}
-                    title="댓글 삭제"
+              {postComments.map((comment) => {
+                const commentRevealed =
+                  !comment.isAnonymous || unmaskedComments[comment.id] !== undefined;
+                const commentDisplayName = comment.isAnonymous
+                  ? (unmaskedComments[comment.id] || comment.authorName)
+                  : comment.authorName;
+                return (
+                  <div
+                    key={comment.id}
+                    className="p-3 border rounded-3 d-flex align-items-center justify-content-between bg-white"
                   >
-                    <RiDeleteBinLine /> 삭제
-                  </Button>
-                </div>
-              ))}
+                    <div>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        {!commentRevealed ? (
+                          <span className="small text-muted fst-italic">익명</span>
+                        ) : (
+                          <>
+                            <span className="fw-bold small">{commentDisplayName}</span>
+                            {comment.isAnonymous && (
+                              <span className="badge bg-warning-subtle text-warning border border-warning" style={{ fontSize: '0.65rem' }}>
+                                실명열람
+                              </span>
+                            )}
+                          </>
+                        )}
+                        <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                          {comment.createdAt ? new Date(comment.createdAt).toLocaleString() : ''}
+                        </span>
+                      </div>
+                      <div className="text-dark small">{comment.content}</div>
+                    </div>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      className="rounded-pill px-2 py-1 ms-3 flex-shrink-0"
+                      onClick={() => handleDeleteComment(comment.id)}
+                      title="댓글 삭제"
+                    >
+                      <RiDeleteBinLine /> 삭제
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Modal.Body>

@@ -70,6 +70,10 @@ public class WorkRecordHistory {
     @Comment("변경 후 휴게 시간")
     private LocalTime afterRestTime;
 
+    @Column(name = "action_type", length = 10)
+    @Comment("CREATE | UPDATE | DELETE | RESTORE")
+    private String actionType;
+
     @CreatedDate
     @Column(name = "wrh_created_at", nullable = false, updatable = false)
     @Comment("생성 일시")

@@ -24,6 +24,7 @@ const SystemUsagePolicy = React.lazy(() => import('./pages/SystemUsagePolicy'));
 const AdminMain = React.lazy(() => import('./pages/AdminMain'));
 const AdminUsers = React.lazy(() => import('./pages/AdminUsers'));
 const AdminRecords = React.lazy(() => import('./pages/AdminRecords'));
+const AdminExcelCompare = React.lazy(() => import('./pages/AdminExcelCompare'));
 const AdminPayroll = React.lazy(() => import('./pages/AdminPayroll'));
 const AdminWorkPlaces = React.lazy(() => import('./pages/AdminWorkPlaces'));
 const AdminUserTypes = React.lazy(() => import('./pages/AdminUserTypes'));
@@ -143,6 +144,7 @@ function App() {
           <Route path="/admin/weekly-assign" element={<AdminRoute><AdminWeeklyAssign /></AdminRoute>} />
           <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/records" element={<AdminRoute><AdminRecords /></AdminRoute>} />
+          <Route path="/admin/records/excel-compare" element={<AdminRoute><AdminExcelCompare /></AdminRoute>} />
           <Route path="/admin/payroll" element={<AdminRoute><AdminPayroll /></AdminRoute>} />
           <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
           <Route path="/admin/user-types" element={<AdminRoute><AdminUserTypes /></AdminRoute>} />

@@ -851,8 +851,8 @@ const AdminWeeklyAssign = () => {
                       <div className="wat-worker-info">
                         <div className="wat-worker-name">
                           {u.userName}
-                          {Number(u.nameSeq) > 1 && (
-                            <Badge bg="secondary" className="ms-1 align-middle">{u.nameSeq}</Badge>
+                          {Number(u.nameSeq) > 1 && u.userIdx != null && (
+                            <Badge bg="secondary" className="ms-1 align-middle">#{u.userIdx}</Badge>
                           )}
                           {onLeave && (
                             <Badge bg="warning" text="dark" className="ms-1 align-middle">휴직</Badge>
@@ -926,8 +926,8 @@ const AdminWeeklyAssign = () => {
                               <div className="wat-worker-info">
                                 <div className="wat-worker-name">
                                   {u.userName}
-                                  {Number(u.nameSeq) > 1 && (
-                                    <Badge bg="secondary" className="ms-1 align-middle">{u.nameSeq}</Badge>
+                                  {Number(u.nameSeq) > 1 && u.userIdx != null && (
+                                    <Badge bg="secondary" className="ms-1 align-middle">#{u.userIdx}</Badge>
                                   )}
                                   {onLeave && (
                                     <Badge bg="warning" text="dark" className="ms-1 align-middle">휴직</Badge>
@@ -1059,8 +1059,8 @@ const AdminWeeklyAssign = () => {
                   >
                     <div>
                       <span className="fw-bold">{u.userName}</span>
-                      {Number(u.nameSeq) > 1 && (
-                        <Badge bg="secondary" className="ms-1">{u.nameSeq}</Badge>
+                      {Number(u.nameSeq) > 1 && (u.userIdx != null || u.id != null) && (
+                        <Badge bg="secondary" className="ms-1">#{u.userIdx ?? u.id}</Badge>
                       )}
                       <Badge bg="secondary" className="ms-2">{u.workPlaceName || '지점 미상'}</Badge>
                       {onLeave && (

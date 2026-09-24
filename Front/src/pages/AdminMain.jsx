@@ -193,8 +193,8 @@ const AdminMain = () => {
                             <td className="text-muted fw-semibold">{idx + 1}</td>
                             <td>
                               <span className="fw-bold text-dark">{ds.userName || `사원 (${ds.userIdx})`}</span>
-                              {Number(ds.nameSeq) > 1 && (
-                                <Badge bg="secondary" className="ms-1">{ds.nameSeq}</Badge>
+                              {Number(ds.nameSeq) > 1 && ds.userIdx != null && (
+                                <Badge bg="secondary" className="ms-1">#{ds.userIdx}</Badge>
                               )}
                             </td>
                             <td>

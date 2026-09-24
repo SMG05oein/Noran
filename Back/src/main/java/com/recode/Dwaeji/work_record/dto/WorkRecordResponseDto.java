@@ -20,7 +20,7 @@ import java.time.LocalTime;
 public class WorkRecordResponseDto {
     private Long wrIdx;
     private Long userIdx;
-    /** 로그인 아이디 — 동명이인 배지(nameSeq)와 구분용 */
+    /** 로그인 아이디 — 관리자 화면 보조 표시용 (동명이인 배지는 userIdx) */
     private String userId;
     private String userName; // 유저 이름
     private Long workPlaceIdx; // 근무 기록의 근무지 idx
@@ -38,10 +38,12 @@ public class WorkRecordResponseDto {
     private LocalTime wrRestTime;
     
     private String wrRemarks;
+    /** 등록자 userIdx (관리자 대리 등록 시 관리자) */
+    private Long wrCreatedBy;
     private LocalDateTime wrCreatedAt;
     private LocalDateTime wrUpdatedAt;
     private String applyStatus; // 해당 날짜의 근무 상태 (null | 신청 | 미출근 | 출근)
-    /** 동명이인 구분 (1이면 단독, 2 이상이면 구분 번호) — 로그인 아이디와 무관 */
+    /** 동명이인 플래그: 동일 실명 활성 인원 수. &gt;1 이면 관리자 UI에 #userIdx */
     private Long nameSeq;
     /** 알바 수정 가능 기한 (근무일 기준 계산) */
     private LocalDateTime editableUntil;
@@ -68,6 +70,7 @@ public class WorkRecordResponseDto {
                 .wrEndTime(entity.getWrEndTime())
                 .wrRestTime(entity.getWrRestTime())
                 .wrRemarks(entity.getWrRemarks())
+                .wrCreatedBy(entity.getWrCreatedBy())
                 .wrCreatedAt(entity.getWrCreatedAt())
                 .wrUpdatedAt(entity.getWrUpdatedAt())
                 .applyStatus(applyStatus)

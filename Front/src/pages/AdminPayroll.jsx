@@ -240,6 +240,8 @@ const AdminPayroll = () => {
                         <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('userName')}>
                           이름 {sortIcon('userName')}
                         </th>
+                        <th>아이디</th>
+                        <th>연락처</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('hourlyWage')}>
                           시급 {sortIcon('hourlyWage')}
                         </th>
@@ -264,12 +266,14 @@ const AdminPayroll = () => {
                             <span className="fw-bold text-primary">
                               {r.userName || `사원(${r.userIdx})`}
                             </span>
-                            {Number(r.nameSeq) > 1 && (
+                            {Number(r.nameSeq) > 1 && r.userIdx != null && (
                               <Badge bg="secondary" className="ms-1">
-                                {r.nameSeq}
+                                #{r.userIdx}
                               </Badge>
                             )}
                           </td>
+                          <td className="text-muted small">{r.userId || '-'}</td>
+                          <td className="small">{r.userPhone || '-'}</td>
                           <td className="small">{formatMoney(r.hourlyWage)}</td>
                           <td className="fw-bold text-success">{formatHours(r.totalHours)}</td>
                           <td className="fw-bold">{formatMoney(r.preTaxPay)}</td>

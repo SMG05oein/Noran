@@ -14,7 +14,11 @@ import lombok.Setter;
 public class PayrollRowDto {
     private Long userIdx;
     private String userName;
-    /** 동명이인 구분 (1이면 단독, 2 이상이면 구분 번호) */
+    /** 로그인 아이디 */
+    private String userId;
+    /** 휴대폰 번호 */
+    private String userPhone;
+    /** 동명이인 플래그: 동일 실명 활성 인원 수. &gt;1 이면 관리자 UI에 #userIdx */
     private Long nameSeq;
     /** 유저 소속 근무지명 */
     private String workPlaceName;

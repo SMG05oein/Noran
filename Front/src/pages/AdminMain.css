@@ -361,6 +361,153 @@
   color: #9dc0e0 !important;
 }
 
+/* 새 근무 기록 추가 모달 */
+.crm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--color-text-main);
+  margin-bottom: 0.75rem;
+}
+
+.crm-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.crm-search {
+  position: relative;
+}
+
+.crm-search .crm-search-icon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.crm-search .form-control {
+  padding-left: 2.2rem;
+}
+
+.crm-worker-list {
+  margin-top: 0.5rem;
+  max-height: 232px;
+  overflow-y: auto;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.crm-worker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-bottom: 1px solid var(--color-input-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.crm-worker-item:last-child {
+  border-bottom: 0;
+}
+
+.crm-worker-item:hover,
+.crm-worker-item:focus-visible {
+  background: var(--color-primary-light);
+  outline: none;
+}
+
+.crm-list-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.crm-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+}
+
+.crm-avatar.sm {
+  width: 32px;
+  height: 32px;
+  font-size: 0.85rem;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.crm-selected-worker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-light);
+}
+
+.crm-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.crm-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: end;
+  min-height: 38px;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: 0.9rem;
+}
+
+.crm-summary.is-error {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+  .crm-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .table-leave {
   --bs-table-color: #000;
   --bs-table-bg: rgb(136 136 33 / 0.21); /* 기준이 되는 카키/올리브 톤 배경 */

@@ -226,13 +226,19 @@ const Records = () => {
       return;
     }
 
+    if (!user?.userIdx) {
+      alert('로그인 정보가 없습니다. 다시 로그인해 주세요.');
+      setLoading(false);
+      return;
+    }
+
     const recordData = {
       wrDate: recDate,
       wrStartTime: `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`,
       wrEndTime: `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`,
       wrRestTime: `${String(restHour).padStart(2, '0')}:${String(restMin).padStart(2, '0')}`,
       wrRemarks: remarks,
-      userIdx: user?.userIdx || 1,
+      userIdx: user.userIdx,
       workPlaceIdx: workPlaceIdx || user?.workPlaceIdx
     };
 

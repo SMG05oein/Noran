@@ -30,7 +30,6 @@ const AdminUserTypes = React.lazy(() => import('./pages/AdminUserTypes'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 const AdminWeeklyAssign = React.lazy(() => import('./pages/AdminWeeklyAssign'));
 const RecordEdit = React.lazy(() => import('./pages/RecordEdit'));
-const RequestEdit = React.lazy(() => import('./pages/RequestEdit'));
 const MyPage = React.lazy(() => import('./pages/MyPage'));
 const DevLogin = React.lazy(() => import('./pages/DevLogin'));
 const DevMain = React.lazy(() => import('./pages/DevMain'));
@@ -140,7 +139,6 @@ function App() {
           <Route path="/records" element={<ProtectedRoute><Records /></ProtectedRoute>} />
           <Route path="/records/edit" element={<ProtectedRoute><RecordEdit /></ProtectedRoute>} />
           <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-          <Route path="/requests/edit" element={<ProtectedRoute><RequestEdit /></ProtectedRoute>} />
           <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
           <Route path="/admin/weekly-assign" element={<AdminRoute><AdminWeeklyAssign /></AdminRoute>} />
           <Route path="/admin/employees" element={<AdminRoute><AdminUsers /></AdminRoute>} />

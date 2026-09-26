@@ -414,8 +414,7 @@ const Requests = () => {
         <Card.Body className="p-3 p-md-4">
           <Form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <div className="req-apply-week-label">다음 주 {weekRangeLabel}</div>
-              <div className="req-apply-week-hint">다음 주만 신청할 수 있습니다</div>
+              <div className="req-apply-week-label">신청 주: {weekRangeLabel}</div>
             </div>
 
             <div className="req-legend mb-3" aria-hidden="true">

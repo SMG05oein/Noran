@@ -226,11 +226,8 @@ const Main = () => {
                     {Math.floor(user.userHourlyWage * thisMonthHours * 0.967).toLocaleString()}
                     <span className="stat-unit">원</span>
                   </div>
-                  <div className="small text-muted mt-2">
-                    시급 {Number(user.userHourlyWage).toLocaleString()}원 × {thisMonthHours.toFixed(1)}시간 − 3.3%
-                  </div>
+                  <span className="worker-pay-note">실제 급여와 다를 수 있습니다</span>
                 </div>
-                <span className="worker-pay-note">실제 급여와 다를 수 있습니다</span>
               </div>
             </div>
           )}

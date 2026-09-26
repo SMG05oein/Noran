@@ -21,4 +21,7 @@ public interface WorkRecordHistoryRepository extends JpaRepository<WorkRecordHis
             @org.springframework.data.repository.query.Param("month") Integer month,
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             org.springframework.data.domain.Pageable pageable);
+
+    void deleteByTargetUser_UserIdx(Long targetUserIdx);
+    void deleteByAdminUser_UserIdx(Long adminUserIdx);
 }

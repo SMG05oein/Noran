@@ -17,4 +17,8 @@ public interface WorkRecordService {
     void restoreWorkRecord(String requesterId, Long wrhIdx);
     Page<WorkRecordHistoryResponseDto> getWorkRecordHistory(String requesterId, Integer year, Integer month, String keyword, org.springframework.data.domain.Pageable pageable);
     byte[] downloadExcel(String requesterId, int year, int month, Long workPlaceIdx);
+
+    com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto validateExcelUsers(String requesterId, com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto);
+
+    com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(String requesterId, com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto);
 }

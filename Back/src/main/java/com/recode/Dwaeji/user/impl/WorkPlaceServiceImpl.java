@@ -34,7 +34,7 @@ public class WorkPlaceServiceImpl implements WorkPlaceService {
     @Override
     @Transactional(readOnly = true)
     public List<WorkPlaceDto> getAllWorkPlaces() {
-        return workPlaceRepository.findAll().stream()
+        return workPlaceRepository.findAllActive().stream()
                 .map(WorkPlaceDto::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -84,6 +84,8 @@ public class WorkPlaceServiceImpl implements WorkPlaceService {
         WorkPlace wp = workPlaceRepository.findById(wpIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "근무지를 찾을 수 없습니다."));
         
-        workPlaceRepository.delete(wp);
+        // 논리적 삭제 (Soft Delete)
+        wp.setWpIsActive(0);
+        workPlaceRepository.save(wp);
     }
 }

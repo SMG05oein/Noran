@@ -78,7 +78,8 @@ public class PayrollServiceImpl implements PayrollService {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
         if (workPlaceIdx != null) {
-            return workRecordRepository.findByWorkPlace_WpIdxAndWrDateBetween(workPlaceIdx, startDate, endDate);
+            // 직원의 본 소속(User.workPlace) 기준 필터링
+            return workRecordRepository.findByUser_WorkPlace_WpIdxAndWrDateBetween(workPlaceIdx, startDate, endDate);
         }
         return workRecordRepository.findByWrDateBetween(startDate, endDate);
     }
@@ -203,13 +204,14 @@ public class PayrollServiceImpl implements PayrollService {
 
         List<WorkRecord> records = fetchMonthRecords(year, month, workPlaceIdx);
 
-        // 전체: 근무지별 Sheet / 특정 지점: Sheet 1개 (기록의 실제 근무 지점 기준)
+        // 전체: 직원의 본 소속(User.workPlace)별 Sheet / 특정 지점: 해당 지점 Sheet 1개
         Map<Long, List<WorkRecord>> byWpIdx = new TreeMap<>(Comparator.nullsLast(Long::compareTo));
         if (workPlaceIdx != null) {
             byWpIdx.put(workPlaceIdx, records);
         } else {
             for (WorkRecord record : records) {
-                Long key = record.getWorkPlace() != null ? record.getWorkPlace().getWpIdx() : null;
+                User user = record.getUser();
+                Long key = (user != null && user.getWorkPlace() != null) ? user.getWorkPlace().getWpIdx() : null;
                 byWpIdx.computeIfAbsent(key, k -> new ArrayList<>()).add(record);
             }
             if (byWpIdx.isEmpty()) {
@@ -241,12 +243,12 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     private String resolveSheetName(Long wpIdx, List<WorkRecord> sheetRecords, int month, Long filterWpIdx) {
-        String fromRecord = sheetRecords.stream()
-                .map(r -> r.getWorkPlace() != null ? r.getWorkPlace().getWpName() : null)
+        String fromUserHome = sheetRecords.stream()
+                .map(r -> (r.getUser() != null && r.getUser().getWorkPlace() != null) ? r.getUser().getWorkPlace().getWpName() : null)
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
-        if (fromRecord != null) return fromRecord;
+        if (fromUserHome != null) return fromUserHome;
         if (wpIdx != null) {
             return workPlaceRepository.findById(wpIdx)
                     .map(wp -> wp.getWpName() != null ? wp.getWpName() : "근무지")

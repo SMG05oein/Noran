@@ -18,4 +18,5 @@ public class LoginResponseDto {
     @JsonIgnore
     private String refreshToken;
     private String msg;
+    private Integer isTempUser;
 }

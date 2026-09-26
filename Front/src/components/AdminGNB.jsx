@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import useThemeStore from '../store/useThemeStore';
 import { RiLogoutBoxRLine, RiSunLine, RiMoonLine, RiMenuLine, RiUser3Line } from 'react-icons/ri';
+import AppVersion from './AppVersion';
 import './GNB.css';
 
 const AdminGNB = () => {
@@ -117,7 +118,7 @@ const AdminGNB = () => {
             <div className="fw-bold text-dark mb-1">시스템 개선 문의</div>
             <div className="mb-1">010-2011-1392 (카카오톡)</div>
             <div className="mb-1">010-3189-1392 (문자, 카카오톡)</div>
-            <div className="mb-3">앱 버전: v0.9.1</div>
+            <div className="mb-3"><AppVersion /></div>
 
             <div style={{ fontSize: '0.7rem' }}>&copy; {new Date().getFullYear()} MinGwan-Seo. All rights reserved.</div>
           </div>

@@ -13,7 +13,7 @@
   box-shadow: none;
   margin-bottom: 1.15rem;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /*.admin-header-card::before {*/
@@ -601,6 +601,35 @@
 .bank-sensitive-seg input[type="radio"]:focus-visible + label {
   outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
   outline-offset: 1px;
+}
+
+/* Excel Management Dropdown Styles */
+#excel-dropdown::after {
+  margin-left: 0.4em;
+  vertical-align: 0.15em;
+}
+
+.dropdown-menu {
+  z-index: 1050 !important;
+}
+
+[data-bs-theme="dark"] .dropdown-menu {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+[data-bs-theme="dark"] .dropdown-item {
+  color: var(--color-text-main);
+}
+
+[data-bs-theme="dark"] .dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-item:focus {
+  background-color: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+
+[data-bs-theme="dark"] .dropdown-divider {
+  border-top-color: var(--color-border);
 }
 
 

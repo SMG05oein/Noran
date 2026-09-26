@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authSignup, fetchWorkPlaces, fetchBanks } from '../api/authApi';
-import { Form, Button, Container, Card, Alert, Spinner, Modal } from 'react-bootstrap';
+import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
 import { RiUser3Line, RiLockPasswordLine, RiPhoneLine, RiStore2Line, RiRestaurantLine } from 'react-icons/ri';
+import TermsModal from '../components/TermsModal';
 import './Auth.css';
 
 const Signup = () => {
@@ -24,6 +25,10 @@ const Signup = () => {
   const [termsConsent, setTermsConsent] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [emailConsent, setEmailConsent] = useState(false);
+
+  // 모달 상태 ('terms' | 'consent' | 'privacy' | null)
+  const [modalType, setModalType] = useState(null);
+  const [isSequentialAll, setIsSequentialAll] = useState(false);
 
   const [userIdError, setUserIdError] = useState('');
   const [pwMatchError, setPwMatchError] = useState('');
@@ -513,9 +518,27 @@ const Signup = () => {
                       checked={termsConsent && privacyConsent && emailConsent}
                       onChange={(e) => {
                         const checked = e.target.checked;
-                        setTermsConsent(checked);
-                        setPrivacyConsent(checked);
-                        setEmailConsent(checked);
+                        if (checked) {
+                          // 전체 동의 클릭 시: 아직 동의 안 한 첫 번째 약관부터 모달 오픈
+                          if (!termsConsent) {
+                            setIsSequentialAll(true);
+                            setModalType('terms');
+                          } else if (!privacyConsent) {
+                            setIsSequentialAll(true);
+                            setModalType('consent');
+                          } else {
+                            // 이미 둘 다 동의되어 있으면 전체 체크
+                            setTermsConsent(true);
+                            setPrivacyConsent(true);
+                            setEmailConsent(true);
+                          }
+                        } else {
+                          // 체크 해제 시 전체 해제
+                          setIsSequentialAll(false);
+                          setTermsConsent(false);
+                          setPrivacyConsent(false);
+                          setEmailConsent(false);
+                        }
                         if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
                       }}
                       className="me-2"
@@ -525,6 +548,7 @@ const Signup = () => {
                     </Form.Label>
                   </div>
                   
+                  {/* 이용규정 */}
                   <div className="mb-3">
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <div className="d-flex align-items-center">
@@ -533,24 +557,43 @@ const Signup = () => {
                           id="termsConsent"
                           checked={termsConsent}
                           onChange={(e) => {
-                            setTermsConsent(e.target.checked);
+                            const checked = e.target.checked;
+                            if (checked) {
+                              setModalType('terms');
+                            } else {
+                              setTermsConsent(false);
+                            }
                             if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
                           }}
                           className="me-2"
                         />
-                        <Form.Label htmlFor="termsConsent" className="mb-0 small" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
+                        <span 
+                          onClick={() => setModalType('terms')}
+                          className="mb-0 small fw-semibold" 
+                          style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
+                        >
                           [필수] 근태관리시스템 이용규정 동의
-                        </Form.Label>
+                        </span>
                       </div>
-                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-muted small text-decoration-none">[전체 보기]</a>
+                      <button
+                        type="button"
+                        onClick={() => setModalType('terms')}
+                        className="btn btn-link p-0 text-muted small text-decoration-none"
+                      >
+                        [내용 보기]
+                      </button>
                     </div>
-                    <div className="border rounded p-2 small text-muted" style={{ height: '80px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <div 
+                      onClick={() => setModalType('terms')}
+                      className="border rounded p-2 small text-muted" 
+                      style={{ cursor: 'pointer', height: '65px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                    >
                       <strong>근태관리시스템 이용규정</strong><br/>
-                      본 규정은 '노란돼지'가 소속 직원의 근태관리 업무 처리를 위해 도입한 내부 업무도구(전자적 근태관리시스템)의 이용 방법과 직원의 준수사항을 안내함을 목적으로 합니다.<br/>
-                      (이용규정 전문은 [전체 보기]를 통해 확인하실 수 있습니다.)
+                      본 규정은 '노란돼지'가 소속 직원의 근태관리 업무 처리를 위해 도입한 내부 업무도구의 이용 방법과 직원의 준수사항을 안내함을 목적으로 합니다. (클릭하여 전문 확인 및 동의)
                     </div>
                   </div>
 
+                  {/* 개인정보 수집 및 이용 */}
                   <div className="mb-3">
                     <div className="d-flex align-items-center justify-content-between mb-2">
                       <div className="d-flex align-items-center">
@@ -559,26 +602,44 @@ const Signup = () => {
                           id="privacyConsent"
                           checked={privacyConsent}
                           onChange={(e) => {
-                            setPrivacyConsent(e.target.checked);
+                            const checked = e.target.checked;
+                            if (checked) {
+                              setModalType('consent');
+                            } else {
+                              setPrivacyConsent(false);
+                            }
                             if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
                           }}
                           className="me-2"
                         />
-                        <Form.Label htmlFor="privacyConsent" className="mb-0 small" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
+                        <span 
+                          onClick={() => setModalType('consent')}
+                          className="mb-0 small fw-semibold" 
+                          style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
+                        >
                           [필수] 개인정보 수집 및 이용 동의
-                        </Form.Label>
+                        </span>
                       </div>
-                      <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-muted small text-decoration-none">[전체 보기]</a>
+                      <button
+                        type="button"
+                        onClick={() => setModalType('consent')}
+                        className="btn btn-link p-0 text-muted small text-decoration-none"
+                      >
+                        [내용 보기]
+                      </button>
                     </div>
-                    <div className="border rounded p-2 small text-muted" style={{ height: '90px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    <div 
+                      onClick={() => setModalType('consent')}
+                      className="border rounded p-2 small text-muted" 
+                      style={{ cursor: 'pointer', height: '65px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+                    >
                       <strong>개인정보 수집 및 이용 동의</strong><br/>
-                      1. 수집 항목: 이름, 아이디, 비밀번호(접근제어용), 생년월일, 휴대전화번호, 소속 지점, 은행명, 계좌번호, 예금주 등<br/>
-                      2. 수집 목적: 서비스 회원가입 및 관리, 근태관리 및 근무 스케줄 배정, 급여 지급 및 정산<br/>
-                      3. 보유 및 이용기간: 회원 탈퇴 후 1년 보관 (단, 근태/급여 관련 정보는 근로기준법 등에 따라 3년, 세무 증빙자료는 최대 5년 보존)<br/>
-                      * 귀하는 동의를 거부할 권리가 있으나, 거부 시 회원가입 및 서비스 이용이 제한됩니다.
+                      1. 수집 항목: 이름, 아이디, 비밀번호, 생년월일, 연락처, 지점, 은행, 계좌 등<br/>
+                      2. 수집 목적: 회원 관리, 스케줄 배정, 급여 지급 및 정산 (클릭하여 전문 확인 및 동의)
                     </div>
                   </div>
 
+                  {/* 선택 이메일 동의 */}
                   <div className="d-flex align-items-center justify-content-between">
                     <div className="d-flex align-items-center">
                       <Form.Check
@@ -594,7 +655,13 @@ const Signup = () => {
                     </div>
                   </div>
                   <div className="mt-2 text-end">
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary fw-bold small text-decoration-none">※ 개인정보처리방침 전문 보기</a>
+                    <button
+                      type="button"
+                      onClick={() => setModalType('privacy')}
+                      className="btn btn-link p-0 text-primary fw-bold small text-decoration-none"
+                    >
+                      ※ 개인정보처리방침 전문 보기
+                    </button>
                   </div>
                 </div>
 
@@ -620,6 +687,40 @@ const Signup = () => {
           </Card>
         </div>
       </Container>
+
+      {/* 약관 및 개인정보 확인/동의 모달 */}
+      <TermsModal
+        show={modalType !== null}
+        type={modalType}
+        agreed={
+          modalType === 'terms' ? termsConsent :
+          modalType === 'consent' ? privacyConsent : false
+        }
+        onHide={() => {
+          setModalType(null);
+          setIsSequentialAll(false);
+        }}
+        onAgree={() => {
+          if (modalType === 'terms') {
+            setTermsConsent(true);
+            if (isSequentialAll && !privacyConsent) {
+              // 전체 동의 진행 중: 2번째 약관으로 즉시 연속 전환
+              setTimeout(() => setModalType('consent'), 150);
+              return;
+            }
+            if (isSequentialAll) {
+              setEmailConsent(true);
+            }
+          } else if (modalType === 'consent') {
+            setPrivacyConsent(true);
+            if (isSequentialAll) {
+              setEmailConsent(true);
+              setIsSequentialAll(false);
+            }
+          }
+          setModalType(null);
+        }}
+      />
     </div>
   );
 };

@@ -418,3 +418,36 @@ export const downloadWorkRecordExcel = async (year, month, workPlaceIdx) => {
     return { success: false, error: '엑셀 다운로드 중 오류가 발생했습니다.' };
   }
 };
+
+// 관리자 근무기록 엑셀 인원 및 근무지 사전 검증
+export const validateExcelWorkRecords = async (payload) => {
+  try {
+    // payload: { userNames: string[], workPlaceNames: string[], records: Array }
+    const response = await globalApiClient.post('/api/work-record/admin/excel-validate', payload);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg =
+      error.response?.data?.msg ||
+      error.response?.data?.message ||
+      (typeof error.response?.data === 'string' ? error.response.data : null) ||
+      '엑셀 데이터 검증 중 오류가 발생했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
+  }
+};
+
+// 관리자 근무기록 엑셀 최종 일괄 등록
+export const uploadExcelWorkRecords = async (payload) => {
+  try {
+    // payload: { overwriteExisting: boolean, records: Array }
+    const response = await globalApiClient.post('/api/work-record/admin/excel-upload', payload);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg =
+      error.response?.data?.msg ||
+      error.response?.data?.message ||
+      (typeof error.response?.data === 'string' ? error.response.data : null) ||
+      '근무기록 엑셀 업로드 등록에 실패했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
+  }
+};
+

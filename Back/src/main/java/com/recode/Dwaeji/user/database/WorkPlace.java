@@ -38,6 +38,11 @@ public class WorkPlace {
     @Comment("상세 주소")
     private String wpAddressDetails;
 
+    @Builder.Default
+    @Column(name = "wp_is_active", columnDefinition = "TINYINT DEFAULT 1")
+    @Comment("활성 여부 (1: 활성, 0: 삭제/비활성)")
+    private Integer wpIsActive = 1;
+
     @CreatedDate
     @Column(name = "wp_created_at", nullable = false, updatable = false)
     @Comment("생성 일시")

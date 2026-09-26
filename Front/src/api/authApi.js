@@ -9,8 +9,12 @@ export const authLogin = async (userId, userPw) => {
     const response = await apiClient.post(`${addUrl}/login`, { userId, userPw });
     return { success: true, data: response.data };
   } catch (error) {
-    const errMsg = error.response?.data?.msg || (typeof error.response?.data === 'string' ? error.response.data : null) || '로그인에 실패했습니다.';
-    return { success: false, error: errMsg };
+    const errMsg =
+      error.response?.data?.message ||
+      error.response?.data?.msg ||
+      (typeof error.response?.data === 'string' ? error.response.data : null) ||
+      '로그인에 실패했습니다.';
+    return { success: false, error: errMsg, status: error.response?.status };
   }
 };
 

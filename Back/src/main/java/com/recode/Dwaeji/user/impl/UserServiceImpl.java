@@ -24,7 +24,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -35,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final WorkPlaceRepository workPlaceRepository;
 
     private final WorkRecordRepository workRecordRepository;
+    private final com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository workRecordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.recode.Dwaeji.user.repository.ArchivedUserRepository archivedUserRepository;
     private final com.recode.Dwaeji.user.repository.ArchiveAccessLogRepository archiveAccessLogRepository;
@@ -63,6 +66,11 @@ public class UserServiceImpl implements UserService {
             }
         }
 
+        // 임시 사용자 (엑셀 일괄 등록 생성) 로그인 차단
+        if (user.getIsTempUser() != null && user.getIsTempUser() == 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "로그인이 허용되지 않는 사용자 입니다");
+        }
+
         // 비활성화(논리적 삭제) 계정 체크
         if (user.getUserIsActive() == null || user.getUserIsActive() == 0) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정(또는 퇴사자)입니다. 관리자에게 문의하세요.");
@@ -88,7 +96,12 @@ public class UserServiceImpl implements UserService {
                 .build();
         refreshTokenRepository.save(refreshToken);
 
-        return new LoginResponseDto(accessToken, refreshTokenStr, msg);
+        return LoginResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshTokenStr)
+                .msg(msg)
+                .isTempUser(user.getIsTempUser() != null ? user.getIsTempUser() : 0)
+                .build();
     }
 
     @Override
@@ -416,11 +429,84 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "자신의 계정은 직접 영구 삭제할 수 없습니다.");
         }
 
-        // 관련된 자식 데이터 삭제 (Foreign Key 제약 조건 우회)
+        // 재직(1) 및 휴직(2)은 영구 삭제 불가 -> 오직 퇴사(0) 상태인 사용자만 영구 삭제 허용
+        if (targetUser.getUserIsActive() != null && targetUser.getUserIsActive() != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "퇴사 처리된 사용자만 영구 삭제할 수 있습니다. 먼저 퇴사 처리를 진행해 주세요.");
+        }
+
+        // 1. 삭제 전 덤프 로그 작성 (User NN 컬럼 및 WorkRecord NN 컬럼)
+        String deleteDate = java.time.LocalDate.now().toString();
+        String targetUserName = targetUser.getUserName() != null ? targetUser.getUserName().trim() : "알수없음";
+        String targetWpName = (targetUser.getWorkPlace() != null && targetUser.getWorkPlace().getWpName() != null)
+                ? targetUser.getWorkPlace().getWpName().trim()
+                : "미소속";
+
+        List<com.recode.Dwaeji.work_record.database.WorkRecord> workRecords = workRecordRepository.findByUser_UserIdx(targetUserIdx);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("================================================================================\n");
+        sb.append("[USER HARD DELETE BACKUP DUMP]\n");
+        sb.append("삭제 일시: ").append(java.time.LocalDateTime.now()).append("\n");
+        sb.append("수행 관리자: ").append(requester.getUserName()).append(" (ID: ").append(requester.getUserId()).append(", userIdx: ").append(requester.getUserIdx()).append(")\n");
+        sb.append("--------------------------------------------------------------------------------\n");
+        sb.append("1. 대상 사용자 정보 (User NN / 핵심 컬럼)\n");
+        sb.append("※ 참고: user_idx는 PK(AUTO_INCREMENT)입니다. 수동 복구 INSERT 시 user_idx를 명시하여 넣거나, 신규 발급 시 연관 외래키를 새 user_idx로 매핑해야 합니다.\n");
+        sb.append(" - user_idx (PK): ").append(targetUser.getUserIdx()).append("\n");
+        sb.append(" - user_id (NN): ").append(targetUser.getUserId()).append("\n");
+        sb.append(" - user_name (NN): ").append(targetUser.getUserName()).append("\n");
+        sb.append(" - user_phone (NN): ").append(targetUser.getUserPhone()).append("\n");
+        sb.append(" - user_pw (NN, 암호화해시): ").append(targetUser.getUserPw()).append("\n");
+        sb.append(" - user_birth (생년월일 가이드): 1901-01-01 (기존값: ").append(targetUser.getUserBirth()).append(")\n");
+        sb.append(" - user_email: ").append(targetUser.getUserEmail()).append("\n");
+        sb.append(" - user_hourly_wage (시급 가이드): 0 (기존값: ").append(targetUser.getUserHourlyWage()).append(")\n");
+        sb.append(" - user_is_active: 0 (퇴사)\n");
+        sb.append(" - is_temp_user (NN): ").append(targetUser.getIsTempUser() != null ? targetUser.getIsTempUser() : 0).append("\n");
+        sb.append(" - user_type (NN, fk_ut_idx): ").append(targetUser.getUserType() != null ? targetUser.getUserType().getUtIdx() : "5").append(" (").append(targetUser.getUserType() != null ? targetUser.getUserType().getUtName() : "알바생").append(")\n");
+        sb.append(" - work_place (NN, fk_work_place_idx): ").append(targetUser.getWorkPlace() != null ? targetUser.getWorkPlace().getWpIdx() : "1").append(" (").append(targetWpName).append(")\n");
+        sb.append("--------------------------------------------------------------------------------\n");
+        sb.append("2. 근무 기록 (WorkRecord) 목록 (총 ").append(workRecords.size()).append("건)\n");
+        for (com.recode.Dwaeji.work_record.database.WorkRecord wr : workRecords) {
+            String recordWp = wr.getWorkPlace() != null ? wr.getWorkPlace().getWpName() : targetWpName;
+            Long recordWpIdx = wr.getWorkPlace() != null ? wr.getWorkPlace().getWpIdx() : (targetUser.getWorkPlace() != null ? targetUser.getWorkPlace().getWpIdx() : null);
+            sb.append(String.format(" [WR] wr_idx=%d | user_idx=%d | date=%s | wpIdx=%s(%s) | start=%s | end=%s | rest=%s | remarks=%s\n",
+                    wr.getWrIdx(), targetUserIdx, wr.getWrDate(), recordWpIdx, recordWp,
+                    wr.getWrStartTime(), wr.getWrEndTime(), wr.getWrRestTime(),
+                    wr.getWrRemarks() != null ? wr.getWrRemarks() : ""));
+        }
+        sb.append("================================================================================\n");
+
+        String dumpContent = sb.toString();
+        log.warn("[HARD_DELETE_USER] {}\n{}", targetUserName, dumpContent);
+
+        // 2. logs/{삭제일}-{이름}-{소속}.zip 압축 파일 생성
+        try {
+            java.io.File logDir = new java.io.File("logs");
+            if (!logDir.exists()) {
+                logDir.mkdirs();
+            }
+            String safeUserName = targetUserName.replaceAll("[\\\\/:*?\"<>|]", "_");
+            String safeWpName = targetWpName.replaceAll("[\\\\/:*?\"<>|]", "_");
+            String zipFileName = String.format("%s-%s-%s.zip", deleteDate, safeUserName, safeWpName);
+            java.io.File zipFile = new java.io.File(logDir, zipFileName);
+
+            try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(zipFile))) {
+                java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry("backup_dump.txt");
+                zos.putNextEntry(entry);
+                byte[] bytes = dumpContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                zos.write(bytes, 0, bytes.length);
+                zos.closeEntry();
+            }
+        } catch (Exception e) {
+            log.error("영구 삭제 백업 zip 파일 생성 중 오류 발생: {}", e.getMessage(), e);
+        }
+
+        // 3. 자식 데이터 삭제 (Foreign Key 제약 조건 우회)
         refreshTokenRepository.deleteByUser_UserIdx(targetUserIdx);
+        workRecordHistoryRepository.deleteByTargetUser_UserIdx(targetUserIdx);
+        workRecordHistoryRepository.deleteByAdminUser_UserIdx(targetUserIdx);
         workRecordRepository.deleteByUser_UserIdx(targetUserIdx);
 
-        // 실제 사용자 물리 삭제
+        // 4. 실제 사용자 물리 삭제
         userRepository.delete(targetUser);
     }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import AppVersion from './AppVersion';
 
 const Footer = () => {
   return (
@@ -26,7 +27,7 @@ const Footer = () => {
                 <div>시스템 개선 문의 </div>
                 <div>010-2011-1392(카카오톡)</div>
                 010-3189-1392(문자, 카카오톡)<br />
-                앱 버전: v0.9.1
+                <AppVersion />
               </div>
               &copy; {new Date().getFullYear()} MinGwan-Seo. All rights reserved.
             </div>

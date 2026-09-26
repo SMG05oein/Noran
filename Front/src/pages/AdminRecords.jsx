@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Modal, Form, Badge } from 'react-bootstrap';
+import { Container, Dropdown, Card, Table, Button, Spinner, Modal, Form, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, deleteWorkRecord, restoreWorkRecord } from '../api/workApi';
 import { fetchWorkPlaces } from '../api/authApi';
 import { format } from 'date-fns';
-import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiStore2Line, RiRefreshLine, RiArrowRightSLine, RiFileExcel2Line, RiAddLine } from 'react-icons/ri';
+import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiRefreshLine, RiArrowRightSLine, RiFileExcel2Line, RiAddLine, RiUpload2Line } from 'react-icons/ri';
 import PaginationBar from '../components/PaginationBar';
 import Loading from '../components/Loading';
 import AdminCreateRecordModal from '../components/AdminCreateRecordModal';
+import AdminExcelUploadModal from '../components/AdminExcelUploadModal';
 import './AdminMain.css';
 
 const AdminRecords = () => {
@@ -48,6 +49,7 @@ const AdminRecords = () => {
   const [historySearchInput, setHistorySearchInput] = useState('');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showExcelModal, setShowExcelModal] = useState(false);
 
   const loadBranches = async () => {
     const branchRes = await fetchWorkPlaces();
@@ -341,51 +343,57 @@ const AdminRecords = () => {
               <p className="text-muted small mb-0">전체 직원의 월별 출퇴근 기록을 조회, 검색, 수정하고 엑셀로 다운로드합니다.</p>
             </div>
             
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
               <Button 
                 variant="primary" 
-                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
+                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs text-nowrap" 
                 onClick={() => setShowCreateModal(true)}
               >
-                <RiAddLine size={16} /> 새 기록 추가
+                <RiAddLine size={18} /> 새 기록 추가
               </Button>
+
               <Button 
                 variant="outline-info" 
-                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
+                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs text-nowrap" 
                 onClick={openHistoryModal}
               >
-                <RiHistoryLine size={16} /> 관리자 수정 이력
+                <RiHistoryLine size={16} /> 수정 이력
               </Button>
-              <Button
-                variant="outline-secondary" 
-                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
-                onClick={() => {
-                  setPage(0);
-                  setPageInput('1');
-                  loadData(true);
-                }}
-                disabled={loading}
-              >
-                <RiRefreshLine size={16} />
-                최신화
-              </Button>
-              <Button 
-                variant="success" 
-                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs" 
-                onClick={handleDownloadExcel}
-                disabled={downloading}
-              >
-                <RiDownload2Line size={16} />
-                {downloading ? '다운로드 중...' : '엑셀 다운로드'}
-              </Button>
-              <Button
-                variant="outline-success"
-                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs"
-                onClick={() => navigate('/admin/records/excel-compare')}
-              >
-                <RiFileExcel2Line size={16} />
-                엑셀 대조
-              </Button>
+
+              <Dropdown align="end">
+                <Dropdown.Toggle
+                  variant="success"
+                  className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs text-nowrap"
+                  id="excel-dropdown"
+                >
+                  <RiFileExcel2Line size={17} /> 엑셀 관리
+                </Dropdown.Toggle>
+                <Dropdown.Menu className="shadow border-0 py-2 rounded-3 mt-1">
+                  <Dropdown.Item
+                    onClick={handleDownloadExcel}
+                    disabled={downloading}
+                    className="d-flex align-items-center gap-2 py-2"
+                  >
+                    <RiDownload2Line size={16} className="text-success" />
+                    <span>{downloading ? '다운로드 중...' : '엑셀 다운로드'}</span>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    onClick={() => setShowExcelModal(true)}
+                    className="d-flex align-items-center gap-2 py-2"
+                  >
+                    <RiUpload2Line size={16} className="text-primary" />
+                    <span>엑셀 일괄 등록</span>
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item
+                    onClick={() => navigate('/admin/records/excel-compare')}
+                    className="d-flex align-items-center gap-2 py-2"
+                  >
+                    <RiFileExcel2Line size={16} className="text-secondary" />
+                    <span>엑셀 대조</span>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
             </div>
           </div>
 
@@ -688,6 +696,15 @@ const AdminRecords = () => {
         }}
         branches={branches}
         selectedMonth={selectedMonth}
+      />
+
+      <AdminExcelUploadModal
+        show={showExcelModal}
+        onHide={() => setShowExcelModal(false)}
+        branches={branches}
+        onSuccess={() => {
+          loadData();
+        }}
       />
 
     </div>

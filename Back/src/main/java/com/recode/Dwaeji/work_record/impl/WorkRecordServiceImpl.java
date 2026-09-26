@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyDaily;
@@ -44,6 +45,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private final WorkScheduleDailyRepository workScheduleDailyRepository;
     private final WorkApplyDailyRepository workApplyDailyRepository;
     private final WorkPlaceRepository workPlaceRepository;
+    private final com.recode.Dwaeji.user.repository.UserTypeRepository userTypeRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Value("${work-record.edit-deadline-day-of-month:1}")
     private int editDeadlineDayOfMonth;
@@ -823,5 +826,362 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             sheet.setColumnWidth(i, (int) (currentWidth * 1.3));
         }
         com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, Math.max(rowNum - 1, 0), headers.length);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto validateExcelUsers(
+            String requesterId, com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto) {
+        User requester = getRequester(requesterId);
+        if (!isAdmin(requester)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 엑셀 검증을 수행할 수 있습니다.");
+        }
+
+        List<String> duplicateNames = new ArrayList<>();
+        List<String> invalidWorkPlaces = new ArrayList<>();
+        List<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.ExistingUserDto> existingUsers = new ArrayList<>();
+        List<String> newUsers = new ArrayList<>();
+
+        // 1. 시트명(근무지명) 검증: 활성 여부(wp_is_active) 조건 없이 전체 근무지 테이블에서 조회
+        if (requestDto.getWorkPlaceNames() != null) {
+            List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
+            Set<String> existingWpNames = allWorkPlaces.stream()
+                    .map(w -> w.getWpName() != null ? w.getWpName().trim() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+
+            for (String sheetWpName : requestDto.getWorkPlaceNames()) {
+                if (sheetWpName != null && !sheetWpName.trim().isEmpty()) {
+                    String trimmed = sheetWpName.trim();
+                    if (!existingWpNames.contains(trimmed)) {
+                        invalidWorkPlaces.add(trimmed);
+                    }
+                }
+            }
+        }
+
+        // 2. 유저명 사전 검증
+        if (requestDto.getUserNames() != null) {
+            Set<String> distinctNames = requestDto.getUserNames().stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+
+            for (String name : distinctNames) {
+                List<User> matched = userRepository.findActiveNamedUsers(name);
+                if (matched.size() > 1) {
+                    duplicateNames.add(name);
+                } else if (matched.size() == 1) {
+                    User u = matched.get(0);
+                    String wpName = u.getWorkPlace() != null ? u.getWorkPlace().getWpName() : null;
+                    existingUsers.add(new com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.ExistingUserDto(
+                            u.getUserName(), u.getUserIdx(), wpName));
+                } else {
+                    newUsers.add(name);
+                }
+            }
+        }
+
+        // 3. 중복 근무기록(기존 기록) 사전 점검 (records가 전달된 경우)
+        List<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.DuplicateRecordDto> existingRecords = new ArrayList<>();
+        if (requestDto.getRecords() != null && !requestDto.getRecords().isEmpty()) {
+            List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
+            Map<String, com.recode.Dwaeji.user.database.WorkPlace> wpByName = allWorkPlaces.stream()
+                    .filter(w -> w.getWpName() != null)
+                    .collect(Collectors.toMap(w -> w.getWpName().trim(), w -> w, (k1, k2) -> k1));
+
+            for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+                String name = item.getUserName() != null ? item.getUserName().trim() : "";
+                if (name.isEmpty() || duplicateNames.contains(name)) {
+                    continue;
+                }
+
+                List<User> matched = userRepository.findActiveNamedUsers(name);
+                if (matched.size() != 1) {
+                    continue; // 기존에 정확히 1명 매칭되는 유저에 대해서만 기존 DB 기록 체크
+                }
+                User user = matched.get(0);
+
+                LocalDate wrDate;
+                try {
+                    wrDate = LocalDate.parse(item.getWorkDate().trim());
+                } catch (Exception e) {
+                    continue;
+                }
+
+                // 근무지 찾기
+                com.recode.Dwaeji.user.database.WorkPlace recordWp = null;
+                if (item.getWorkPlaceName() != null && !item.getWorkPlaceName().trim().isEmpty()) {
+                    recordWp = wpByName.get(item.getWorkPlaceName().trim());
+                }
+                if (recordWp == null) {
+                    recordWp = user.getWorkPlace();
+                }
+
+                if (recordWp != null) {
+                    java.util.Optional<WorkRecord> existingOpt =
+                            workRecordRepository.findByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(user.getUserIdx(), wrDate, recordWp.getWpIdx());
+
+                    if (existingOpt.isPresent()) {
+                        WorkRecord ex = existingOpt.get();
+                        existingRecords.add(com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.DuplicateRecordDto.builder()
+                                .workDate(wrDate.toString())
+                                .userName(user.getUserName())
+                                .workPlaceName(recordWp.getWpName())
+                                .currentStartTime(ex.getWrStartTime() != null ? ex.getWrStartTime().toString() : "")
+                                .currentEndTime(ex.getWrEndTime() != null ? ex.getWrEndTime().toString() : "")
+                                .currentBreakTime(ex.getWrRestTime() != null ? ex.getWrRestTime().toString() : "")
+                                .excelStartTime(item.getStartTime())
+                                .excelEndTime(item.getEndTime())
+                                .excelBreakTime(item.getBreakTime())
+                                .build());
+                    }
+                }
+            }
+        }
+
+        return com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.builder()
+                .duplicateNames(duplicateNames)
+                .invalidWorkPlaces(invalidWorkPlaces)
+                .existingUsers(existingUsers)
+                .newUsers(newUsers)
+                .existingRecords(existingRecords)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(
+            String requesterId, com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto) {
+        User requester = getRequester(requesterId);
+        if (!isAdmin(requester)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 엑셀 근무기록을 일괄 등록할 수 있습니다.");
+        }
+
+        if (requestDto.getRecords() == null || requestDto.getRecords().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록할 근무 기록이 없습니다.");
+        }
+
+        // 0. 전체 근무지 맵 구성 (active 조건 없이 전체 조회: 시트명 매칭용)
+        List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
+        Map<String, com.recode.Dwaeji.user.database.WorkPlace> wpByName = allWorkPlaces.stream()
+                .filter(w -> w.getWpName() != null)
+                .collect(Collectors.toMap(w -> w.getWpName().trim(), w -> w, (k1, k2) -> k1));
+
+        // 1. 유저명별 지점 매핑 맵 구성
+        Map<String, Long> userWpMap = new HashMap<>();
+        if (requestDto.getUserWorkPlaces() != null) {
+            for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.UserWorkPlaceMappingDto m : requestDto.getUserWorkPlaces()) {
+                if (m.getUserName() != null && !m.getUserName().trim().isEmpty() && m.getWorkPlaceIdx() != null) {
+                    userWpMap.put(m.getUserName().trim(), m.getWorkPlaceIdx());
+                }
+            }
+        }
+
+        // 2. 레코드에 등장하는 시트명(근무지명) 검증
+        for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+            if (item.getWorkPlaceName() != null && !item.getWorkPlaceName().trim().isEmpty()) {
+                String wpName = item.getWorkPlaceName().trim();
+                if (!wpByName.containsKey(wpName)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록되지 않은 근무지 시트가 포함되어 있습니다: [" + wpName + "]");
+                }
+            }
+        }
+
+        // 3. 엑셀에 등장하는 모든 유저명 수집
+        Set<String> names = requestDto.getRecords().stream()
+                .map(r -> r.getUserName() != null ? r.getUserName().trim() : "")
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+
+        // 4. 동명이인 사전 검사 & 기존 유저 / 신규 유저 분류 및 인원 카운팅
+        Map<String, User> resolvedUsers = new HashMap<>();
+        int existingUsersCount = 0;
+        int newUsersCount = 0;
+
+        for (String name : names) {
+            List<User> matched = userRepository.findActiveNamedUsers(name);
+            if (matched.size() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "동일한 이름의 사용자가 여러 명 존재합니다. 엑셀 업로드 전 기존 사용자의 이름을 변경해 주세요. (대상자: " + name + ")");
+            } else if (matched.size() == 1) {
+                resolvedUsers.put(name, matched.get(0));
+                existingUsersCount++;
+            } else {
+                com.recode.Dwaeji.user.database.WorkPlace targetWorkPlace = null;
+                Long explicitWpIdx = userWpMap.get(name);
+                if (explicitWpIdx != null) {
+                    targetWorkPlace = workPlaceRepository.findById(explicitWpIdx)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다: " + explicitWpIdx));
+                } else {
+                    String userSheetWp = requestDto.getRecords().stream()
+                            .filter(r -> name.equals(r.getUserName() != null ? r.getUserName().trim() : ""))
+                            .map(com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto::getWorkPlaceName)
+                            .filter(Objects::nonNull)
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .findFirst()
+                            .orElse(null);
+                    if (userSheetWp != null && wpByName.containsKey(userSheetWp)) {
+                        targetWorkPlace = wpByName.get(userSheetWp);
+                    } else if (requestDto.getWorkPlaceIdx() != null) {
+                        targetWorkPlace = workPlaceRepository.findById(requestDto.getWorkPlaceIdx())
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다: " + requestDto.getWorkPlaceIdx()));
+                    }
+                }
+
+                if (targetWorkPlace == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, name + "의 소속 근무지 정보를 확인할 수 없습니다.");
+                }
+
+                com.recode.Dwaeji.user.database.UserType albaType = userTypeRepository.findById(5L)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "기본 알바생 직급(5)을 찾을 수 없습니다."));
+
+                String initialTempId = "temp_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+                String initialPhone = "000-000-" + String.format("%04d", (int) (Math.random() * 10000));
+
+                User tempUser = User.builder()
+                        .userId(initialTempId)
+                        .userPw(passwordEncoder.encode("123456"))
+                        .userName(name)
+                        .userPhone(initialPhone)
+                        .userBirth(LocalDate.of(1901, 1, 1))
+                        .userType(albaType)
+                        .workPlace(targetWorkPlace)
+                        .userIsActive(1)
+                        .isTempUser(1)
+                        .bankConsentAgreed(true)
+                        .emailConsentAgreed(false)
+                        .build();
+
+                tempUser = userRepository.saveAndFlush(tempUser);
+
+                Long idx = tempUser.getUserIdx();
+                tempUser.setUserId("temp_" + idx);
+                tempUser.setUserPhone("000-000-" + String.format("%04d", idx));
+                tempUser = userRepository.save(tempUser);
+
+                resolvedUsers.put(name, tempUser);
+                newUsersCount++;
+            }
+        }
+
+        // 5. 레코드 유효성 검사 및 저장 (덮어쓰기 옵션 지원)
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("H:mm");
+        DateTimeFormatter timeFmtHh = DateTimeFormatter.ofPattern("HH:mm");
+        Map<String, Integer> userRecordCounts = new LinkedHashMap<>();
+        Map<String, Integer> workPlaceRecordCounts = new LinkedHashMap<>();
+        int insertedRecordsCount = 0;
+        int updatedRecordsCount = 0;
+        int skippedRecordsCount = 0;
+        boolean shouldOverwrite = Boolean.TRUE.equals(requestDto.getOverwriteExisting());
+
+        for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+            String name = item.getUserName() != null ? item.getUserName().trim() : "";
+            User user = resolvedUsers.get(name);
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "사용자를 찾을 수 없습니다: " + name);
+            }
+
+            LocalDate wrDate;
+            try {
+                wrDate = LocalDate.parse(item.getWorkDate().trim());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "근무일 날짜 형식(YYYY-MM-DD) 오류: " + item.getWorkDate());
+            }
+
+            LocalTime startTime = parseTimeString(item.getStartTime(), timeFmt, timeFmtHh, "출근 시각");
+            LocalTime endTime = parseTimeString(item.getEndTime(), timeFmt, timeFmtHh, "퇴근 시각");
+            LocalTime restTime = parseTimeString(item.getBreakTime(), timeFmt, timeFmtHh, "휴게 시간");
+            if (restTime == null) {
+                restTime = LocalTime.of(0, 0);
+            }
+
+            // 근무 시간 논리 검증 (출퇴근 시간 동일 또는 휴게시간 과다 시 에러, 익일 퇴근은 허용)
+            validateWorkTimes(startTime, endTime, restTime);
+
+            // 근무지 결정: 시트명(workPlaceName) -> 유저 소속 지점 -> 기본 지점
+            com.recode.Dwaeji.user.database.WorkPlace recordWp = null;
+            if (item.getWorkPlaceName() != null && !item.getWorkPlaceName().trim().isEmpty()) {
+                recordWp = wpByName.get(item.getWorkPlaceName().trim());
+            }
+            if (recordWp == null) {
+                recordWp = user.getWorkPlace();
+            }
+            if (recordWp == null && requestDto.getWorkPlaceIdx() != null) {
+                recordWp = workPlaceRepository.findById(requestDto.getWorkPlaceIdx()).orElse(null);
+            }
+            if (recordWp == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, name + "의 근무지 정보를 확인할 수 없습니다.");
+            }
+
+            String wpLabel = recordWp.getWpName();
+
+            java.util.Optional<WorkRecord> existingOpt =
+                    workRecordRepository.findByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(user.getUserIdx(), wrDate, recordWp.getWpIdx());
+
+            if (existingOpt.isPresent()) {
+                if (shouldOverwrite) {
+                    WorkRecord existing = existingOpt.get();
+                    existing.setWrStartTime(startTime);
+                    existing.setWrEndTime(endTime);
+                    existing.setWrRestTime(restTime);
+                    existing.setWrCreatedBy(requester.getUserIdx());
+                    workRecordRepository.save(existing);
+                    updatedRecordsCount++;
+                    userRecordCounts.put(name, userRecordCounts.getOrDefault(name, 0) + 1);
+                    workPlaceRecordCounts.put(wpLabel, workPlaceRecordCounts.getOrDefault(wpLabel, 0) + 1);
+                } else {
+                    skippedRecordsCount++;
+                }
+            } else {
+                WorkRecord newRecord = WorkRecord.builder()
+                        .user(user)
+                        .workPlace(recordWp)
+                        .wrDate(wrDate)
+                        .wrStartTime(startTime)
+                        .wrEndTime(endTime)
+                        .wrRestTime(restTime)
+                        .wrCreatedBy(requester.getUserIdx())
+                        .build();
+                workRecordRepository.save(newRecord);
+                insertedRecordsCount++;
+                userRecordCounts.put(name, userRecordCounts.getOrDefault(name, 0) + 1);
+                workPlaceRecordCounts.put(wpLabel, workPlaceRecordCounts.getOrDefault(wpLabel, 0) + 1);
+            }
+        }
+
+        int totalHandled = insertedRecordsCount + updatedRecordsCount;
+        String message = String.format("총 %d건 처리 완료 (신규 %d건, 덮어쓰기 %d건, 건너뜀 %d건)",
+                totalHandled, insertedRecordsCount, updatedRecordsCount, skippedRecordsCount);
+
+        return com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto.builder()
+                .newUsersCount(newUsersCount)
+                .existingUsersCount(existingUsersCount)
+                .userRecordCounts(userRecordCounts)
+                .workPlaceRecordCounts(workPlaceRecordCounts)
+                .insertedRecordsCount(insertedRecordsCount)
+                .updatedRecordsCount(updatedRecordsCount)
+                .skippedRecordsCount(skippedRecordsCount)
+                .totalRecordsCount(totalHandled)
+                .message(message)
+                .build();
+    }
+
+    private LocalTime parseTimeString(String raw, DateTimeFormatter fmt1, DateTimeFormatter fmt2, String fieldName) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return null;
+        }
+        String cleaned = raw.trim().replace('.', ':');
+        try {
+            return LocalTime.parse(cleaned, fmt1).withSecond(0).withNano(0);
+        } catch (Exception ignored) {
+        }
+        try {
+            return LocalTime.parse(cleaned, fmt2).withSecond(0).withNano(0);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " 형식 오류 (HH:mm 권장): " + raw);
+        }
     }
 }

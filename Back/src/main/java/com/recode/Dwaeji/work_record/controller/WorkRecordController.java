@@ -192,4 +192,26 @@ public class WorkRecordController {
         
         return ResponseEntity.ok(workRecordService.getWorkRecordHistory(userDetails.getUsername(), year, month, keyword, pageable));
     }
+
+    @Operation(summary = "관리자 근무기록 엑셀 업로드 전 인원 사전 검증", description = "엑셀에 포함된 유저명 목록으로 동명이인, 기존 등록 유저, 지점 지정이 필요한 신규 유저를 사전 분류합니다. 관리자 전용.")
+    @PostMapping("/admin/excel-validate")
+    public ResponseEntity<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto> validateExcelUsers(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(workRecordService.validateExcelUsers(userDetails.getUsername(), requestDto));
+    }
+
+    @Operation(summary = "관리자 근무기록 엑셀 일괄 등록", description = "사전 검증 후 지점이 매핑된 신규 임시 유저(is_temp_user=1)를 자동 생성하고 근무기록을 일괄 등록/수정합니다. 관리자 전용.")
+    @PostMapping("/admin/excel-upload")
+    public ResponseEntity<com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto> uploadWorkRecordsFromExcel(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto) {
+        if (userDetails == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(workRecordService.uploadWorkRecordsFromExcel(userDetails.getUsername(), requestDto));
+    }
 }

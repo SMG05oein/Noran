@@ -31,7 +31,7 @@ const ConsentPolicy = () => {
                   <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>서비스 회원가입 및 관리, 본인 식별, 불량회원 부정이용 방지</strong></td>
                   <td>이름, 아이디, 비밀번호(접근제어용), 생년월일, 휴대전화번호, 소속 지점</td>
-                  <td><strong>회원 탈퇴 후 부정이용 방지 등 운영 목적을 위해 최대 1년간 보관한 후 파기합니다.</strong></td>
+                  <td><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 보존 목적을 위해 최대 5년간 보관한 후 파기합니다.</strong></td>
                 </tr>
                 <tr>
                   <td className="text-center fw-bold text-danger">필수</td>

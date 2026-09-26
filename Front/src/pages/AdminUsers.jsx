@@ -650,27 +650,6 @@ const AdminUsers = () => {
                     <ToggleButton id="tab-leave" type="radio" variant={activeStatus === 'LEAVE' ? "warning" : "outline-warning"} name="activeRadio" value="LEAVE" checked={activeStatus === 'LEAVE'} onChange={() => { setActiveStatus('LEAVE'); setPage(0); setPageInput('1'); }} className="px-3 fw-bold">휴직</ToggleButton>
                     <ToggleButton id="tab-resigned" type="radio" variant={activeStatus === 'INACTIVE' ? "danger" : "outline-danger"} name="activeRadio" value="INACTIVE" checked={activeStatus === 'INACTIVE'} onChange={() => { setActiveStatus('INACTIVE'); setPage(0); setPageInput('1'); }} className="px-3 fw-bold">퇴사</ToggleButton>
                   </ButtonGroup>
-
-                  {activeStatus === 'INACTIVE' && (
-                    <div className="d-flex justify-content-center bg-light rounded-pill px-3 py-2 border border-danger shadow-sm">
-                      <Form.Check 
-                        type="switch" 
-                        id="archiveModeToggle"
-                        label="1년 경과 퇴사자(아카이빙) 보기"
-                        className="fw-bold text-danger m-0"
-                        style={{ fontSize: '0.85rem' }}
-                        checked={isArchivedMode}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setShowReasonModal(true);
-                          } else {
-                            setIsArchivedMode(false);
-                            setArchiveReason('');
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 <ButtonGroup className="shadow-xs">
@@ -679,9 +658,9 @@ const AdminUsers = () => {
                   <ToggleButton id="role-admin" type="radio" variant={selectedRole === '직원' ? "primary" : "outline-primary"} name="roleRadio" value="직원" checked={selectedRole === '직원'} onChange={e => { setSelectedRole(e.currentTarget.value); setSelectedBranch(''); setPage(0); setPageInput('1'); }} className="px-3 fw-bold">직원</ToggleButton>
                 </ButtonGroup>
 
-                <Button variant="outline-secondary" className="fw-bold px-3 rounded-pill shadow-sm ms-md-2" onClick={() => loadUsers(true)}>
+                {/* <Button variant="outline-secondary" className="fw-bold px-3 rounded-pill shadow-sm ms-md-2" onClick={() => loadUsers(true)}>
                   ↻ 최신화
-                </Button>
+                </Button> */}
                 <Button variant="primary" className="fw-bold px-3 rounded-pill shadow-sm ms-2" onClick={handleOpenAddModal}>
                   + 직원 추가
                 </Button>
@@ -797,7 +776,7 @@ const AdminUsers = () => {
                           상태 {renderSortIcon('status')}
                         </th>
                         {activeStatus === 'INACTIVE' && <th>퇴사일</th>}
-                        <th>삭제</th>
+                        {activeStatus !== 'ACTIVE' && activeStatus !== 'LEAVE' && <th>삭제</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -844,31 +823,35 @@ const AdminUsers = () => {
                               {u.userWithdrawnAt ? u.userWithdrawnAt.split('T')[0] : '-'}
                             </td>
                           )}
-                          <td>
-                            <div className="d-flex justify-content-center gap-1">
-                              {isArchivedMode ? (
-                                <>
-                                  <Button size="sm" variant="success" onClick={async () => {
-                                    if (!window.confirm(`[${u.userName}]님을 활성 상태로 복구하시겠습니까?`)) return;
-                                    const res = await restoreArchivedUser(u.userIdx);
-                                    if (res.success) { loadUsers(); } else alert(res.error || '복구 실패');
-                                  }}>복구</Button>
-                                  <Button size="sm" variant="danger" onClick={async () => {
-                                    if (!window.confirm(`[경고] [${u.userName}]님의 데이터를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구 파기됩니다.`)) return;
-                                    const res = await deleteArchivedUser(u.userIdx);
-                                    if (res.success) { loadUsers(); } else alert(res.error || '삭제 실패');
-                                  }}>삭제</Button>
-                                </>
-                              ) : (
-                                <Button size="sm" variant="danger" onClick={() => handleHardDelete(u)}>삭제</Button>
-                              )}
-                            </div>
-                          </td>
+                          {activeStatus !== 'ACTIVE' && activeStatus !== 'LEAVE' && (
+                            <td>
+                              <div className="d-flex justify-content-center gap-1">
+                                {isArchivedMode ? (
+                                  <>
+                                    <Button size="sm" variant="success" onClick={async () => {
+                                      if (!window.confirm(`[${u.userName}]님을 활성 상태로 복구하시겠습니까?`)) return;
+                                      const res = await restoreArchivedUser(u.userIdx);
+                                      if (res.success) { loadUsers(); } else alert(res.error || '복구 실패');
+                                    }}>복구</Button>
+                                    <Button size="sm" variant="danger" onClick={async () => {
+                                      if (!window.confirm(`[경고] [${u.userName}]님의 데이터를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구 파기됩니다.`)) return;
+                                      const res = await deleteArchivedUser(u.userIdx);
+                                      if (res.success) { loadUsers(); } else alert(res.error || '삭제 실패');
+                                    }}>삭제</Button>
+                                  </>
+                                ) : u.userIsActive === 0 ? (
+                                  <Button size="sm" variant="outline-danger" onClick={() => handleHardDelete(u)}>영구 삭제</Button>
+                                ) : (
+                                  <span className="text-muted small">-</span>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                       {users.length === 0 && (
                         <tr>
-                          <td colSpan={9 + (bankColsVisible ? 2 : 0) + (activeStatus === 'INACTIVE' ? 1 : 0)} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
+                          <td colSpan={9 + (bankColsVisible ? 2 : 0) + (activeStatus === 'INACTIVE' ? 1 : 0) + (activeStatus !== 'ACTIVE' && activeStatus !== 'LEAVE' ? 1 : 0)} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
                         </tr>
                       )}
                     </tbody>

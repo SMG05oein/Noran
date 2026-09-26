@@ -109,6 +109,11 @@ public class User {
     @Comment("이메일 수신 동의 일시")
     private LocalDateTime emailConsentDate;
 
+    @Builder.Default
+    @Column(name = "is_temp_user", nullable = false, columnDefinition = "TINYINT(1)")
+    @Comment("관리자 엑셀 업로드로 생성된 임시 유저 여부 (1: 임시, 0: 일반)")
+    private Integer isTempUser = 0;
+
     @CreatedDate
     @Column(name = "user_created_at", nullable = false, updatable = false)
     @Comment("생성 일시")

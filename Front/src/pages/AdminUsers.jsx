@@ -115,7 +115,7 @@ const AdminUsers = () => {
   const [editWage, setEditWage] = useState('');
   const [sensitiveDataLoaded, setSensitiveDataLoaded] = useState(false);
   const [sensitiveLoading, setSensitiveLoading] = useState(false);
-  
+
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [editSuccess, setEditSuccess] = useState('');
@@ -408,7 +408,7 @@ const AdminUsers = () => {
     if (selectedUserIdxs.size === 0) return;
     setBulkError('');
     setBulkSuccess('');
-    
+
     const payload = {
       userIdxList: Array.from(selectedUserIdxs),
       isActive: bulkStatus === '' ? null : Number(bulkStatus),
@@ -421,11 +421,9 @@ const AdminUsers = () => {
     setBulkSaving(false);
 
     if (res.success) {
-      setBulkSuccess('일괄 수정이 완료되었습니다.');
-      setTimeout(() => {
-        setShowBulkModal(false);
-        loadUsers();
-      }, 1500);
+      setShowBulkModal(false);
+      setSelectedUserIdxs(new Set());
+      loadUsers(true);
     } else {
       setBulkError(res.error || '일괄 수정에 실패했습니다.');
     }
@@ -445,7 +443,7 @@ const AdminUsers = () => {
     setEditIsActive(u.userIsActive !== undefined ? u.userIsActive : 1);
     setEditError('');
     setEditSuccess('');
-    
+
     // 민감정보 초기화 (수정 모달에 통합됨)
     setEditBank(u.bankCode || u.userBank || '');
     setEditAccountName(u.userAccountName || '');
@@ -474,7 +472,7 @@ const AdminUsers = () => {
     setEditError('');
     setEditSuccess('');
     setEditSaving(true);
-    
+
     const payload = {
       userName: editUserName,
       userEmail: editEmail,
@@ -517,17 +515,17 @@ const AdminUsers = () => {
     // return;
     let confirmMsg = "";
     let isCheck = false;
-    if(t === 2) {
+    if (t === 2) {
       confirmMsg = `${u.userName}을 휴직 처리하시겠습니까?`;
       isCheck = true;
-    } else{
-      confirmMsg= u.userIsActive === 1 ? `[${u.userName}]님을 퇴사 처리하시겠습니까?` : `[${u.userName}]님을 복직 처리하시겠습니까?`;
+    } else {
+      confirmMsg = u.userIsActive === 1 ? `[${u.userName}]님을 퇴사 처리하시겠습니까?` : `[${u.userName}]님을 복직 처리하시겠습니까?`;
       isCheck = u.userIsActive === 1;
     }
-    if(!window.confirm(confirmMsg)) {return;}
+    if (!window.confirm(confirmMsg)) { return; }
 
     if (isCheck && t === 100) {
-      console.log(isCheck, " : ", t, " : " ,'휴직');
+      console.log(isCheck, " : ", t, " : ", '휴직');
       // return;
       const res = await deleteUser(u.userIdx);
       if (res.success) {
@@ -535,8 +533,8 @@ const AdminUsers = () => {
         loadUsers();
         if (editUser && editUser.userIdx === u.userIdx) setEditUser(null);
       } else alert(res.error);
-    } else if(isCheck && t === 2){
-      console.log(isCheck, " : ", t, " : " ,'휴직');
+    } else if (isCheck && t === 2) {
+      console.log(isCheck, " : ", t, " : ", '휴직');
       // return;
       const res = await leaveUser(u.userIdx);
       if (res.success) {
@@ -545,7 +543,7 @@ const AdminUsers = () => {
         if (editUser && editUser.userIdx === u.userIdx) setEditUser(null);
       } else alert(res.error);
     } else {
-      console.log(isCheck, " : ", t, " : " ,'복직');
+      console.log(isCheck, " : ", t, " : ", '복직');
       // return;
       const res = await restoreUser(u.userIdx);
       if (res.success) {
@@ -566,11 +564,11 @@ const AdminUsers = () => {
   const handleSetTempPw = async () => {
     setTempPwMsg('');
     if (!tempPwValue) return setTempPwMsg('임시 비밀번호를 입력하세요.');
-    
+
     setTempPwSaving(true);
     const res = await setTempPassword(tempPwUser.userIdx, tempPwValue);
     setTempPwSaving(false);
-    
+
     if (res.success) {
       setTempPwMsg('임시 비밀번호가 설정되었습니다.');
       setTimeout(() => setTempPwUser(null), 1500);
@@ -596,7 +594,7 @@ const AdminUsers = () => {
   const handleAddUser = async () => {
     setAddError('');
     setAddSuccess('');
-    
+
     if (!addUserId || !addUserPw || !addUserName || !addUserBirth || !addUserPhone) {
       alert('아이디, 임시 비밀번호, 이름, 생년월일, 연락처는 필수입니다.');
       return;
@@ -683,63 +681,63 @@ const AdminUsers = () => {
             </div>
 
             <div className="d-flex gap-2 align-items-center ms-auto flex-wrap">
-               {canViewSensitive && (
-                 <div className="bank-sensitive-controls d-flex flex-column flex-md-row gap-2">
+              {canViewSensitive && (
+                <div className="bank-sensitive-controls d-flex flex-column flex-md-row gap-2">
                   {showBankCols && (
-                     <div className="bank-sensitive-row">
-                       <span className="bank-sensitive-label">계좌번호</span>
-                       <div className="bank-sensitive-seg" role="radiogroup" aria-label="계좌번호 원문">
-                         <input
-                           type="radio"
-                           id="account-plain-show"
-                           name="accountPlainRadio"
-                           checked={showAccountPlain}
-                           onChange={() => handleShowAccountPlainChange(true)}
-                         />
-                         <label htmlFor="account-plain-show">원문 조회</label>
-                         <input
-                           type="radio"
-                           id="account-plain-hide"
-                           name="accountPlainRadio"
-                           checked={!showAccountPlain}
-                           onChange={() => handleShowAccountPlainChange(false)}
-                         />
-                         <label htmlFor="account-plain-hide">숨김</label>
-                       </div>
-                     </div>
-                   )}
-                   <div className="bank-sensitive-row">
-                     <span className="bank-sensitive-label">은행정보</span>
-                     <div className="bank-sensitive-seg" role="radiogroup" aria-label="은행정보 표시">
-                       <input
-                         type="radio"
-                         id="bank-cols-show"
-                         name="bankColsRadio"
-                         checked={showBankCols}
-                         onChange={() => handleShowBankColsChange(true)}
-                       />
-                       <label htmlFor="bank-cols-show">보기</label>
-                       <input
-                         type="radio"
-                         id="bank-cols-hide"
-                         name="bankColsRadio"
-                         checked={!showBankCols}
-                         onChange={() => handleShowBankColsChange(false)}
-                       />
-                       <label htmlFor="bank-cols-hide">숨김</label>
-                     </div>
-                   </div>
-                 </div>
-               )}
-               {canExportExcel && (
-                 <Button variant="success" className="fw-bold px-3 py-2 rounded-3 shadow-sm" onClick={handleDownloadUsersExcel} disabled={excelDownloading}>
-                   <RiDownload2Line className="me-1" />
-                   {excelDownloading ? '다운로드 중...' : '엑셀 다운로드'}
-                 </Button>
-               )}
-               <Button variant="secondary" disabled={selectedUserIdxs.size === 0} onClick={handleOpenBulkModal} className="fw-bold px-4 py-2 rounded-3 shadow-sm">
-                 선택된 직원 일괄 수정 ({selectedUserIdxs.size})
-               </Button>
+                    <div className="bank-sensitive-row">
+                      <span className="bank-sensitive-label">계좌번호</span>
+                      <div className="bank-sensitive-seg" role="radiogroup" aria-label="계좌번호 원문">
+                        <input
+                          type="radio"
+                          id="account-plain-show"
+                          name="accountPlainRadio"
+                          checked={showAccountPlain}
+                          onChange={() => handleShowAccountPlainChange(true)}
+                        />
+                        <label htmlFor="account-plain-show">원문 조회</label>
+                        <input
+                          type="radio"
+                          id="account-plain-hide"
+                          name="accountPlainRadio"
+                          checked={!showAccountPlain}
+                          onChange={() => handleShowAccountPlainChange(false)}
+                        />
+                        <label htmlFor="account-plain-hide">숨김</label>
+                      </div>
+                    </div>
+                  )}
+                  <div className="bank-sensitive-row">
+                    <span className="bank-sensitive-label">은행정보</span>
+                    <div className="bank-sensitive-seg" role="radiogroup" aria-label="은행정보 표시">
+                      <input
+                        type="radio"
+                        id="bank-cols-show"
+                        name="bankColsRadio"
+                        checked={showBankCols}
+                        onChange={() => handleShowBankColsChange(true)}
+                      />
+                      <label htmlFor="bank-cols-show">보기</label>
+                      <input
+                        type="radio"
+                        id="bank-cols-hide"
+                        name="bankColsRadio"
+                        checked={!showBankCols}
+                        onChange={() => handleShowBankColsChange(false)}
+                      />
+                      <label htmlFor="bank-cols-hide">숨김</label>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {canExportExcel && (
+                <Button variant="success" className="fw-bold px-3 py-2 rounded-3 shadow-sm" onClick={handleDownloadUsersExcel} disabled={excelDownloading}>
+                  <RiDownload2Line className="me-1" />
+                  {excelDownloading ? '다운로드 중...' : '엑셀 다운로드'}
+                </Button>
+              )}
+              <Button variant="secondary" disabled={selectedUserIdxs.size === 0} onClick={handleOpenBulkModal} className="fw-bold px-4 py-2 rounded-3 shadow-sm">
+                선택된 직원 일괄 수정 ({selectedUserIdxs.size})
+              </Button>
             </div>
           </div>
           {copyToast && <Alert variant="success" className="py-2 mt-2 mb-0">{copyToast}</Alert>}
@@ -869,44 +867,54 @@ const AdminUsers = () => {
 
       {/* 일괄 수정 모달 */}
       <Modal show={showBulkModal} onHide={() => setShowBulkModal(false)} centered>
-        <Modal.Header closeButton>
+        <Modal.Header closeButton={!bulkSaving}>
           <Modal.Title className="fw-bold">선택된 직원 일괄 수정 ({selectedUserIdxs.size}명)</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {bulkError && <Alert variant="danger" className="py-2">{bulkError}</Alert>}
-          {bulkSuccess && <Alert variant="success" className="py-2">{bulkSuccess}</Alert>}
-          
-          <div className="text-muted small mb-3">
-            변경을 원하지 않는 항목은 비워두시면 기존 값이 유지됩니다.
-          </div>
+          {bulkSaving ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} className="mb-3" />
+              <h6 className="fw-bold text-dark mb-1">직원 정보를 일괄 수정(반영)하는 중입니다...</h6>
+              <p className="text-muted small mb-0">서버에 변경 사항을 반영하고 목록을 갱신 중입니다. 잠시만 기다려 주세요.</p>
+            </div>
+          ) : (
+            <>
+              {bulkError && <Alert variant="danger" className="py-2">{bulkError}</Alert>}
+              {bulkSuccess && <Alert variant="success" className="py-2">{bulkSuccess}</Alert>}
 
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">재직 상태 변경</Form.Label>
-            <Form.Select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
-              <option value="">-- 변경 안 함 --</option>
-              <option value="1">재직 (복직)</option>
-              <option value="2">휴직 처리</option>
-              <option value="0">퇴사 (비활성화)</option>
-            </Form.Select>
-          </Form.Group>
+              <div className="text-muted small mb-3">
+                변경을 원하지 않는 항목은 비워두시면 기존 값이 유지됩니다.
+              </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">직급 일괄 변경</Form.Label>
-            <Form.Select value={bulkFkUtIdx} onChange={e => setBulkFkUtIdx(e.target.value)}>
-              <option value="">-- 변경 안 함 --</option>
-              {userTypes.map(ut => (
-                <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>
-              ))}
-            </Form.Select>
-          </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold text-muted small">재직 상태 변경</Form.Label>
+                <Form.Select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
+                  <option value="">-- 변경 안 함 --</option>
+                  <option value="1">재직 (복직)</option>
+                  <option value="2">휴직 처리</option>
+                  <option value="0">퇴사 (비활성화)</option>
+                </Form.Select>
+              </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-bold text-muted small">시급 일괄 변경 (숫자만)</Form.Label>
-            <Form.Control type="number" placeholder="예: 10030" value={bulkWage} onChange={e => setBulkWage(e.target.value)} />
-          </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold text-muted small">직급 일괄 변경</Form.Label>
+                <Form.Select value={bulkFkUtIdx} onChange={e => setBulkFkUtIdx(e.target.value)}>
+                  <option value="">-- 변경 안 함 --</option>
+                  {userTypes.map(ut => (
+                    <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-bold text-muted small">시급 일괄 변경 (숫자만)</Form.Label>
+                <Form.Control type="number" placeholder="예: 10030" value={bulkWage} onChange={e => setBulkWage(e.target.value)} />
+              </Form.Group>
+            </>
+          )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowBulkModal(false)}>취소</Button>
+          <Button variant="secondary" onClick={() => setShowBulkModal(false)} disabled={bulkSaving}>취소</Button>
           <Button variant="primary" onClick={handleBulkSave} disabled={bulkSaving} className="fw-bold px-4">
             {bulkSaving ? <Spinner as="span" animation="border" size="sm" /> : '일괄 수정 적용'}
           </Button>
@@ -919,7 +927,7 @@ const AdminUsers = () => {
         <Modal.Body>
           {editError && <Alert variant="danger" className="py-2">{editError}</Alert>}
           {editSuccess && <Alert variant="success" className="py-2">{editSuccess}</Alert>}
-          
+
           <div className="row">
             <div className="col-md-6">
               <div className="fw-bold text-primary mb-2 border-bottom pb-2">기본 정보</div>
@@ -954,7 +962,7 @@ const AdminUsers = () => {
                 )}
               </Form.Group>
             </div>
-            
+
             <div className="col-md-6">
               <div className="fw-bold text-danger mb-2 border-bottom pb-2">
                 급여 및 계좌 정보
@@ -963,41 +971,41 @@ const AdminUsers = () => {
                 <Alert variant="secondary" className="py-2 small">민감정보 조회 권한이 없습니다.</Alert>
               ) : (
                 <>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
-                <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)} disabled={!canEditSensitive}>
-                  <option value="">은행 선택</option>
-                  {banks.map(bank => (
-                    <option key={bank.bankCode || bank.code || bank.bankName} value={bank.bankCode || bank.code}>
-                      {bank.bankName || bank.name}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">예금주명</Form.Label>
-                <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" disabled={!canEditSensitive} />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
-                <InputGroup>
-                  <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="계좌번호 입력" disabled={!canEditSensitive || (editAccountNo === '기재' && !sensitiveDataLoaded)} />
-                  {canViewSensitive && !sensitiveDataLoaded && editAccountNo === '기재' && (
-                    <Button variant="outline-danger" onClick={handleRevealSensitive} disabled={sensitiveLoading} className="fw-bold px-3">
-                      {sensitiveLoading ? <Spinner size="sm" /> : '원문 조회'}
-                    </Button>
-                  )}
-                </InputGroup>
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">시급</Form.Label>
-                <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" disabled={!canEditSensitive} />
-              </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
+                    <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)} disabled={!canEditSensitive}>
+                      <option value="">은행 선택</option>
+                      {banks.map(bank => (
+                        <option key={bank.bankCode || bank.code || bank.bankName} value={bank.bankCode || bank.code}>
+                          {bank.bankName || bank.name}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-bold text-muted small">예금주명</Form.Label>
+                    <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" disabled={!canEditSensitive} />
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
+                    <InputGroup>
+                      <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="계좌번호 입력" disabled={!canEditSensitive || (editAccountNo === '기재' && !sensitiveDataLoaded)} />
+                      {canViewSensitive && !sensitiveDataLoaded && editAccountNo === '기재' && (
+                        <Button variant="outline-danger" onClick={handleRevealSensitive} disabled={sensitiveLoading} className="fw-bold px-3">
+                          {sensitiveLoading ? <Spinner size="sm" /> : '원문 조회'}
+                        </Button>
+                      )}
+                    </InputGroup>
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-bold text-muted small">시급</Form.Label>
+                    <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" disabled={!canEditSensitive} />
+                  </Form.Group>
                 </>
               )}
-                {!canEditSensitive && canViewSensitive && (
-                  <Alert variant="warning" className="py-2 small">민감정보 수정 권한이 없어 급여/계좌는 저장되지 않습니다.</Alert>
-                )}
+              {!canEditSensitive && canViewSensitive && (
+                <Alert variant="warning" className="py-2 small">민감정보 수정 권한이 없어 급여/계좌는 저장되지 않습니다.</Alert>
+              )}
             </div>
           </div>
 
@@ -1008,12 +1016,12 @@ const AdminUsers = () => {
                 {editUser?.userIsActive === 1 ? '퇴사 처리' : '복직 처리'}
               </Button>
               {
-                (editUser?.userIsActive === 2 || editUser?.userIsActive === 0 ) ?
-                    <div></div>
-                    :
-                    <Button size="sm" variant={"outline-secondary"} className="fw-bold px-3 py-1" onClick={() => handleToggleActive(editUser, 2)}>
-                      휴직 처리
-                    </Button>
+                (editUser?.userIsActive === 2 || editUser?.userIsActive === 0) ?
+                  <div></div>
+                  :
+                  <Button size="sm" variant={"outline-secondary"} className="fw-bold px-3 py-1" onClick={() => handleToggleActive(editUser, 2)}>
+                    휴직 처리
+                  </Button>
               }
             </div>
 
@@ -1062,12 +1070,12 @@ const AdminUsers = () => {
           </Alert>
           <Form.Group>
             <Form.Label className="fw-bold text-muted small">조회 사유 입력 *</Form.Label>
-            <Form.Control 
-              as="textarea" 
-              rows={3} 
-              value={archiveReason} 
-              onChange={e => setArchiveReason(e.target.value)} 
-              placeholder="예: 근로기준법상 체불임금 정산 확인 요청 등" 
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={archiveReason}
+              onChange={e => setArchiveReason(e.target.value)}
+              placeholder="예: 근로기준법상 체불임금 정산 확인 요청 등"
             />
           </Form.Group>
         </Modal.Body>

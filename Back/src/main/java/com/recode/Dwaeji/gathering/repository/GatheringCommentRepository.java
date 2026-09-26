@@ -22,4 +22,6 @@ public interface GatheringCommentRepository extends JpaRepository<GatheringComme
     long countByPost_PostIdAndIsDeletedFalse(Long postId);
 
     Optional<GatheringComment> findByCommentIdAndIsDeletedFalse(Long commentId);
+    void deleteByUser_UserIdx(Long userIdx);
+    void deleteByPost_User_UserIdx(Long userIdx);
 }

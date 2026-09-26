@@ -1124,11 +1124,34 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             if (existingOpt.isPresent()) {
                 if (shouldOverwrite) {
                     WorkRecord existing = existingOpt.get();
+                    LocalTime beforeStartTime = existing.getWrStartTime();
+                    LocalTime beforeEndTime = existing.getWrEndTime();
+                    LocalTime beforeRestTime = existing.getWrRestTime();
+
                     existing.setWrStartTime(startTime);
                     existing.setWrEndTime(endTime);
                     existing.setWrRestTime(restTime);
                     existing.setWrCreatedBy(requester.getUserIdx());
                     workRecordRepository.save(existing);
+
+                    // 관리자가 엑셀 덮어쓰기로 수정한 경우 Audit Log 남기기
+                    if (isAdmin(requester)) {
+                        WorkRecordHistory history = WorkRecordHistory.builder()
+                                .wrIdx(existing.getWrIdx())
+                                .adminUser(requester)
+                                .targetUser(existing.getUser())
+                                .wrDate(existing.getWrDate())
+                                .beforeStartTime(beforeStartTime)
+                                .beforeEndTime(beforeEndTime)
+                                .beforeRestTime(beforeRestTime)
+                                .afterStartTime(existing.getWrStartTime())
+                                .afterEndTime(existing.getWrEndTime())
+                                .afterRestTime(existing.getWrRestTime())
+                                .actionType(ACTION_UPDATE)
+                                .build();
+                        workRecordHistoryRepository.save(history);
+                    }
+
                     updatedRecordsCount++;
                     userRecordCounts.put(name, userRecordCounts.getOrDefault(name, 0) + 1);
                     workPlaceRecordCounts.put(wpLabel, workPlaceRecordCounts.getOrDefault(wpLabel, 0) + 1);

@@ -15,4 +15,5 @@ public interface GatheringReportRepository extends JpaRepository<GatheringReport
     List<GatheringReport> findByStatusOrderByCreatedAtDesc(String status);
     Page<GatheringReport> findAllByOrderByCreatedAtDesc(Pageable pageable);
     Page<GatheringReport> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
+    void deleteByUser_UserIdx(Long userIdx);
 }

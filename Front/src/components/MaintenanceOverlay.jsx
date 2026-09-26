@@ -3,6 +3,7 @@ import { Container, Button, Badge, Spinner, Form, Alert } from 'react-bootstrap'
 import { devLogin } from '../api/devAuthApi';
 import { promptDevIpOtp } from '../api/devIpToken';
 import useDevAuthStore from '../store/useDevAuthStore';
+import { GiPig } from "react-icons/gi";
 
 const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, scheduledEnd }) => {
   const [showLogin, setShowLogin] = useState(false);
@@ -10,13 +11,20 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
   const [devPw, setDevPw] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
-  
+
   const loginStore = useDevAuthStore((state) => state.devLogin);
 
   const formatRange = (iso) => {
     if (!iso) return null;
     const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? null : d.toLocaleString('ko-KR');
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   };
 
   const displayMessage = message?.trim()
@@ -46,11 +54,11 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
       }
 
       if (response.success) {
-        loginStore({ 
-          devId: response.data.devId, 
-          devName: response.data.devName, 
+        loginStore({
+          devId: response.data.devId,
+          devName: response.data.devName,
           isTempPw: response.data.isTempPw,
-          tokens: { accessToken: response.data.accessToken } 
+          tokens: { accessToken: response.data.accessToken }
         });
         // 현재 점검 세션에 대한 우회 플래그 설정
         sessionStorage.setItem('maintenance_bypassed', 'true');
@@ -131,7 +139,7 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
                     className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
                     style={{ width: '80px', height: '80px', backgroundColor: '#3d1a24', color: '#ff4d4f' }}
                   >
-                    <i className="bi bi-tools fs-1"></i>
+                    <i className="bi bi-tools fs-1"><GiPig /></i>
                   </div>
                   <div>
                     <Badge bg="danger" className="px-3 py-2 fs-6 rounded-pill mb-2">
@@ -161,13 +169,16 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
                     <span className="fw-semibold text-danger">접근 제한 중</span>
                   </div>
                   {(startLabel || endLabel) && (
-                    <div className="d-flex justify-content-between">
-                      <span className="text-white">예정:</span>
+                    <div className="d-flex justify-content-between mb-1">
+                      <span className="text-white">점검 일정:</span>
                       <span className="fw-semibold text-info text-end">
                         {startLabel || '?'} ~ {endLabel || '?'}
                       </span>
                     </div>
                   )}
+                  <div className="text-warning-emphasis small mt-2 pt-2 border-top border-secondary border-opacity-25" style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                    ※ 작업 진행 상황에 따라 점검 일정이 예정보다 조기 종료되거나 지연될 수 있습니다.
+                  </div>
                 </div>
 
                 <Button
@@ -186,10 +197,10 @@ const MaintenanceOverlay = ({ onRecheck, checking, message, scheduledStart, sche
                     '🔄 점검 상태 재확인 (새로고침)'
                   )}
                 </Button>
-                
+
                 <div className="mt-4">
-                  <span 
-                    className="text-muted small text-decoration-underline" 
+                  <span
+                    className="text-muted small text-decoration-underline"
                     style={{ cursor: 'pointer' }}
                     onClick={() => setShowLogin(true)}
                   >

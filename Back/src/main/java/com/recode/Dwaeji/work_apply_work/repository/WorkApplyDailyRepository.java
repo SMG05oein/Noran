@@ -29,4 +29,5 @@ public interface WorkApplyDailyRepository extends JpaRepository<WorkApplyDaily, 
                                        @Param("endDate") LocalDate endDate);
 
     void deleteByUserAndWadDateIn(com.recode.Dwaeji.user.database.User user, List<LocalDate> dates);
+    void deleteByUser_UserIdx(Long userIdx);
 }

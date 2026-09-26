@@ -88,8 +88,9 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
   // 2단계 완료 결과
   const [uploadResult, setUploadResult] = useState(null);
 
-  // 모달 닫힐 때 초기화
+  // 모달 닫힐 때 초기화 및 메인 테이블 최신화
   const handleClose = () => {
+    const isCompleted = step === 'complete';
     setStep('select');
     setParsedRecords([]);
     setUniqueNames([]);
@@ -99,6 +100,9 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     setUploadResult(null);
     setLoading(false);
     onHide();
+    if (isCompleted && onSuccess) {
+      onSuccess();
+    }
   };
 
   // 엑셀 파일 선택 및 파싱 (모든 시트 순회, 시트명 = workPlaceName)
@@ -283,7 +287,6 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
     setUploadResult(res.data);
     setStep('complete');
-    if (onSuccess) onSuccess();
   };
 
   // 샘플 엑셀 다운로드 (동적 근무지 시트 다중 생성)
@@ -319,7 +322,17 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
       </Modal.Header>
 
       <Modal.Body className="pt-3">
-        {errorMsg && (
+        {loading && (
+          <div className="text-center py-5">
+            <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} className="mb-3" />
+            <h6 className="fw-bold text-dark mb-1">
+              {step === 'overwrite_confirm' ? '근무 기록을 일괄 등록(반영)하는 중입니다...' : '엑셀 데이터 검증 및 등록 처리 중입니다...'}
+            </h6>
+            <p className="text-muted small mb-0">대용량 데이터이거나 신규 사원 생성 시 수 초 정도 소요될 수 있습니다. 잠시만 기다려 주세요.</p>
+          </div>
+        )}
+
+        {!loading && errorMsg && (
           <Alert variant="danger" className="d-flex align-items-start gap-2 py-2 mb-3">
             <RiAlertLine className="mt-1 flex-shrink-0" size={18} />
             <div style={{ wordBreak: 'keep-all' }}>{errorMsg}</div>
@@ -327,15 +340,15 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
         )}
 
         {/* 1단계: 파일 선택 & 파싱 미리보기 */}
-        {step === 'select' && (
+        {!loading && step === 'select' && (
           <div>
             <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
               <div>
                 <div className="fw-bold small text-dark mb-1">엑셀 파일 규격 안내</div>
                 <div className="text-muted" style={{ fontSize: '0.84rem' }}>
-                  • <strong>시트명 = 근무지명</strong> (예: 노란돼지, 약산돼지, test 등 다중 시트 지원)<br />
+                  • <strong>시트명 = 근무지명</strong><br />
                   • 컬럼 순서: <strong>날짜, 이름, 출근, 퇴근, 휴게</strong><br />
-                  • 시간은 24시간제(09:00, 18:30 / 익일퇴근 22:00 ~ 04:00 지원)
+                  • 시간은 24시간제(09:00, 18:30)
                 </div>
               </div>
               <Button
@@ -409,7 +422,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
         )}
 
         {/* 2단계: 기존 동일 날짜 기록 중복 확인 (덮어쓰기 or 건너뛰기) */}
-        {step === 'overwrite_confirm' && validationResult && (
+        {!loading && step === 'overwrite_confirm' && validationResult && (
           <div>
             <Alert variant="warning" className="d-flex align-items-start gap-2 py-2 mb-3">
               <RiInformationLine size={20} className="mt-1 flex-shrink-0 text-warning" />
@@ -456,7 +469,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
         )}
 
         {/* 3단계: 완료 화면 */}
-        {step === 'complete' && uploadResult && (
+        {!loading && step === 'complete' && uploadResult && (
           <div className="text-center py-2">
             <div
               className="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-3"

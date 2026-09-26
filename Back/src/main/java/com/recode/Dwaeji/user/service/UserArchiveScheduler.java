@@ -28,6 +28,13 @@ public class UserArchiveScheduler {
     private final RefreshTokenRepository refreshTokenRepository;
     private final WorkRecordRepository workRecordRepository;
     private final WorkRecordHistoryRepository workRecordHistoryRepository;
+    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository workApplyRepository;
+    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository workApplyDailyRepository;
+    private final com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository workScheduleDailyRepository;
+    private final com.recode.Dwaeji.gathering.repository.GatheringReportRepository gatheringReportRepository;
+    private final com.recode.Dwaeji.gathering.repository.GatheringCommentRepository gatheringCommentRepository;
+    private final com.recode.Dwaeji.gathering.repository.GatheringPostRepository gatheringPostRepository;
+    private final com.recode.Dwaeji.joke.repository.JokeRepository jokeRepository;
 
     /**
      * 매일 새벽 3시: 퇴사 후 5년이 경과한 사용자 완전 파기 (영구 삭제)
@@ -50,6 +57,16 @@ public class UserArchiveScheduler {
                 workRecordHistoryRepository.deleteByTargetUser_UserIdx(userIdx);
                 workRecordHistoryRepository.deleteByAdminUser_UserIdx(userIdx);
                 workRecordRepository.deleteByUser_UserIdx(userIdx);
+
+                workApplyDailyRepository.deleteByUser_UserIdx(userIdx);
+                workScheduleDailyRepository.deleteByUser_UserIdx(userIdx);
+                workApplyRepository.deleteByUser_UserIdx(userIdx);
+
+                gatheringReportRepository.deleteByUser_UserIdx(userIdx);
+                gatheringCommentRepository.deleteByUser_UserIdx(userIdx);
+                gatheringCommentRepository.deleteByPost_User_UserIdx(userIdx);
+                gatheringPostRepository.deleteByUser_UserIdx(userIdx);
+                jokeRepository.deleteByUser_UserIdx(userIdx);
 
                 // 사용자 완전 파기
                 userRepository.delete(user);

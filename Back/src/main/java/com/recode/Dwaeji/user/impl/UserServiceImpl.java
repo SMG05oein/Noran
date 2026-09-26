@@ -43,6 +43,14 @@ public class UserServiceImpl implements UserService {
     private final com.recode.Dwaeji.user.repository.ArchiveAccessLogRepository archiveAccessLogRepository;
     private final JwtUtil jwtUtil;
 
+    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository workApplyRepository;
+    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository workApplyDailyRepository;
+    private final com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository workScheduleDailyRepository;
+    private final com.recode.Dwaeji.gathering.repository.GatheringReportRepository gatheringReportRepository;
+    private final com.recode.Dwaeji.gathering.repository.GatheringCommentRepository gatheringCommentRepository;
+    private final com.recode.Dwaeji.gathering.repository.GatheringPostRepository gatheringPostRepository;
+    private final com.recode.Dwaeji.joke.repository.JokeRepository jokeRepository;
+
     @Override
     @Transactional
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
@@ -500,11 +508,23 @@ public class UserServiceImpl implements UserService {
             log.error("영구 삭제 백업 zip 파일 생성 중 오류 발생: {}", e.getMessage(), e);
         }
 
-        // 3. 자식 데이터 삭제 (Foreign Key 제약 조건 우회)
+        // 3. 자식 데이터 일괄 삭제 (외래키 제약조건 완전 해소)
         refreshTokenRepository.deleteByUser_UserIdx(targetUserIdx);
         workRecordHistoryRepository.deleteByTargetUser_UserIdx(targetUserIdx);
         workRecordHistoryRepository.deleteByAdminUser_UserIdx(targetUserIdx);
         workRecordRepository.deleteByUser_UserIdx(targetUserIdx);
+
+        // 근무 신청 및 일별 스케줄 삭제
+        workApplyDailyRepository.deleteByUser_UserIdx(targetUserIdx);
+        workScheduleDailyRepository.deleteByUser_UserIdx(targetUserIdx);
+        workApplyRepository.deleteByUser_UserIdx(targetUserIdx);
+
+        // 게시판/댓글/신고/농담 데이터 삭제
+        gatheringReportRepository.deleteByUser_UserIdx(targetUserIdx);
+        gatheringCommentRepository.deleteByUser_UserIdx(targetUserIdx);
+        gatheringCommentRepository.deleteByPost_User_UserIdx(targetUserIdx); // 사용자가 쓴 글에 달린 타인의 댓글 먼저 삭제
+        gatheringPostRepository.deleteByUser_UserIdx(targetUserIdx);
+        jokeRepository.deleteByUser_UserIdx(targetUserIdx);
 
         // 4. 실제 사용자 물리 삭제
         userRepository.delete(targetUser);

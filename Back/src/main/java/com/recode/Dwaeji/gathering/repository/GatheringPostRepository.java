@@ -44,4 +44,6 @@ public interface GatheringPostRepository extends JpaRepository<GatheringPost, Lo
             @Param("targetTag") com.recode.Dwaeji.gathering.database.GatheringTag targetTag,
             @Param("defaultTag") com.recode.Dwaeji.gathering.database.GatheringTag defaultTag
     );
+
+    void deleteByUser_UserIdx(Long userIdx);
 }

@@ -703,7 +703,7 @@ const AdminRecords = () => {
         onHide={() => setShowExcelModal(false)}
         branches={branches}
         onSuccess={() => {
-          loadData();
+          loadData(true);
         }}
       />
 

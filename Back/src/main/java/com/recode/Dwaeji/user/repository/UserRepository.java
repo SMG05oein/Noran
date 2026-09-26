@@ -47,7 +47,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("excludeUserIdx") Long excludeUserIdx);
     List<User> findByWorkPlace_WpIdx(Long wpIdx);
     
-    // 아카이빙 대상자 조회 (비활성화 상태이고 탈퇴일이 특정 날짜 이전인 유저)
+    // 5년 경과 퇴사자 조회 (퇴사 상태이고 탈퇴일이 특정 날짜 이전인 유저)
+    @Query("SELECT u FROM User u WHERE u.userIsActive = 0 AND u.userWithdrawnAt IS NOT NULL AND u.userWithdrawnAt < :thresholdDate")
+    List<User> findUsersWithdrawnBefore(@org.springframework.data.repository.query.Param("thresholdDate") java.time.LocalDateTime thresholdDate);
+
+    // 구 아카이빙 대상자 조회 (하위 호환)
     @Query("SELECT u FROM User u WHERE u.userIsActive = 0 AND u.userWithdrawnAt IS NOT NULL AND u.userWithdrawnAt < :thresholdDate AND u.userName != '탈퇴자_비식별화'")
     List<User> findUsersToArchive(@org.springframework.data.repository.query.Param("thresholdDate") java.time.LocalDateTime thresholdDate);
 

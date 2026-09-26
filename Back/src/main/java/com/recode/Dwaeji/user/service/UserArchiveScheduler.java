@@ -3,13 +3,18 @@ package com.recode.Dwaeji.user.service;
 import com.recode.Dwaeji.user.database.ArchivedUser;
 import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.user.repository.ArchivedUserRepository;
+import com.recode.Dwaeji.user.repository.RefreshTokenRepository;
 import com.recode.Dwaeji.user.repository.UserRepository;
+import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
+import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,65 +25,87 @@ public class UserArchiveScheduler {
 
     private final UserRepository userRepository;
     private final ArchivedUserRepository archivedUserRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final WorkRecordHistoryRepository workRecordHistoryRepository;
 
-    // 테스트를 위해 10초마다 실행되도록 변경
+    /**
+     * 매일 새벽 3시: 퇴사 후 5년이 경과한 사용자 완전 파기 (영구 삭제)
+     * 국세기본법/근로기준법 보존 의무 기간(5년) 만료에 따른 자동 영구 삭제 처리.
+     */
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void runArchiving() {
-        log.info("퇴사자 아카이빙 및 비식별화 배치 작업 시작...");
+        log.info("퇴사 5년 경과 사용자 자동 완전 파기 배치 작업 시작...");
 
-        LocalDateTime oneYearAgo = LocalDateTime.now().minusYears(1);
-        List<User> usersToArchive = userRepository.findUsersToArchive(oneYearAgo);
+        LocalDateTime fiveYearsAgo = LocalDateTime.now().minusYears(5);
+        List<User> usersToDestroy = userRepository.findUsersWithdrawnBefore(fiveYearsAgo);
 
         int count = 0;
-        for (User user : usersToArchive) {
+        for (User user : usersToDestroy) {
             try {
-                // 1. ArchivedUser 에 복사
-                ArchivedUser archivedUser = ArchivedUser.builder()
-                        .originalUserIdx(user.getUserIdx())
-                        .userId(user.getUserId())
-                        .userName(user.getUserName())
-                        .userEmail(user.getUserEmail())
-                        .userPhone(user.getUserPhone())
-                        .userBirth(user.getUserBirth())
-                        .userAccountNumber(user.getUserAccountNumber())
-                        .userAccountName(user.getUserAccountName())
-                        .userBank(user.getUserBank())
-                        .withdrawnAt(user.getUserWithdrawnAt())
-                        .archivedAt(LocalDateTime.now())
-                        // 정책에 따라 아카이브된 데이터는 4년 뒤 완전 파기 (퇴사 기준 5년)
-                        .destroyDueAt(LocalDateTime.now().plusYears(4))
-                        .build();
-                archivedUserRepository.save(archivedUser);
+                Long userIdx = user.getUserIdx();
+                // 연관 자식 데이터 삭제
+                refreshTokenRepository.deleteByUser_UserIdx(userIdx);
+                workRecordHistoryRepository.deleteByTargetUser_UserIdx(userIdx);
+                workRecordHistoryRepository.deleteByAdminUser_UserIdx(userIdx);
+                workRecordRepository.deleteByUser_UserIdx(userIdx);
 
-                // 2. 기존 User 비식별화 (마스킹)
-                user.setUserId("deleted_" + user.getUserIdx());
-                user.setUserName("탈퇴자_비식별화");
-                user.setUserPhone(null);
-                user.setUserEmail(null);
-                user.setUserBirth(null);
-                user.setUserAccountNumber(null);
-                user.setUserAccountName(null);
-                user.setUserBank(null);
-                user.setUserIsTempPw(0);
-                user.setUserTempPw(null);
-                user.setBankConsentAgreed(false);
-                user.setEmailConsentAgreed(false);
-                
-                userRepository.save(user);
+                // 사용자 완전 파기
+                userRepository.delete(user);
                 count++;
             } catch (Exception e) {
-                log.error("유저 아카이빙 중 오류 발생: userIdx={}", user.getUserIdx(), e);
+                log.error("5년 경과 유저 자동 파기 중 오류 발생: userIdx={}", user.getUserIdx(), e);
             }
         }
 
-        log.info("퇴사자 아카이빙 배치 완료. 총 {}명 처리됨.", count);
-        
-        // 3. destroyDueAt 이 지난 아카이브 완전 파기
-        List<ArchivedUser> usersToDestroy = archivedUserRepository.findByDestroyDueAtBefore(LocalDateTime.now());
-        if (!usersToDestroy.isEmpty()) {
-            archivedUserRepository.deleteAll(usersToDestroy);
-            log.info("보존 기간(최대 5년)이 경과한 아카이브 유저 {}명 완전 파기 완료.", usersToDestroy.size());
+        log.info("퇴사 5년 경과 사용자 자동 파기 완료. 총 {}명 삭제됨.", count);
+
+        // 과거 남은 ArchivedUser가 있다면 만료된 건 정리
+        try {
+            List<ArchivedUser> oldArchives = archivedUserRepository.findByDestroyDueAtBefore(LocalDateTime.now());
+            if (!oldArchives.isEmpty()) {
+                archivedUserRepository.deleteAll(oldArchives);
+                log.info("기존 아카이브 보존 만료 유저 {}명 파기 완료.", oldArchives.size());
+            }
+        } catch (Exception e) {
+            log.error("기존 아카이브 데이터 정리 중 오류: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 매일 새벽 3시 30분: 1년이 경과한 수동 영구 삭제 백업 zip 파일 자동 파기
+     */
+    @Scheduled(cron = "0 30 3 * * *")
+    public void cleanUpOldHardDeleteZipFiles() {
+        File logDir = new File("logs");
+        if (!logDir.exists() || !logDir.isDirectory()) {
+            return;
+        }
+
+        LocalDate oneYearAgo = LocalDate.now().minusYears(1);
+        File[] files = logDir.listFiles((dir, name) -> name.endsWith(".zip"));
+
+        if (files != null) {
+            int deleteCount = 0;
+            for (File file : files) {
+                String name = file.getName();
+                if (name.length() >= 10) {
+                    try {
+                        LocalDate fileDate = LocalDate.parse(name.substring(0, 10));
+                        if (fileDate.isBefore(oneYearAgo)) {
+                            boolean deleted = file.delete();
+                            if (deleted) {
+                                deleteCount++;
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            if (deleteCount > 0) {
+                log.info("1년 경과 영구 삭제 백업 zip 파일 {}개 자동 파기 완료.", deleteCount);
+            }
         }
     }
 }

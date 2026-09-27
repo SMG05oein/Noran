@@ -42,6 +42,8 @@ dependencies {
 	// Apache POI for Excel download
 	implementation 'org.apache.poi:poi:5.2.3'
 	implementation 'org.apache.poi:poi-ooxml:5.2.3'
+
+    implementation 'com.github.pjfanning:excel-streaming-reader:4.0.5'
 }
 
 tasks.named('test') {

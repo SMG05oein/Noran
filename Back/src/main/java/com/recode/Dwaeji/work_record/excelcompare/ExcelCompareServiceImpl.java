@@ -18,6 +18,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.github.pjfanning.xlsx.StreamingReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Sort;
@@ -270,55 +271,51 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
 
     private ParsedExcel parseAndValidate(MultipartFile file) {
         ParsedExcel result = new ParsedExcel();
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
-            if (workbook.getNumberOfSheets() == 0) {
-                result.columnErrors.add("시트가 없습니다.");
-                return result;
-            }
+        try (Workbook workbook = StreamingReader.builder()
+                .rowCacheSize(100)
+                .bufferSize(4096)
+                .open(file.getInputStream())) {
 
-            // 근무지별 Sheet 전부 읽음 (시트명 = 근무지). 행 인덱스는 파일 전체 기준 연속.
             int dataIndex = 0;
             boolean anySheetParsed = false;
-            for (int s = 0; s < workbook.getNumberOfSheets(); s++) {
-                Sheet sheet = workbook.getSheetAt(s);
-                if (sheet == null) {
-                    continue;
-                }
-                Row headerRow = sheet.getRow(0);
-                if (headerRow == null) {
-                    // 빈 시트(헤더 없음)는 건너뜀
-                    continue;
-                }
 
-                Map<Integer, String> headerByCol = new LinkedHashMap<>();
-                short lastCell = headerRow.getLastCellNum();
-                for (int i = 0; i < lastCell; i++) {
-                    String h = cellString(headerRow.getCell(i)).trim();
-                    if (!h.isEmpty()) {
-                        headerByCol.put(i, h);
-                    }
-                }
-                if (headerByCol.isEmpty()) {
-                    continue;
-                }
-
-                // 출근/퇴근/휴게 등 키워드 포함 매핑. No·총근무시간 등 추가 컬럼은 무시. 순서 무관.
-                List<String> sheetErrors = new ArrayList<>();
-                Map<String, Integer> col = ExcelCompareHeaders.resolve(headerByCol, sheetErrors);
-                if (!sheetErrors.isEmpty()) {
-                    String prefix = "[" + sheet.getSheetName() + "] ";
-                    for (String err : sheetErrors) {
-                        result.columnErrors.add(prefix + err);
-                    }
-                    return result;
-                }
-
-                int maxCol = headerByCol.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
+            for (Sheet sheet : workbook) {
+                boolean headerProcessed = false;
+                Map<String, Integer> col = null;
+                int maxCol = 0;
                 String sheetWpName = sheet.getSheetName() != null ? sheet.getSheetName().trim() : "";
-                anySheetParsed = true;
-                for (int r = 1; r <= sheet.getLastRowNum(); r++) {
-                    Row row = sheet.getRow(r);
-                    if (row == null || isRowEmpty(row, maxCol)) {
+
+                for (Row row : sheet) {
+                    if (!headerProcessed) {
+                        headerProcessed = true;
+                        Map<Integer, String> headerByCol = new LinkedHashMap<>();
+                        short lastCell = row.getLastCellNum();
+                        for (int i = 0; i < lastCell; i++) {
+                            String h = cellString(row.getCell(i)).trim();
+                            if (!h.isEmpty()) {
+                                headerByCol.put(i, h);
+                            }
+                        }
+                        if (headerByCol.isEmpty()) {
+                            break; // 빈 시트 건너뜀
+                        }
+
+                        List<String> sheetErrors = new ArrayList<>();
+                        col = ExcelCompareHeaders.resolve(headerByCol, sheetErrors);
+                        if (!sheetErrors.isEmpty()) {
+                            String prefix = "[" + sheet.getSheetName() + "] ";
+                            for (String err : sheetErrors) {
+                                result.columnErrors.add(prefix + err);
+                            }
+                            return result;
+                        }
+
+                        maxCol = headerByCol.keySet().stream().mapToInt(Integer::intValue).max().orElse(0) + 1;
+                        anySheetParsed = true;
+                        continue;
+                    }
+
+                    if (isRowEmpty(row, maxCol)) {
                         continue;
                     }
                     String wpFromCell = cellString(row.getCell(col.get("근무지"))).trim();
@@ -343,7 +340,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             if (!anySheetParsed) {
                 result.columnErrors.add("헤더 행이 있는 시트가 없습니다.");
             }
-        } catch (IOException e) {
+        } catch (Exception e) { // IOException and streaming errors
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "엑셀 파일을 읽을 수 없습니다.");
         }
         return result;

@@ -120,11 +120,13 @@ const HowToUse = () => {
               />
             </div>
           ) : (
-            <div
-              className="quill-content-view"
-              dangerouslySetInnerHTML={{ __html: content }}
-              style={{ minHeight: '300px' }}
-            />
+            <div className="ql-snow">
+              <div
+                className="ql-editor"
+                dangerouslySetInnerHTML={{ __html: content }}
+                style={{ minHeight: '300px', padding: 0 }}
+              />
+            </div>
           )}
         </Card.Body>
       </Card>

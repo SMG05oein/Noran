@@ -23,9 +23,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class DeveloperDatabaseController {
 
-    private static final Pattern DANGEROUS = Pattern.compile(
-            "\\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|DELETE\\s+FROM|INSERT\\s+INTO|UPDATE\\s+)\\b",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
 
     private final JdbcTemplate jdbcTemplate;
     private final DevExecutorAuth executorAuth;
@@ -68,38 +66,24 @@ public class DeveloperDatabaseController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "실행할 쿼리를 입력해주세요.");
         }
 
-        boolean readOnly = request.getReadOnly() == null || Boolean.TRUE.equals(request.getReadOnly());
-        boolean confirmDangerous = Boolean.TRUE.equals(request.getConfirmDangerous());
         String trimmed = sql.trim();
         String upper = trimmed.toUpperCase();
         boolean isRead = upper.startsWith("SELECT") || upper.startsWith("SHOW")
                 || upper.startsWith("DESCRIBE") || upper.startsWith("DESC") || upper.startsWith("EXPLAIN");
 
-        if (readOnly && !isRead) {
-            auditService.recordSql(executor, sql, "BLOCKED", false, "readOnly=true blocks non-SELECT", null, ip);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "readOnly=true 에서는 SELECT/SHOW/DESCRIBE/EXPLAIN 만 허용됩니다.");
-        }
-
-        boolean dangerous = DANGEROUS.matcher(trimmed).find();
-        if (dangerous && !confirmDangerous) {
-            auditService.recordSql(executor, sql, "BLOCKED", false, "confirmDangerous required", null, ip);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "위험한 SQL입니다. confirmDangerous=true 가 필요합니다.");
+        if (!isRead) {
+            auditService.recordSql(executor, sql, "BLOCKED", false, "only read queries are allowed", null, ip);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회(SELECT/SHOW/DESCRIBE/EXPLAIN) 쿼리만 허용됩니다.");
         }
 
         try {
-            if (isRead) {
-                List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
-                auditService.recordSql(executor, sql, "SELECT", true, "ok", result.size(), ip);
-                return ResponseEntity.ok(Map.of("type", "SELECT", "data", result));
-            } else {
-                int affectedRows = jdbcTemplate.update(sql);
-                auditService.recordSql(executor, sql, "UPDATE", true, "ok", affectedRows, ip);
-                return ResponseEntity.ok(Map.of("type", "UPDATE", "affectedRows", affectedRows));
-            }
+            List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
+            auditService.recordSql(executor, sql, "SELECT", true, "ok", result.size(), ip);
+            return ResponseEntity.ok(Map.of("type", "SELECT", "data", result));
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            auditService.recordSql(executor, sql, isRead ? "SELECT" : "UPDATE", false, e.getMessage(), null, ip);
+            auditService.recordSql(executor, sql, "SELECT", false, e.getMessage(), null, ip);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "쿼리 실행 중 오류 발생: " + e.getMessage());
         }
     }

@@ -38,6 +38,7 @@ const DevMain = React.lazy(() => import('./pages/DevMain'));
 const Joke = React.lazy(() => import('./pages/Joke.jsx'));
 const PigGathering = React.lazy(() => import('./pages/PigGathering.jsx'));
 const AdminBoard = React.lazy(() => import('./pages/AdminBoard.jsx'));
+const HowToUse = React.lazy(() => import('./pages/HowToUse.jsx'));
 
 const PageFallback = (
   <div className="d-flex justify-content-center align-items-center vh-100">
@@ -122,6 +123,7 @@ function App() {
           <Route path="/terms" element={<SystemUsagePolicy />} />
           <Route path="/eee" element={<Joke />} />
           <Route path="/gathering" element={<PigGathering />} />
+          <Route path="/howtouse" element={<HowToUse />} />
 
           <Route
             path="/"

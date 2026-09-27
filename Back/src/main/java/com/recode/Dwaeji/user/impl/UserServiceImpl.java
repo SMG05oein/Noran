@@ -1087,7 +1087,9 @@ public class UserServiceImpl implements UserService {
                 default -> "numbered_u.user_name";
             };
             // native: domain property 검증 우회, 화이트리스트 SQL만
-            sort = org.springframework.data.jpa.domain.JpaSort.unsafe(direction, primary)
+            sort = org.springframework.data.jpa.domain.JpaSort.unsafe(
+                            org.springframework.data.domain.Sort.Direction.DESC, "ut.ut_is_admin")
+                    .and(org.springframework.data.jpa.domain.JpaSort.unsafe(direction, primary))
                     .and(org.springframework.data.jpa.domain.JpaSort.unsafe(
                             org.springframework.data.domain.Sort.Direction.ASC, "numbered_u.user_idx"));
         } else {
@@ -1098,7 +1100,8 @@ public class UserServiceImpl implements UserService {
                 default -> "userName";
             };
             sort = org.springframework.data.domain.Sort
-                    .by(direction, primary)
+                    .by(org.springframework.data.domain.Sort.Direction.DESC, "userType.utIsAdmin")
+                    .and(org.springframework.data.domain.Sort.by(direction, primary))
                     .and(org.springframework.data.domain.Sort.by(
                             org.springframework.data.domain.Sort.Direction.ASC, "userIdx"));
         }

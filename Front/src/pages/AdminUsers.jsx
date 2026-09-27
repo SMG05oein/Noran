@@ -241,11 +241,27 @@ const AdminUsers = () => {
       }
 
       if (res.success && res.data?.content !== undefined) {
-        setUsers(res.data.content);
+        let list = res.data.content;
+        if (selectedRole === '전체' && !sortBy) {
+          list = [...list].sort((a, b) => {
+            const aIsAdmin = (a.isAdmin === 1 || a.role === 'ADMIN' || a.userRole === 'ADMIN') ? 1 : 0;
+            const bIsAdmin = (b.isAdmin === 1 || b.role === 'ADMIN' || b.userRole === 'ADMIN') ? 1 : 0;
+            return bIsAdmin - aIsAdmin;
+          });
+        }
+        setUsers(list);
         setTotalPages(res.data.totalPages || 1);
         setTotalElements(res.data.totalElements || 0);
       } else if (res.success && Array.isArray(res.data)) {
-        setUsers(res.data);
+        let list = res.data;
+        if (selectedRole === '전체' && !sortBy) {
+          list = [...list].sort((a, b) => {
+            const aIsAdmin = (a.isAdmin === 1 || a.role === 'ADMIN' || a.userRole === 'ADMIN') ? 1 : 0;
+            const bIsAdmin = (b.isAdmin === 1 || b.role === 'ADMIN' || b.userRole === 'ADMIN') ? 1 : 0;
+            return bIsAdmin - aIsAdmin;
+          });
+        }
+        setUsers(list);
         setTotalPages(1);
         setTotalElements(res.data.length);
       } else {
@@ -761,6 +777,7 @@ const AdminUsers = () => {
                         <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
                           이름 {renderSortIcon('name')}
                         </th>
+                        {selectedRole === '전체' && <th>역할</th>}
                         {bankColsVisible && (
                           <>
                             <th>은행</th>
@@ -797,6 +814,11 @@ const AdminUsers = () => {
                               )}
                             </span>
                           </td>
+                          {selectedRole === '전체' && (
+                            <td>
+                              {(u.isAdmin === 1 || u.role === 'ADMIN' || u.userRole === 'ADMIN') ? <Badge bg="danger">관리자</Badge> : <Badge bg="info">알바생</Badge>}
+                            </td>
+                          )}
                           {bankColsVisible && (
                             <>
                               <td className="small">{resolveBankLabel(u)}</td>

@@ -125,6 +125,9 @@ const AdminGNB = () => {
 
           <div className="pt-4 border-top">
             <div className="mb-4">
+              <Link to="/howtouse" className="gnb-sheet-link mb-3 fw-bold bg-primary text-white p-2 rounded text-center d-block" onClick={() => setShowMenu(false)} style={{ textDecoration: 'none' }}>
+                시스템 이용방법
+              </Link>
               <Link to="/privacy" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
                 개인정보처리방침
               </Link>

@@ -11,6 +11,7 @@ const Footer = () => {
           <Col md={6} className="text-center text-md-start">
             <h6 className="fw-bold mb-2" style={{ color: 'var(--color-text-main)' }}>노란돼지</h6>
             <div className="mb-2">
+              <Link to="/howtouse" className="text-decoration-none fw-bold" style={{ color: '#0d6efd', fontSize: '1.1rem', display: 'block', marginBottom: '8px' }}>시스템 이용방법</Link>
               <Link to="/privacy" className="text-decoration-none fw-bold" style={{ color: 'var(--color-text-main)' }}>개인정보처리방침</Link>
               <span className="mx-2" style={{ color: 'var(--color-text-muted)' }}>|</span>
               <Link to="/consent" className="text-decoration-none" style={{ color: 'var(--color-text-muted)' }}>개인정보 수집·이용 동의서</Link>

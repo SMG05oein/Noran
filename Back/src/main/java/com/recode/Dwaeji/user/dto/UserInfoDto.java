@@ -81,4 +81,9 @@ public class UserInfoDto {
     public String getBankCode() {
         return userBank;
     }
+    
+    @JsonProperty("isAdmin")
+    public Integer getIsAdminCamel() {
+        return isAdmin;
+    }
 }

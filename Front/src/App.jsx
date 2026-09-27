@@ -106,6 +106,14 @@ function App() {
     document.documentElement.setAttribute('data-bs-theme', theme);
   }, [theme]);
 
+  // 카카오톡 인앱 브라우저 감지 시 외부 브라우저로 자동 연결
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.match(/kakaotalk/i)) {
+      window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(window.location.href);
+    }
+  }, []);
+
   if (isInitializing) {
     return PageFallback;
   }

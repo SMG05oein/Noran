@@ -141,7 +141,18 @@ public class WorkRecordController {
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
 
-    @Operation(summary = "특정 근무 기록 단건 조회", description = "ID(wrIdx)를 통해 특정 근무 기록을 조회합니다.")
+    @Operation(summary = "엑셀 대조 진행 상태 및 결과 확인", description = "sessionId를 통해 진행률과 완료 여부, 실패 여부를 반환합니다.")
+    @GetMapping("/excel-compare/status/{sessionId}")
+    public ResponseEntity<ExcelCompareUploadResponseDto> checkExcelCompareStatus(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String sessionId) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(excelCompareService.checkStatus(userDetails.getUsername(), sessionId));
+    }
+
+    @Operation(summary = "엑셀 대조 단건 조회", description = "ID(wrIdx)를 통해 특정 근무 기록을 조회합니다.")
     @GetMapping("/{wrIdx}")
     public ResponseEntity<WorkRecordResponseDto> getWorkRecordById(
             @AuthenticationPrincipal UserDetails userDetails,

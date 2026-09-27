@@ -16,7 +16,12 @@ import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -48,6 +53,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ExcelCompareServiceImpl implements ExcelCompareService {
+
+    @Autowired
+    @Lazy
+    private ExcelCompareServiceImpl self;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("H:mm");
@@ -154,17 +163,50 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         sessionStore.put(session);
 
         // Front 선택 없음. 전부 자동 해소 후 바로 대조 → DONE (이상 건은 결과 상태 태그)
-        autoResolveRows(session);
-        CompareOutcome outcome = runCompareAndBuildExcel(session);
-        session.setResultBytes(outcome.bytes);
-        sessionStore.put(session);
+        self.processCompareAsync(session);
 
         return ExcelCompareUploadResponseDto.builder()
-                .phase("DONE")
+                .phase("PROCESSING")
+                .progress(0)
                 .sessionId(sessionId)
-                .statusCounts(outcome.statusCounts)
-                .totalCount(outcome.totalCount)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExcelCompareUploadResponseDto checkStatus(String requesterId, String sessionId) {
+        User requester = requireAdmin(requesterId);
+        ExcelCompareSession session = sessionStore.get(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대조 세션이 만료되었거나 존재하지 않습니다."));
+        if (!Objects.equals(session.getRequesterId(), requester.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "세션 소유자가 아닙니다.");
+        }
+
+        return ExcelCompareUploadResponseDto.builder()
+                .phase(session.getPhase())
+                .progress(session.getProgress())
+                .sessionId(sessionId)
+                .statusCounts(session.getStatusCounts())
+                .totalCount(session.getTotalCount())
+                .build();
+    }
+
+    @Async
+    @Override
+    public void processCompareAsync(ExcelCompareSession session) {
+        try {
+            autoResolveRows(session);
+            CompareOutcome outcome = runCompareAndBuildExcel(session);
+            session.setResultBytes(outcome.bytes);
+            session.setStatusCounts(outcome.statusCounts);
+            session.setTotalCount(outcome.totalCount);
+            session.setProgress(100);
+            session.setPhase("DONE");
+            sessionStore.put(session);
+        } catch (Exception e) {
+            session.setPhase("ERROR");
+            sessionStore.put(session);
+        }
     }
 
     @Override
@@ -425,7 +467,16 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         Set<Long> matchedDbIds = new HashSet<>();
         List<ResultRow> results = new ArrayList<>();
 
+        int totalRows = session.getRows().size();
+        int processedCount = 0;
+
         for (ExcelCompareParsedRow excelRow : session.getRows()) {
+            processedCount++;
+            if (processedCount % 10 == 0) {
+                // Update progress every 10 rows. Map 0-90% to parsing/comparing. 90-100% for excel generating.
+                session.setProgress((int) (((double) processedCount / totalRows) * 90));
+            }
+
             Long userIdx = session.getResolutions().get(excelRow.getRowIndex());
             if (userIdx == null) {
                 List<User> byName = excelRow.getUserName() != null && !excelRow.getUserName().isBlank()
@@ -569,7 +620,8 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
     }
 
     private byte[] writeResultWorkbook(List<ResultRow> results) {
-        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+        // SXSSFWorkbook을 사용하여 디스크 기반 임시 파일로 메모리 버퍼링 (OOM 방지)
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(10)) { // 10 rows in memory
             String[] headers = {
                     "상태", "설명", "날짜", "이름", "근무지", "출근", "퇴근", "휴게",
                     "DB근무지", "DB출근", "DB퇴근", "DB휴게", "userIdx", "전화번호"
@@ -686,6 +738,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
+            workbook.dispose(); // OOM 방지용 임시 파일 삭제
             return out.toByteArray();
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "결과 엑셀 생성 실패");
@@ -727,7 +780,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
     }
 
     /** 다크 배경용 상태별 틴트 — 상태(A열)에만 적용 */
-    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildStatusStyles(XSSFWorkbook workbook) {
+    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildStatusStyles(Workbook workbook) {
         Map<String, byte[]> colors = Map.of(
                 "USER_NOT_FOUND", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(110, 36, 36),
                 "AMBIGUOUS", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(90, 50, 20),
@@ -745,7 +798,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
     }
 
     /** Bootstrap 느낌: primary / warning / info — 틀린 시간 셀용 */
-    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildTimeDiffStyles(XSSFWorkbook workbook) {
+    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildTimeDiffStyles(Workbook workbook) {
         Map<String, byte[]> colors = Map.of(
                 "primary", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 110, 253),   // #0d6efd
                 "warning", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(255, 193, 7),  // #ffc107

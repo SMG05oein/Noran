@@ -69,14 +69,38 @@ const HowToUse = () => {
     <Container className="py-4 py-md-5">
       <style>
         {`
-          .quill-editor-wrapper .quill {
-            height: 100%;
+          .quill-editor-wrapper {
             display: flex;
             flex-direction: column;
           }
+          .quill-editor-wrapper .quill {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            height: 100%;
+          }
+          .quill-editor-wrapper .ql-toolbar {
+            flex-shrink: 0;
+          }
           .quill-editor-wrapper .ql-container {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
+          .quill-editor-wrapper .ql-editor {
+            flex: 1;
             overflow-y: auto;
+          }
+          
+          /* 빈 줄바꿈(엔터)이 뷰 모드에서도 정확히 렌더링되도록 강제 설정 */
+          .ql-editor p {
+            min-height: 1.5em;
+            margin: 0;
+            padding: 0;
+          }
+          .ql-editor p br {
+            display: block !important;
           }
         `}
       </style>

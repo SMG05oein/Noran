@@ -22,5 +22,11 @@ public class ExcelCompareSession {
     @Builder.Default
     private Map<Integer, Long> resolutions = new HashMap<>();
     private byte[] resultBytes;
+    @Builder.Default
+    private volatile String phase = "PROCESSING";
+    @Builder.Default
+    private volatile int progress = 0;
+    private Map<String, Integer> statusCounts;
+    private Integer totalCount;
     private Instant createdAt;
 }

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Alert, Badge, Button, Container, Form, Spinner } from 'react-bootstrap';
+import { useMemo, useState, useEffect } from 'react';
+import { Alert, Badge, Button, Container, Form, Spinner, Modal, ProgressBar } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
@@ -12,6 +12,7 @@ import {
   downloadExcelCompareResult,
   downloadExcelCompareTemplate,
   startExcelCompare,
+  getExcelCompareStatus,
 } from '../api/workApi';
 import './AdminMain.css';
 
@@ -35,6 +36,7 @@ const AdminExcelCompare = () => {
   const [messages, setMessages] = useState([]);
   const [statusCounts, setStatusCounts] = useState(null);
   const [totalCount, setTotalCount] = useState(null);
+  const [progress, setProgress] = useState(0);
 
   const yearMonth = useMemo(() => {
     if (!selectedMonth) return { year: null, month: null };
@@ -48,6 +50,7 @@ const AdminExcelCompare = () => {
     setMessages([]);
     setStatusCounts(null);
     setTotalCount(null);
+    setProgress(0);
   };
 
   const applyPhaseResult = (res) => {
@@ -56,7 +59,28 @@ const AdminExcelCompare = () => {
     setMessages(res.messages || []);
     setStatusCounts(res.statusCounts || null);
     setTotalCount(res.totalCount != null ? res.totalCount : null);
+    setProgress(res.progress || 0);
   };
+
+  useEffect(() => {
+    let intervalId;
+    if (phase === 'PROCESSING' && sessionId) {
+      intervalId = setInterval(async () => {
+        const res = await getExcelCompareStatus(sessionId);
+        if (res.success) {
+          applyPhaseResult(res);
+          if (res.phase !== 'PROCESSING') {
+            clearInterval(intervalId);
+          }
+        } else {
+          clearInterval(intervalId);
+          setPhase('ERROR');
+          setMessages([res.error || '상태 확인 중 오류가 발생했습니다.']);
+        }
+      }, 1500);
+    }
+    return () => clearInterval(intervalId);
+  }, [phase, sessionId]);
 
   const handleTemplate = async () => {
     setBusy(true);
@@ -200,6 +224,17 @@ const AdminExcelCompare = () => {
           </Alert>
         )}
 
+        {phase === 'ERROR' && (
+          <Alert variant="danger" className="mt-4">
+            <div className="fw-bold mb-2">대조 실패</div>
+            <ul className="mb-0 ps-3">
+              {(messages.length ? messages : ['서버 내부 오류가 발생했습니다.']).map((msg, i) => (
+                <li key={i}>{msg}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+
         {phase === 'DONE' && (
           <div className="admin-header-card mt-4">
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-3">
@@ -259,6 +294,14 @@ const AdminExcelCompare = () => {
           </div>
         )}
       </Container>
+
+      <Modal show={phase === 'PROCESSING'} backdrop="static" keyboard={false} centered>
+        <Modal.Body className="text-center py-5">
+          <h5 className="fw-bold mb-3">엑셀 대조 중...</h5>
+          <p className="text-muted small mb-4">대용량 파일의 경우 시간이 걸릴 수 있습니다.</p>
+          <ProgressBar animated now={progress} label={`${progress}%`} style={{ height: '25px' }} />
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };

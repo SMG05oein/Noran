@@ -39,8 +39,13 @@ public final class ExcelDarkTheme {
     public record Styles(CellStyle header, CellStyle body, CellStyle bodyAlt, CellStyle sheetBg) {}
 
     public static Styles create(Workbook workbook) {
-        if (!(workbook instanceof XSSFWorkbook xssf)) {
-            throw new IllegalArgumentException("ExcelDarkTheme requires XSSFWorkbook");
+        XSSFWorkbook xssf;
+        if (workbook instanceof XSSFWorkbook) {
+            xssf = (XSSFWorkbook) workbook;
+        } else if (workbook instanceof org.apache.poi.xssf.streaming.SXSSFWorkbook) {
+            xssf = ((org.apache.poi.xssf.streaming.SXSSFWorkbook) workbook).getXSSFWorkbook();
+        } else {
+            throw new IllegalArgumentException("ExcelDarkTheme requires XSSFWorkbook or SXSSFWorkbook");
         }
         DefaultIndexedColorMap colorMap = new DefaultIndexedColorMap();
 
@@ -118,8 +123,11 @@ public final class ExcelDarkTheme {
 
         paintSheetCanvas(sheet, styles, lastDataRowInclusive, columnCount);
 
-        if (sheet instanceof XSSFSheet xssfSheet) {
-            xssfSheet.setTabColor(new XSSFColor(TAB, new DefaultIndexedColorMap()));
+        if (sheet instanceof XSSFSheet) {
+            ((XSSFSheet) sheet).setTabColor(new XSSFColor(TAB, new DefaultIndexedColorMap()));
+        } else if (sheet instanceof org.apache.poi.xssf.streaming.SXSSFSheet) {
+            // setTabColor is not directly available on SXSSFSheet.
+            // Safe to skip tab color for streaming sheets.
         }
         sheet.createFreezePane(0, 1);
     }
@@ -173,8 +181,13 @@ public final class ExcelDarkTheme {
      * Dark body row style with a custom fill (e.g. status tint). Same font/border as theme body.
      */
     public static CellStyle createBodyStyle(Workbook workbook, byte[] fillRgb) {
-        if (!(workbook instanceof XSSFWorkbook xssf)) {
-            throw new IllegalArgumentException("ExcelDarkTheme requires XSSFWorkbook");
+        XSSFWorkbook xssf;
+        if (workbook instanceof XSSFWorkbook) {
+            xssf = (XSSFWorkbook) workbook;
+        } else if (workbook instanceof org.apache.poi.xssf.streaming.SXSSFWorkbook) {
+            xssf = ((org.apache.poi.xssf.streaming.SXSSFWorkbook) workbook).getXSSFWorkbook();
+        } else {
+            throw new IllegalArgumentException("ExcelDarkTheme requires XSSFWorkbook or SXSSFWorkbook");
         }
         DefaultIndexedColorMap colorMap = new DefaultIndexedColorMap();
         XSSFFont bodyFont = xssf.createFont();

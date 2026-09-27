@@ -328,6 +328,19 @@ export const startExcelCompare = async (file, year, month) => {
   }
 };
 
+/** 엑셀 대조 진행 상태 폴링 */
+export const getExcelCompareStatus = async (sessionId) => {
+  try {
+    const response = await globalApiClient.get(`/api/work-record/excel-compare/status/${sessionId}`);
+    return {
+      success: true,
+      ...mapExcelComparePhase(response.data || {}),
+    };
+  } catch (error) {
+    return parseExcelCompareError(error, '상태 확인에 실패했습니다.');
+  }
+};
+
 /** 엑셀 대조 결과 다운로드 */
 export const downloadExcelCompareResult = async (sessionId, year, month) => {
   try {

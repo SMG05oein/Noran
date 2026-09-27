@@ -12,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 import java.io.File;
 import java.time.LocalDate;
@@ -22,6 +25,10 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class UserArchiveScheduler {
+
+    @Autowired
+    @Lazy
+    private UserArchiveScheduler self;
 
     private final UserRepository userRepository;
     private final ArchivedUserRepository archivedUserRepository;
@@ -41,7 +48,6 @@ public class UserArchiveScheduler {
      * 국세기본법/근로기준법 보존 의무 기간(5년) 만료에 따른 자동 영구 삭제 처리.
      */
     @Scheduled(cron = "0 0 3 * * *")
-    @Transactional
     public void runArchiving() {
         log.info("퇴사 5년 경과 사용자 자동 완전 파기 배치 작업 시작...");
 
@@ -51,30 +57,13 @@ public class UserArchiveScheduler {
         int count = 0;
         for (User user : usersToDestroy) {
             try {
-                Long userIdx = user.getUserIdx();
-                // 연관 자식 데이터 삭제
-                refreshTokenRepository.deleteByUser_UserIdx(userIdx);
-                workRecordHistoryRepository.deleteByTargetUser_UserIdx(userIdx);
-                workRecordHistoryRepository.deleteByAdminUser_UserIdx(userIdx);
-                workRecordRepository.deleteByUser_UserIdx(userIdx);
-
-                workApplyDailyRepository.deleteByUser_UserIdx(userIdx);
-                workScheduleDailyRepository.deleteByUser_UserIdx(userIdx);
-                workApplyRepository.deleteByUser_UserIdx(userIdx);
-
-                gatheringReportRepository.deleteByUser_UserIdx(userIdx);
-                gatheringCommentRepository.deleteByUser_UserIdx(userIdx);
-                gatheringCommentRepository.deleteByPost_User_UserIdx(userIdx);
-                gatheringPostRepository.deleteByUser_UserIdx(userIdx);
-                jokeRepository.deleteByUser_UserIdx(userIdx);
-
-                // 사용자 완전 파기
-                userRepository.delete(user);
+                self.deleteUserInNewTransaction(user);
                 count++;
             } catch (Exception e) {
                 log.error("5년 경과 유저 자동 파기 중 오류 발생: userIdx={}", user.getUserIdx(), e);
             }
         }
+
 
         log.info("퇴사 5년 경과 사용자 자동 파기 완료. 총 {}명 삭제됨.", count);
 
@@ -82,12 +71,40 @@ public class UserArchiveScheduler {
         try {
             List<ArchivedUser> oldArchives = archivedUserRepository.findByDestroyDueAtBefore(LocalDateTime.now());
             if (!oldArchives.isEmpty()) {
-                archivedUserRepository.deleteAll(oldArchives);
+                self.deleteArchivedUsersInNewTransaction(oldArchives);
                 log.info("기존 아카이브 보존 만료 유저 {}명 파기 완료.", oldArchives.size());
             }
         } catch (Exception e) {
             log.error("기존 아카이브 데이터 정리 중 오류: {}", e.getMessage());
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void deleteUserInNewTransaction(User user) {
+        Long userIdx = user.getUserIdx();
+        // 연관 자식 데이터 삭제
+        refreshTokenRepository.deleteByUser_UserIdx(userIdx);
+        workRecordHistoryRepository.deleteByTargetUser_UserIdx(userIdx);
+        workRecordHistoryRepository.deleteByAdminUser_UserIdx(userIdx);
+        workRecordRepository.deleteByUser_UserIdx(userIdx);
+
+        workApplyDailyRepository.deleteByUser_UserIdx(userIdx);
+        workScheduleDailyRepository.deleteByUser_UserIdx(userIdx);
+        workApplyRepository.deleteByUser_UserIdx(userIdx);
+
+        gatheringReportRepository.deleteByUser_UserIdx(userIdx);
+        gatheringCommentRepository.deleteByUser_UserIdx(userIdx);
+        gatheringCommentRepository.deleteByPost_User_UserIdx(userIdx);
+        gatheringPostRepository.deleteByUser_UserIdx(userIdx);
+        jokeRepository.deleteByUser_UserIdx(userIdx);
+
+        // 사용자 완전 파기
+        userRepository.delete(user);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void deleteArchivedUsersInNewTransaction(List<ArchivedUser> oldArchives) {
+        archivedUserRepository.deleteAll(oldArchives);
     }
 
     /**

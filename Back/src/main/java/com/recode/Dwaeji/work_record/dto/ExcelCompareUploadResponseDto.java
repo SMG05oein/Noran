@@ -17,6 +17,7 @@ import java.util.Map;
 public class ExcelCompareUploadResponseDto {
     /** COLUMN_ERROR | DONE */
     private String phase;
+    private Integer progress;
     private String sessionId;
     private List<String> messages;
     /** @deprecated Front 선택 UI 없음. 하위 호환 필드만 유지. */

@@ -9,6 +9,10 @@ public interface ExcelCompareService {
 
     ExcelCompareUploadResponseDto startCompare(String requesterId, MultipartFile file, int year, int month);
 
+    ExcelCompareUploadResponseDto checkStatus(String requesterId, String sessionId);
+
+    void processCompareAsync(ExcelCompareSession session);
+
     ExcelCompareUploadResponseDto resolveAndCompare(String requesterId, ExcelCompareResolveRequestDto request);
 
     byte[] downloadResult(String requesterId, String sessionId);

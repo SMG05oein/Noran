@@ -35,7 +35,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                     "https://www.dwaeji.kr"
                     // 만약 Netlify 배포 주소가 따로 있다면 여기에 추가해 주세요. (예: "https://my-app.netlify.app")
                 )
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
@@ -51,7 +51,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
         config.addAllowedOrigin("https://dwaeji.kr");
         config.addAllowedOrigin("https://www.dwaeji.kr");
         config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
+        config.addAllowedMethod("GET");
+        config.addAllowedMethod("POST");
+        config.addAllowedMethod("PUT");
+        config.addAllowedMethod("DELETE");
+        config.addAllowedMethod("OPTIONS");
         config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);
 

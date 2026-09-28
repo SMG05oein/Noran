@@ -1,0 +1,117 @@
+/* PWA 설치 안내 배너 — 모바일 전용, 하단 고정 */
+.pwa-banner {
+  position: fixed;
+  bottom: 64px; /* BottomNav 위 */
+  left: 12px;
+  right: 12px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  animation: pwa-slide-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes pwa-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.pwa-banner__icon img {
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.pwa-banner__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwa-banner__title {
+  margin: 0 0 2px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-banner__desc {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #6b7280);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pwa-banner__share-icon {
+  font-size: 0.9rem;
+  color: var(--color-primary, #3b82f6);
+  flex-shrink: 0;
+}
+
+.pwa-banner__cta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pwa-banner__cta:hover {
+  opacity: 0.88;
+  transform: scale(1.03);
+}
+
+.pwa-banner__cta:active {
+  transform: scale(0.97);
+}
+
+.pwa-banner__close {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  color: var(--color-text-muted, #9ca3af);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pwa-banner__close:hover {
+  background: var(--color-border, #f3f4f6);
+  color: var(--color-text, #111827);
+}
+
+/* 데스크톱에서는 숨김 */
+@media (min-width: 992px) {
+  .pwa-banner {
+    display: none !important;
+  }
+}

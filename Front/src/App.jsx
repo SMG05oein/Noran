@@ -12,6 +12,7 @@ import DevRoute from './components/DevRoute';
 import NoticeModal from './components/NoticeModal';
 import DevIpOtpGate from './components/DevIpOtpGate';
 import Loading from './components/Loading';
+import PwaInstallBanner from './components/PwaInstallBanner';
 import './App.css';
 
 const Login = React.lazy(() => import('./pages/Login'));
@@ -120,6 +121,7 @@ function App() {
 
   return (
     <>
+      <PwaInstallBanner />
       <NoticeModal />
       <DevIpOtpGate />
       <Suspense fallback={PageFallback}>

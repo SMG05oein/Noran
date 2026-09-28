@@ -33,6 +33,7 @@ public class WorkScheduleDailyResponseDto {
     private LocalDateTime wsdUpdatedAt;
 
     // 신청 내역 (알바생이 신청한 원본)
+    private boolean isSelfApplied; // 알바생 본인이 직접 신청했는지 여부 (WorkApplyDaily 존재 여부)
     private boolean openApplied; // 오픈조 지원 여부 (WorkApplyDaily.wadIsOpen)
     private Long applyWorkPlaceIdx; // 복수 지점 지원 대응
     private String applyWorkPlaceName;
@@ -63,6 +64,7 @@ public class WorkScheduleDailyResponseDto {
                 .wsdCreatedAt(schedule != null ? schedule.getWsdCreatedAt() : null)
                 .wsdUpdatedAt(schedule != null ? schedule.getWsdUpdatedAt() : null)
 
+                .isSelfApplied(apply != null)
                 .openApplied(apply != null && apply.isWadIsOpen())
                 .applyWorkPlaceIdx(apply != null && apply.getWorkPlace() != null ? apply.getWorkPlace().getWpIdx() : null)
                 .applyWorkPlaceName(apply != null && apply.getWorkPlace() != null ? apply.getWorkPlace().getWpName() : null)

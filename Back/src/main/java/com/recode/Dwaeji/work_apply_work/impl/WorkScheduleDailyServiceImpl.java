@@ -75,11 +75,10 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         return isAssignment(status) || status == ApplyStatus.미출근;
     }
 
-    /** 알바생에게 공개할 배정. 임시저장(미확정)과 미출근은 숨긴다. */
+    /** 알바생에게 공개할 배정. 임시저장(미확정)은 숨기지만, 확정된 결과(출근, 미출근/반려)는 모두 보여준다. */
     private boolean isVisibleToWorker(WorkScheduleDaily schedule) {
         return schedule != null
-                && Boolean.TRUE.equals(schedule.getWsdIsConfirmed())
-                && isAssignment(schedule.getWsdStatus());
+                && Boolean.TRUE.equals(schedule.getWsdIsConfirmed());
     }
 
     @Override
@@ -312,7 +311,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 }
                 existing.setWsdStatus(ApplyStatus.미출근);
                 existing.setWsdStartTime(null);
-                existing.setWsdIsConfirmed(false);
+                existing.setWsdIsConfirmed(true);
                 existing.setWsdIsOpen(false);
                 if (existing.getWorkPlace() == null && resolvedWp != null) {
                     existing.setWorkPlace(resolvedWp);
@@ -326,7 +325,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         .wsdStatus(ApplyStatus.미출근)
                         .wsdStartTime(null)
                         .workPlace(wpForRow)
-                        .wsdIsConfirmed(false)
+                        .wsdIsConfirmed(true)
                         .wsdIsOpen(false)
                         .build());
             }

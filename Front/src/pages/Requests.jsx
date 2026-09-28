@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Card, Form, Button, Modal, Table, Alert } from 'react-bootstrap';
-import { format, startOfWeek, addDays, subMonths, parseISO, getDay } from 'date-fns';
+import { format, startOfWeek, addDays, subMonths, addMonths, parseISO, getDay } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
 import { RiFileList3Line, RiEyeLine, RiAddLine, RiDeleteBinLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
@@ -86,7 +86,7 @@ const isPublicAssignment = (s) =>
 const isBlankStatus = (status) => !status || status === '미신청';
 
 /** 알바생 비공개 (확정 미출근 등) — 이력에는 남기되 상태/시간 비공개 */
-const isWorkerHiddenStatus = (status) => status === '미출근' || status === '미배정';
+const isWorkerHiddenStatus = (status) => status === '미배정';
 
 const toDateStr = (value) => {
   if (!value) return '';
@@ -166,10 +166,25 @@ const Requests = () => {
     setDataLoading(true);
     const [year, month] = monthStr.split('-');
     try {
-      const res = await getMonthlyWorkApplyWorks(parseInt(year, 10), parseInt(month, 10));
-      if (res.success) {
-        setRequestList(res.data || []);
-      }
+      const y = parseInt(year, 10);
+      const m = parseInt(month, 10);
+      
+      const prev = subMonths(new Date(y, m - 1), 1);
+      const next = addMonths(new Date(y, m - 1), 1);
+
+      const [resPrev, resCurr, resNext] = await Promise.all([
+        getMonthlyWorkApplyWorks(prev.getFullYear(), prev.getMonth() + 1),
+        getMonthlyWorkApplyWorks(y, m),
+        getMonthlyWorkApplyWorks(next.getFullYear(), next.getMonth() + 1)
+      ]);
+
+      let allData = [];
+      if (resPrev.success) allData = [...allData, ...(resPrev.data || [])];
+      if (resCurr.success) allData = [...allData, ...(resCurr.data || [])];
+      if (resNext.success) allData = [...allData, ...(resNext.data || [])];
+
+      const uniqueData = Array.from(new Map(allData.map(item => [`${item.date}_${item.wsdIdx || item.applyWorkPlaceIdx || Math.random()}`, item])).values());
+      setRequestList(uniqueData);
     } finally {
       setDataLoading(false);
     }
@@ -208,8 +223,18 @@ const Requests = () => {
       if (!groups[monDate]) groups[monDate] = [];
       groups[monDate].push(sch);
     });
-    return Object.entries(groups).sort((a, b) => new Date(a[0]) - new Date(b[0]));
-  }, [requestList]);
+    
+    const targetMonthPrefix = selectedMonth;
+    return Object.entries(groups)
+      .filter(([monDate, weekSchs]) => {
+         for (let i = 0; i < 7; i++) {
+           const date = addDays(parseISO(monDate), i);
+           if (format(date, 'yyyy-MM') === targetMonthPrefix) return true;
+         }
+         return false;
+      })
+      .sort((a, b) => new Date(a[0]) - new Date(b[0]));
+  }, [requestList, selectedMonth]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -271,7 +296,11 @@ const Requests = () => {
         alert('근무 신청이 완료되었습니다.');
         setRequestBlocks([defaultBlock(Date.now())]);
         setGlobalRemarks('');
-        loadRequests(selectedMonth);
+        
+        // 새로 신청한 주차의 월(Month)로 드롭다운 자동 변경
+        const appliedMonth = format(mondayDateObj, 'yyyy-MM');
+        setSelectedMonth(appliedMonth);
+        
         refreshNextWeekApplied();
       } else {
         alert(res.error || '근무 신청에 실패했습니다.');
@@ -475,7 +504,7 @@ const Requests = () => {
             )}
 
             <Button disabled={loading || nextWeekAlreadyApplied} type="submit" className="w-100 py-3 fw-bold fs-6 btn-primary">
-              {loading ? '신청 중...' : nextWeekAlreadyApplied ? '이미 신청한 주' : '근무 신청서 일괄 제출하기'}
+              {loading ? '신청 중...' : nextWeekAlreadyApplied ? '이미 신청한 주' : '근무 신청서 제출하기'}
             </Button>
           </Form>
         </Card.Body>
@@ -556,19 +585,67 @@ const Requests = () => {
                             </div>
                             <div className="req-week-day-date">{format(date, 'd')}</div>
                             {slots.length === 0 ? (
-                              <div className="req-chip empty">—</div>
+                              <div className="d-flex flex-column w-100 align-items-center" style={{ gap: '4px' }}>
+                                <div className="req-chip unapplied w-100">
+                                  <span className="req-chip-label">[신청 내역]</span>
+                                  미신청
+                                </div>
+                                <hr className="my-0 w-100" style={{ borderTop: '1px dashed var(--color-border)', opacity: 0.5 }} />
+                                <div className="req-chip unapplied w-100">
+                                  <span className="req-chip-label">[배정 결과]</span>
+                                  미신청
+                                </div>
+                              </div>
                             ) : slots.map((s, idx) => {
-                              const assigned = isPublicAssignment(s);
-                              const isOp = s.wsdStartTime === '오픈' || s.isOpen === true || s.openApplied === true || s.wsdIsOpen === true;
-                              const wpName = s.wsdWorkPlaceName || s.applyWorkPlaceName;
-                              const slotWpIdx = assigned
-                                ? (s.wsdWorkPlaceIdx || s.applyWorkPlaceIdx)
-                                : (s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx);
-                              const showWp = slots.length > 1 || Number(slotWpIdx) !== Number(user?.workPlaceIdx);
+                              // 주 단위 확정 여부 확인 (해당 주의 다른 요일에 하나라도 확정된 배정이 있는지)
+                              const isWeekConfirmed = weekSchs.some(sch => sch.wsdIsConfirmed === true || sch.wsdConfirmed === true || sch.confirmed === true);
+
+                              // [상단] 원래 신청 내역 (Jackson 직렬화 문제 대응: isSelfApplied -> selfApplied)
+                              const selfAppliedFlag = s.isSelfApplied ?? s.selfApplied;
+                              const didApply = selfAppliedFlag ?? (s.applyWorkPlaceIdx != null || s.openApplied != null);
+                              const isOpApplied = s.openApplied === true || s.isOpen === true;
+                              const applyLabel = didApply 
+                                ? (isOpApplied ? (displayOpenTime({ wsdStartTime: '오픈' }, date) || '오픈') : '신청')
+                                : '미신청';
+                              const applyWpName = didApply ? (s.applyWorkPlaceName || s.wsdWorkPlaceName) : null;
+                              const showApplyWp = didApply && (slots.length > 1 || (s.applyWorkPlaceIdx && Number(s.applyWorkPlaceIdx) !== Number(user?.workPlaceIdx)));
+                              
+                              // [하단] 배정 결과
+                              let assignLabel = '-';
+                              let assignClass = 'empty';
+                              const isSlotConfirmed = s.wsdIsConfirmed === true || s.wsdConfirmed === true || s.confirmed === true;
+                              
+                              if (isSlotConfirmed && (s.wsdStatus === '출근' || s.wsdStatus === '배정' || s.wsdStatus === '타지점근무')) {
+                                assignLabel = displayOpenTime(s, date) || '출근';
+                                assignClass = 'work';
+                              } else if (isSlotConfirmed && (s.wsdStatus === '미출근' || s.wsdStatus === '미배정')) {
+                                assignLabel = '미배정';
+                                assignClass = 'rejected';
+                              } else if (isWeekConfirmed && didApply && (!s.wsdIdx || s.wsdStatus === '신청')) {
+                                // 이번 주가 '확정' 상태인데, 알바생이 신청한 요일에 배정 데이터(wsdIdx)가 없거나 상태가 '신청' 그대로라면 -> 반려(미배정)된 것임!
+                                assignLabel = '미배정';
+                                assignClass = 'rejected';
+                              } else if (s.wsdStatus === '신청' || !isSlotConfirmed) {
+                                assignLabel = '배정 대기';
+                                assignClass = 'applied';
+                              }
+
+                              const assignWpName = s.wsdWorkPlaceName;
+                              const showAssignWp = slots.length > 1 || (s.wsdWorkPlaceIdx && Number(s.wsdWorkPlaceIdx) !== Number(user?.workPlaceIdx));
+
                               return (
-                                <div key={`${dateStr}-${idx}`} className={`req-chip ${assigned ? 'work' : 'applied'}`}>
-                                  {assigned ? (displayOpenTime(s, date) || '출근') : (isOp ? displayOpenTime(s, date) : '신청')}
-                                  {showWp && wpName && <span className="req-chip-wp">{wpName}</span>}
+                                <div key={`${dateStr}-${idx}`} className="d-flex flex-column w-100 align-items-center" style={{ gap: '4px' }}>
+                                  <div className={`req-chip ${didApply ? 'applied' : 'unapplied'} w-100`}>
+                                    <span className="req-chip-label">[신청 내역]</span>
+                                    {applyLabel}
+                                    {showApplyWp && applyWpName && <span className="req-chip-wp">{applyWpName}</span>}
+                                  </div>
+                                  <hr className="my-0 w-100" style={{ borderTop: '1px dashed var(--color-border)', opacity: 0.5 }} />
+                                  <div className={`req-chip ${assignClass} w-100`}>
+                                    <span className="req-chip-label">[배정 결과]</span>
+                                    {assignLabel}
+                                    {showAssignWp && assignWpName && assignClass !== 'rejected' && assignClass !== 'empty' && <span className="req-chip-wp">{assignWpName}</span>}
+                                  </div>
                                 </div>
                               );
                             })}

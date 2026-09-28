@@ -281,6 +281,14 @@
   font-weight: 700;
 }
 
+/* 알바생이 신청하지 않은 날 - 배경/테두리 없이 텍스트만 */
+.req-chip.unapplied {
+  background: transparent;
+  border: none;
+  color: var(--color-text-light);
+  font-weight: 600;
+}
+
 .req-chip.applied {
   background: var(--color-warning-bg);
   color: var(--color-warning);
@@ -289,6 +297,38 @@
 .req-chip.work {
   background: var(--color-success-bg);
   color: var(--color-success);
+}
+
+.req-chip.rejected {
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  font-weight: 700;
+}
+
+.req-chip-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--color-text-light);
+  margin-bottom: 2px;
+  letter-spacing: 0.01em;
+}
+
+.req-chip.applied .req-chip-label {
+  color: rgba(255,255,255,0.55);
+}
+
+.req-chip.work .req-chip-label {
+  color: rgba(255,255,255,0.55);
+}
+
+[data-bs-theme="light"] .req-chip.applied .req-chip-label {
+  color: rgba(0,0,0,0.4);
+}
+
+[data-bs-theme="light"] .req-chip.work .req-chip-label {
+  color: rgba(0,0,0,0.4);
 }
 
 .req-chip-wp {

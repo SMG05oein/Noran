@@ -14,8 +14,42 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
 
     private final SystemMonitorService systemMonitorService;
 
+    private final java.util.concurrent.ConcurrentHashMap<String, long[]> requestCounts = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String uri = request.getRequestURI();
+        if (uri != null && uri.startsWith("/api/dev/")) {
+            return true;
+        }
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+            clientIp = request.getRemoteAddr();
+        }
+
+        long currentSecond = System.currentTimeMillis() / 1000;
+        long[] countData = requestCounts.computeIfAbsent(clientIp, k -> new long[]{currentSecond, 0});
+
+        synchronized (countData) {
+            if (countData[0] != currentSecond) {
+                countData[0] = currentSecond;
+                countData[1] = 0;
+                
+                // 가끔씩 메모리 확보용 정리 (10000개 IP 초과시)
+                if (requestCounts.size() > 10000) {
+                    requestCounts.clear();
+                }
+            }
+            countData[1]++;
+            if (countData[1] > 10) { // 1초에 10번 초과 시 차단
+                response.setStatus(429);
+                response.getWriter().write("Too Many Requests");
+                systemMonitorService.recordTraffic(429);
+                return false;
+            }
+        }
+
         request.setAttribute("startTime", System.currentTimeMillis());
         return true;
     }

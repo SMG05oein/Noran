@@ -1,13 +1,9 @@
 package com.recode.Dwaeji.work_apply_work.dto;
 
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
-import com.recode.Dwaeji.work_apply_work.database.WorkScheduleDaily;
 import com.recode.Dwaeji.work_apply_work.database.WorkApplyDaily;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.recode.Dwaeji.work_apply_work.database.WorkScheduleDaily;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

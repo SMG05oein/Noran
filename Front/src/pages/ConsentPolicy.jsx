@@ -35,6 +35,12 @@ const ConsentPolicy = () => {
                 </tr>
                 <tr>
                   <td className="text-center fw-bold text-danger">필수</td>
+                  <td><strong>시스템 보안, 트래픽 제어 및 비정상적 접근(부정이용) 차단</strong></td>
+                  <td>접속 IP 주소, 서비스 이용 기록 (자동 수집)</td>
+                  <td><strong>관계 법령(통신비밀보호법 등)에 따라 최대 1년간 보관 후 파기</strong></td>
+                </tr>
+                <tr>
+                  <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>근태관리 및 근무 스케줄 배정</strong></td>
                   <td>출퇴근 시간, 휴게시간, 근무지, 배정 시간</td>
                   <td><strong>근로관계 종료 후 3년 (근로기준법)</strong></td>

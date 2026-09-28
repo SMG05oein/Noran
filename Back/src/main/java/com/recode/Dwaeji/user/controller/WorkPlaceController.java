@@ -1,15 +1,15 @@
 package com.recode.Dwaeji.user.controller;
 
 import com.recode.Dwaeji.user.dto.WorkPlaceDto;
+import com.recode.Dwaeji.user.dto.WorkPlaceRequestDto;
 import com.recode.Dwaeji.user.service.WorkPlaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import com.recode.Dwaeji.user.dto.WorkPlaceRequestDto;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 

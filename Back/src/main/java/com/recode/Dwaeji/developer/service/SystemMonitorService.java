@@ -6,19 +6,28 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.stream.Collectors;
 
 @Service
 public class SystemMonitorService {
+
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
+
+    @Value("${spring.mail.username:}")
+    private String alertEmailTo;
+
+    private long lastServerErrorCount = 0;
+
 
     private final AtomicLong successCount = new AtomicLong(0);
     private final AtomicLong redirectionCount = new AtomicLong(0);
@@ -240,5 +249,35 @@ public class SystemMonitorService {
 
     public Object[] getRecentErrors() {
         return recentErrors.toArray();
+    }
+
+    @Scheduled(fixedRate = 60000) // 1분(60초)마다 서버 모니터링 및 알림 발송
+    public void checkAndSendAlerts() {
+        if (mailSender == null || alertEmailTo == null || alertEmailTo.isEmpty()) {
+            return; // 메일 설정이 없으면 패스
+        }
+
+        double memoryUsed = memoryUsedPercent();
+        long currentErrors = serverErrorCount.get();
+        long newErrors = currentErrors - lastServerErrorCount;
+        
+        // 메모리 85% 이상이거나 1분간 서버에러(500) 100회 이상 폭주 시
+        if (memoryUsed > 85.0 || newErrors >= 100) {
+            String subject = "🚨 [긴급] Dwaeji 서버 상태 위험 알림";
+            String text = "현재 서버 상태가 위험 수준입니다.\n\n" +
+                          "- 메모리 사용량: " + String.format("%.2f", memoryUsed) + "%\n" +
+                          "- 최근 1분간 발생한 서버 에러(5xx): " + newErrors + "건\n\n" +
+                          "대시보드를 확인하여 즉각 조치해 주세요.";
+            try {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setTo(alertEmailTo);
+                message.setSubject(subject);
+                message.setText(text);
+                mailSender.send(message);
+            } catch (Exception e) {
+                // 발송 실패 무시 (로깅 방지)
+            }
+        }
+        lastServerErrorCount = currentErrors;
     }
 }

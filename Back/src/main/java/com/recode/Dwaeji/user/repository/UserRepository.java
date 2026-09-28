@@ -1,12 +1,12 @@
 package com.recode.Dwaeji.user.repository;
 
 import com.recode.Dwaeji.user.database.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -180,15 +180,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
            countQuery = "SELECT COUNT(u) FROM User u WHERE u.userType.utIsAdmin = :isAdmin")
     Page<User> findAllWorkersFetch(@Param("isAdmin") Integer isAdmin, Pageable pageable);
 
-    // --- 기존 메서드 (하위 호환) ---
-    Page<User> findByUserType_UtIsAdmin(Integer isAdmin, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndUserNameContaining(Integer isAdmin, String name, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndWorkPlace_WpIdx(Integer isAdmin, Long wpIdx, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndWorkPlace_WpIdxAndUserNameContaining(Integer isAdmin, Long wpIdx, String name, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndUserIsActive(Integer isAdmin, Integer isActive, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndUserIsActiveAndUserNameContaining(Integer isAdmin, Integer isActive, String name, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdx(Integer isAdmin, Integer isActive, Long wpIdx, Pageable pageable);
-    Page<User> findByUserType_UtIsAdminAndUserIsActiveAndWorkPlace_WpIdxAndUserNameContaining(Integer isAdmin, Integer isActive, Long wpIdx, String name, Pageable pageable);
 
     /**
      * 동일 실명 활성 인원 수. &gt; 1 이면 동명이인 → UI/엑셀에 #userIdx 표시.

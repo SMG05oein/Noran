@@ -1,14 +1,6 @@
 package com.recode.Dwaeji.user.service;
 
-import com.recode.Dwaeji.user.dto.LoginRequestDto;
-import com.recode.Dwaeji.user.dto.LoginResponseDto;
-
-import com.recode.Dwaeji.user.dto.SignupRequestDto;
-
-import com.recode.Dwaeji.user.dto.UserInfoDto;
-import com.recode.Dwaeji.user.dto.UserInfoDto;
-import com.recode.Dwaeji.user.dto.UserUpdateDto;
-import com.recode.Dwaeji.user.dto.TokenRefreshResponseDto;
+import com.recode.Dwaeji.user.dto.*;
 
 public interface UserService {
     LoginResponseDto login(LoginRequestDto loginRequestDto);

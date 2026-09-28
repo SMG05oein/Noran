@@ -1,11 +1,7 @@
 package com.recode.Dwaeji.user.dto;
 
 import com.recode.Dwaeji.user.database.UserType;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter

@@ -3,37 +3,34 @@ package com.recode.Dwaeji.work_record.impl;
 import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
+import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
+import com.recode.Dwaeji.work_apply_work.database.WorkApplyDaily;
+import com.recode.Dwaeji.work_apply_work.database.WorkScheduleDaily;
+import com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository;
+import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
 import com.recode.Dwaeji.work_record.database.WorkRecord;
+import com.recode.Dwaeji.work_record.database.WorkRecordHistory;
+import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordRequestDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordResponseDto;
-import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
 import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
-import com.recode.Dwaeji.work_record.database.WorkRecordHistory;
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
-import com.recode.Dwaeji.work_apply_work.database.WorkApplyDaily;
-import com.recode.Dwaeji.work_apply_work.database.WorkScheduleDaily;
-import com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository;
-import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
-import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
-
-import java.time.DayOfWeek;
-import java.time.temporal.TemporalAdjusters;
 
 @Service
 @RequiredArgsConstructor
@@ -257,36 +254,25 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(direction, sortProperty));
         Page<WorkRecord> records;
 
-        LocalDate startDate = null;
-        LocalDate endDate = null;
-        if (year != null && month != null) {
-            java.time.YearMonth yearMonth = java.time.YearMonth.of(year, month);
-            startDate = yearMonth.atDay(1);
-            endDate = yearMonth.atEndOfMonth();
+        if (year == null || month == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회할 연도(year)와 월(month)은 필수 파라미터입니다.");
         }
 
+        java.time.YearMonth yearMonth = java.time.YearMonth.of(year, month);
+        // 달력 UI에서 이전/다음 달 날짜가 잘리는 현상 방지 (앞뒤 10일 여유)
+        LocalDate startDate = yearMonth.atDay(1).minusDays(10);
+        LocalDate endDate = yearMonth.atEndOfMonth().plusDays(10);
+
+
         if (isAdmin(requester)) {
-            if (startDate != null) {
-                if (workPlaceIdx != null && userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByDateBetweenAndWorkPlaceAndUserNameFetch(startDate, endDate, workPlaceIdx, userName, pageable);
-                } else if (workPlaceIdx != null) {
-                    records = workRecordRepository.findByDateBetweenAndWorkPlaceFetch(startDate, endDate, workPlaceIdx, pageable);
-                } else if (userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByDateBetweenAndUserNameFetch(startDate, endDate, userName, pageable);
-                } else {
-                    records = workRecordRepository.findByDateBetweenFetch(startDate, endDate, pageable);
-                }
+            if (workPlaceIdx != null && userName != null && !userName.isEmpty()) {
+                records = workRecordRepository.findByDateBetweenAndWorkPlaceAndUserNameFetch(startDate, endDate, workPlaceIdx, userName, pageable);
+            } else if (workPlaceIdx != null) {
+                records = workRecordRepository.findByDateBetweenAndWorkPlaceFetch(startDate, endDate, workPlaceIdx, pageable);
+            } else if (userName != null && !userName.isEmpty()) {
+                records = workRecordRepository.findByDateBetweenAndUserNameFetch(startDate, endDate, userName, pageable);
             } else {
-                if (workPlaceIdx != null && userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByWorkPlaceIdxAndUserNameFetch(workPlaceIdx, userName, pageable);
-                } else if (workPlaceIdx != null) {
-                    records = workRecordRepository.findByWorkPlaceIdxFetch(workPlaceIdx, pageable);
-                } else if (userName != null && !userName.isEmpty()) {
-                    records = workRecordRepository.findByUserNameFetch(userName, pageable);
-                } else {
-                    records = workRecordRepository.findByDateBetweenFetch(
-                            LocalDate.now().minusYears(1), LocalDate.now().plusMonths(1), pageable);
-                }
+                records = workRecordRepository.findByDateBetweenFetch(startDate, endDate, pageable);
             }
         } else {
             records = workRecordRepository.findByUserIdxFetch(requester.getUserIdx(), pageable);

@@ -1,11 +1,7 @@
 package com.recode.Dwaeji.work_apply_work.dto;
 
 import com.recode.Dwaeji.user.database.User;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter

@@ -1,11 +1,9 @@
 package com.recode.Dwaeji.work_record.service;
 
+import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordRequestDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordResponseDto;
-import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
-import java.time.LocalDate;
 import org.springframework.data.domain.Page;
-import java.util.List;
 
 public interface WorkRecordService {
     WorkRecordResponseDto createWorkRecord(String requesterId, WorkRecordRequestDto requestDto);

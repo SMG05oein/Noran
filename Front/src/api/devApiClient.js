@@ -33,9 +33,22 @@ devApiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let isDevRateLimitAlertShown = false;
+
 devApiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error.response?.status === 429) {
+      if (!isDevRateLimitAlertShown) {
+        isDevRateLimitAlertShown = true;
+        alert("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+        setTimeout(() => {
+          isDevRateLimitAlertShown = false;
+        }, 2000);
+      }
+      return Promise.reject(error);
+    }
+
     const config = error.config;
     if (
       config &&

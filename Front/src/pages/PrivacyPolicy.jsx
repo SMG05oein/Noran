@@ -39,6 +39,12 @@ const PrivacyPolicy = () => {
                     </td>
                   </tr>
                   <tr>
+                    <td><strong>시스템 보호 및 부정이용 방지</strong><br />(트래픽 스로틀링, 매크로 차단, 보안 위협 대응)</td>
+                    <td><strong>(자동 수집)</strong> 접속 IP 주소, 서비스 이용 기록</td>
+                    <td className="text-center"><strong>수집일로부터 최대 1년 보관 후 파기</strong></td>
+                    <td className="text-center">통신비밀보호법에 따른 통신사실확인자료 보존 의무 등</td>
+                  </tr>
+                  <tr>
                     <td><strong>근태관리 및 근무 스케줄 배정</strong><br />(출퇴근 기록, 근무지별 배정 관리)</td>
                     <td><strong>(필수)</strong> 출퇴근 시간, 휴게시간, 근무지, 배정 시간</td>
                     <td className="text-center"><strong>근로관계 종료 후 3년</strong></td>

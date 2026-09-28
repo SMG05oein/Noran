@@ -26,6 +26,7 @@ const RecordEdit = () => {
   const [branches, setBranches] = useState([]);
   const [editableUntil, setEditableUntil] = useState('');
   const [isEditable, setIsEditable] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const parseLocalTime = (time) => {
     if (!time) return { hour: 0, minute: 0 };
@@ -86,6 +87,7 @@ const RecordEdit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!isEditable) {
       alert('수정 기한이 지났습니다. 급여 담당자에게 직접 연락하세요.');
       return;
@@ -116,12 +118,17 @@ const RecordEdit = () => {
       workPlaceIdx: workPlaceIdx || user?.workPlaceIdx
     };
 
-    const res = await updateWorkRecord(id, recordData);
-    if (res.success) {
-      alert('근무 기록이 수정되었습니다.');
-      navigate('/records');
-    } else {
-      alert(res.error || '근무 기록 수정에 실패했습니다.');
+    setIsSubmitting(true);
+    try {
+      const res = await updateWorkRecord(id, recordData);
+      if (res.success) {
+        alert('근무 기록이 수정되었습니다.');
+        navigate('/records');
+      } else {
+        alert(res.error || '근무 기록 수정에 실패했습니다.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -256,9 +263,18 @@ const RecordEdit = () => {
               />
             </Form.Group>
 
-            <Button variant="primary" type="submit" className="w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
-              <RiSave3Line size={18} />
-              수정 완료
+            <Button variant="primary" type="submit" className="w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                  처리 중...
+                </>
+              ) : (
+                <>
+                  <RiSave3Line size={18} />
+                  수정 완료
+                </>
+              )}
             </Button>
           </Form>
         </Card.Body>

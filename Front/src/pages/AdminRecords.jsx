@@ -60,11 +60,15 @@ const AdminRecords = () => {
 
   const loadData = async (skipCache = false) => {
     setLoading(true);
-    let year = null, month = null;
+    let year, month;
     if (selectedMonth) {
       const [yStr, mStr] = selectedMonth.split('-');
       year = parseInt(yStr, 10);
       month = parseInt(mStr, 10);
+    } else {
+      const now = new Date();
+      year = now.getFullYear();
+      month = now.getMonth() + 1;
     }
 
     const params = {
@@ -210,11 +214,15 @@ const AdminRecords = () => {
       params.keyword = searchKw;
     }
     
-    // 현재 선택된 월(selectedMonth)을 기준으로 파라미터 추가
+    // 현재 선택된 월(selectedMonth)을 기준으로 파라미터 추가, 없으면 현재 월로 기본 설정
     if (selectedMonth) {
       const [yStr, mStr] = selectedMonth.split('-');
       params.year = parseInt(yStr, 10);
       params.month = parseInt(mStr, 10);
+    } else {
+      const now = new Date();
+      params.year = now.getFullYear();
+      params.month = now.getMonth() + 1;
     }
     
     // 페이징 (백엔드 지원 여부에 따라)

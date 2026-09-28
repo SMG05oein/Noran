@@ -3,19 +3,18 @@ package com.recode.Dwaeji.user.controller;
 import com.recode.Dwaeji.user.dto.LoginRequestDto;
 import com.recode.Dwaeji.user.dto.LoginResponseDto;
 import com.recode.Dwaeji.user.dto.SignupRequestDto;
+import com.recode.Dwaeji.user.dto.UserUpdateDto;
 import com.recode.Dwaeji.user.service.UserService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import com.recode.Dwaeji.user.dto.UserUpdateDto;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.http.ResponseCookie;
-import org.springframework.http.HttpHeaders;
-import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name="회원 인증", description = "회원 인증 관련 API 명세서입니다.")
 @RestController
@@ -33,10 +32,10 @@ public class UserController {
         // HttpOnly 쿠키 생성 (리프레시 토큰)
         ResponseCookie cookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
                 .httpOnly(true)
-                .secure(false) // HTTPS 적용 시 true로 변경
+                .secure(true) // HTTPS 적용 완료 (true)
                 .path("/")
                 .maxAge(3 * 24 * 60 * 60) // 3일
-                .sameSite("Lax")
+                .sameSite("None") // PWA 크로스 도메인 허용
                 .build();
 
         return ResponseEntity.ok()

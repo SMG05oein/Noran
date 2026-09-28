@@ -1,13 +1,13 @@
 package com.recode.Dwaeji.work_record.repository;
 
 import com.recode.Dwaeji.work_record.database.WorkRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -52,25 +52,21 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx AND r.user.userName LIKE %:userName%")
     Page<WorkRecord> findByDateBetweenAndWorkPlaceAndUserNameFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, @Param("wpIdx") Long wpIdx, @Param("userName") String userName, Pageable pageable);
 
-    // --- 기존 메서드 (하위 호환) ---
-    Page<WorkRecord> findByUser_UserIdx(Long userIdx, Pageable pageable);
-    Page<WorkRecord> findByUser_WorkPlace_WpIdx(Long wpIdx, Pageable pageable);
-    Page<WorkRecord> findByUser_UserNameContaining(String userName, Pageable pageable);
-    Page<WorkRecord> findByUser_WorkPlace_WpIdxAndUser_UserNameContaining(Long wpIdx, String userName, Pageable pageable);
-    Page<WorkRecord> findByWrDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
-    Page<WorkRecord> findByWrDateBetweenAndUser_WorkPlace_WpIdx(LocalDate startDate, LocalDate endDate, Long wpIdx, Pageable pageable);
-    Page<WorkRecord> findByWrDateBetweenAndUser_UserNameContaining(LocalDate startDate, LocalDate endDate, String userName, Pageable pageable);
-    Page<WorkRecord> findByWrDateBetweenAndUser_WorkPlace_WpIdxAndUser_UserNameContaining(LocalDate startDate, LocalDate endDate, Long wpIdx, String userName, Pageable pageable);
 
     // For Excel Download — 기록의 실제 근무 지점 기준
+    @EntityGraph(attributePaths = {"user", "user.workPlace", "workPlace"})
     List<WorkRecord> findByWrDateBetween(LocalDate startDate, LocalDate endDate);
+    
+    @EntityGraph(attributePaths = {"user", "user.workPlace", "workPlace"})
     List<WorkRecord> findByUser_WorkPlace_WpIdxAndWrDateBetween(Long wpIdx, LocalDate startDate, LocalDate endDate);
+    
+    @EntityGraph(attributePaths = {"user", "user.workPlace", "workPlace"})
     List<WorkRecord> findByWorkPlace_WpIdxAndWrDateBetween(Long wpIdx, LocalDate startDate, LocalDate endDate);
 
     boolean existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(Long userIdx, LocalDate wrDate, Long wpIdx);
     boolean existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdxAndWrIdxNot(Long userIdx, LocalDate wrDate, Long wpIdx, Long wrIdx);
     java.util.Optional<WorkRecord> findByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(Long userIdx, LocalDate wrDate, Long wpIdx);
     java.util.List<WorkRecord> findByUser_UserIdxAndWrDate(Long userIdx, LocalDate wrDate);
-    java.util.List<WorkRecord> findByUser_UserIdx(Long userIdx);
+    List<WorkRecord> findByUser_UserIdx(Long userIdx);
     void deleteByUser_UserIdx(Long userIdx);
 }

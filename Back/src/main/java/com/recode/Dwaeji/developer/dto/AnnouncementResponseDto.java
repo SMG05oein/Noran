@@ -1,11 +1,7 @@
 package com.recode.Dwaeji.developer.dto;
 
 import com.recode.Dwaeji.developer.database.Announcement;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 

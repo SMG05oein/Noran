@@ -1,15 +1,9 @@
 package com.recode.Dwaeji.work_apply_work.dto;
 
-import lombok.Builder;
-
 import com.recode.Dwaeji.work_apply_work.database.ApplyStatus;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Getter
 @Setter

@@ -34,7 +34,7 @@ public class UserController {
                 .httpOnly(true)
                 .secure(true) // HTTPS 적용 완료 (true)
                 .path("/")
-                .maxAge(3 * 24 * 60 * 60) // 3일
+                .maxAge(7 * 24 * 60 * 60) // 7일
                 .sameSite("None") // PWA 크로스 도메인 허용
                 .build();
 

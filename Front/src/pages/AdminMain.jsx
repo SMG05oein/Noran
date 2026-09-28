@@ -42,11 +42,7 @@ const AdminMain = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [recRes, branchRes] = await Promise.all([
-      fetchWorkRecords(),
-      fetchWorkPlaces()
-    ]);
-    if (recRes.success) setWorkRecords(recRes.data.content || recRes.data || []);
+    const branchRes = await fetchWorkPlaces();
     if (branchRes.success && branchRes.data) {
       setBranches(branchRes.data);
       // 로그인한 관리자의 소속 지점(workPlaceName 또는 workPlaceIdx)과 일치하는 지점 우선 선택

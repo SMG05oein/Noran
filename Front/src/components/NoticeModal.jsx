@@ -14,7 +14,7 @@ const NoticeModal = () => {
   const [checking, setChecking] = useState(false);
   const location = useLocation();
 
-  const API_BASE_URL = import.meta.env.MODE === 'production' ? '' : (import.meta.env.VITE_API_URL || '');
+  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
   const checkAndLoadNotices = async () => {
     // 1. 오직 개발자 전용 관리 페이지(/dev/*)만 점검 모드/공지사항 적용 제외

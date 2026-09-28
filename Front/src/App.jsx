@@ -123,7 +123,7 @@ function App() {
     <>
       <PwaInstallBanner />
       <NoticeModal />
-      <DevIpOtpGate />
+      {!location.pathname.startsWith('/dev/dashboard') && <DevIpOtpGate />}
       <Suspense fallback={PageFallback}>
         <Routes>
           <Route path="/login" element={<Login />} />

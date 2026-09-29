@@ -53,3 +53,7 @@ tasks.named('test') {
 springBoot {
     buildInfo()
 }
+
+bootJar {
+    archiveFileName = 'Dwaeji.jar'
+}

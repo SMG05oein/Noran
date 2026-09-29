@@ -97,7 +97,7 @@ export const fetchWorkRecordById = async (wrIdx) => {
 // 근무 기록 수정
 export const updateWorkRecord = async (wrIdx, recordData) => {
   try {
-    const response = await globalApiClient.put(`/api/work-record/${wrIdx}`, recordData);
+    const response = await globalApiClient.post(`/api/work-record/${wrIdx}` + '?_method=PUT', recordData);
     // 수정 시 캐시 무효화
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('workRecordsCache_') || key.startsWith('workRecordsMonthlyCache_')) {
@@ -114,7 +114,7 @@ export const updateWorkRecord = async (wrIdx, recordData) => {
 // 근무 기록 삭제
 export const deleteWorkRecord = async (wrIdx) => {
   try {
-    const response = await globalApiClient.delete(`/api/work-record/${wrIdx}`);
+    const response = await globalApiClient.post(`/api/work-record/${wrIdx}` + '?_method=DELETE');
     // 삭제 시 캐시 무효화
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('workRecordsCache_') || key.startsWith('workRecordsMonthlyCache_')) {
@@ -404,7 +404,7 @@ export const saveWorkApply = async (startDate, endDate, applyDataArray) => {
 // 알바생 근무 신청 수정 - PUT /api/work-schedule/apply
 export const updateWorkApply = async (startDate, endDate, applyDataArray) => {
   try {
-    const response = await globalApiClient.put(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}`, applyDataArray);
+    const response = await globalApiClient.post(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}` + '?_method=PUT', applyDataArray);
     clearWorkApplyCache();
     return { success: true, data: response.data };
   } catch (error) {

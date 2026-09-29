@@ -226,7 +226,7 @@ export const updateAnnouncement = async (id, title, content, isActive, startDate
     const payload = { title, content, isActive };
     if (startDate) payload.startDate = startDate;
     if (endDate) payload.endDate = endDate;
-    const response = await devApiClient.put(`${addUrl}/announcements/${id}`, payload);
+    const response = await devApiClient.post(`${addUrl}/announcements/${id}` + '?_method=PUT', payload);
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: extractError(error, '공지사항 수정에 실패했습니다.') };
@@ -235,7 +235,7 @@ export const updateAnnouncement = async (id, title, content, isActive, startDate
 
 export const toggleAnnouncement = async (id) => {
   try {
-    const response = await devApiClient.put(`${addUrl}/announcements/${id}/toggle`);
+    const response = await devApiClient.post(`${addUrl}/announcements/${id}/toggle?_method=PUT`);
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: extractError(error, '공지사항 상태 변경에 실패했습니다.') };
@@ -244,7 +244,7 @@ export const toggleAnnouncement = async (id) => {
 
 export const deleteAnnouncement = async (id) => {
   try {
-    const response = await devApiClient.delete(`${addUrl}/announcements/${id}`);
+    const response = await devApiClient.post(`${addUrl}/announcements/${id}` + '?_method=DELETE');
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: extractError(error, '공지사항 삭제에 실패했습니다.') };

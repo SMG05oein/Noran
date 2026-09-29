@@ -49,7 +49,7 @@ export const fetchMyInfo = async (token) => {
 
 export const updateUserInfo = async (userIdx, updateData) => {
   try {
-    const response = await apiClient.put(`${addUrl}/${userIdx}`, updateData);
+    const response = await apiClient.post(`${addUrl}/${userIdx}` + '?_method=PUT', updateData);
     // 캐시 무효화
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_')) {
@@ -152,7 +152,7 @@ export const getSensitiveInfo = async (userIdx) => {
 
 export const updateSensitiveInfo = async (userIdx, dto) => {
   try {
-    const response = await apiClient.put(`${addUrl}/${userIdx}/sensitive-info`, dto);
+    const response = await apiClient.post(`${addUrl}/${userIdx}/sensitive-info` + '?_method=PUT', dto);
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '민감 정보 수정에 실패했습니다.';
@@ -163,7 +163,7 @@ export const updateSensitiveInfo = async (userIdx, dto) => {
 
 export const bulkUpdateUsers = async (dto) => {
   try {
-    const response = await apiClient.put(`${addUrl}/bulk-update`, dto);
+    const response = await apiClient.post(`${addUrl}/bulk-update` + '?_method=PUT', dto);
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
         sessionStorage.removeItem(key);
@@ -178,7 +178,7 @@ export const bulkUpdateUsers = async (dto) => {
 
 export const deleteUser = async (userIdx) => {
   try {
-    const response = await apiClient.delete(`${addUrl}/${userIdx}`);
+    const response = await apiClient.post(`${addUrl}/${userIdx}` + '?_method=DELETE');
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
         sessionStorage.removeItem(key);
@@ -193,7 +193,7 @@ export const deleteUser = async (userIdx) => {
 
 export const leaveUser = async (userIdx) => {
   try {
-    const response = await apiClient.put(`${addUrl}/${userIdx}/leave`);
+    const response = await apiClient.post(`${addUrl}/${userIdx}/leave?_method=PUT`);
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_') || key === 'allUsersCache') {
         sessionStorage.removeItem(key);
@@ -208,7 +208,7 @@ export const leaveUser = async (userIdx) => {
 
 export const withdrawUser = async () => {
   try {
-    const response = await apiClient.delete(`${addUrl}/me/withdraw`);
+    const response = await apiClient.post(`${addUrl}/me/withdraw` + '?_method=DELETE');
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '회원 탈퇴에 실패했습니다.';
@@ -218,7 +218,7 @@ export const withdrawUser = async () => {
 
 export const hardDeleteUser = async (userIdx) => {
   try {
-    const response = await apiClient.delete(`${addUrl}/${userIdx}/hard`);
+    const response = await apiClient.post(`${addUrl}/${userIdx}/hard` + '?_method=DELETE');
     // 캐시 무효화
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_')) {
@@ -287,7 +287,7 @@ export const createWorkPlace = async (wpData) => {
 
 export const updateWorkPlace = async (wpIdx, wpData) => {
   try {
-    const response = await apiClient.put(`/api/work-place/${wpIdx}`, wpData);
+    const response = await apiClient.post(`/api/work-place/${wpIdx}` + '?_method=PUT', wpData);
     // 근무지 캐시 무효화
     sessionStorage.removeItem('workPlacesAllCache');
     return { success: true, data: response.data };
@@ -299,7 +299,7 @@ export const updateWorkPlace = async (wpIdx, wpData) => {
 
 export const deleteWorkPlace = async (wpIdx) => {
   try {
-    const response = await apiClient.delete(`/api/work-place/${wpIdx}`);
+    const response = await apiClient.post(`/api/work-place/${wpIdx}` + '?_method=DELETE');
     // 근무지 캐시 무효화
     sessionStorage.removeItem('workPlacesAllCache');
     return { success: true, data: response.data };
@@ -323,7 +323,7 @@ export const fetchBanks = async () => {
 // 은행 정보 수정 전용 (본인만) — payload: { bankCode, userAccountName, ... }
 export const updateMyBankInfo = async (bankData) => {
   try {
-    const response = await apiClient.put(`${addUrl}/me/bank-info`, bankData);
+    const response = await apiClient.post(`${addUrl}/me/bank-info` + '?_method=PUT', bankData);
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data || '은행 정보 수정에 실패했습니다.';
@@ -380,7 +380,7 @@ export const createUserType = async (data) => {
 
 export const updateUserType = async (utIdx, data) => {
   try {
-    const response = await apiClient.put(`/api/user-types/${utIdx}`, data);
+    const response = await apiClient.post(`/api/user-types/${utIdx}` + '?_method=PUT', data);
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '직급 수정에 실패했습니다.';
@@ -406,7 +406,7 @@ export const createAdminUser = async (userData) => {
 
 export const deleteUserType = async (utIdx) => {
   try {
-    const response = await apiClient.delete(`/api/user-types/${utIdx}`);
+    const response = await apiClient.post(`/api/user-types/${utIdx}` + '?_method=DELETE');
     return { success: true, data: response.data };
   } catch (error) {
     const errMsg = error.response?.data?.msg || '직급 삭제에 실패했습니다.';
@@ -440,7 +440,7 @@ export const restoreArchivedUser = async (userIdx) => {
 
 export const deleteArchivedUser = async (userIdx) => {
   try {
-    const response = await apiClient.delete(`${addUrl}/admin/archived-workers/${userIdx}`);
+    const response = await apiClient.post(`${addUrl}/admin/archived-workers/${userIdx}` + '?_method=DELETE');
     Object.keys(sessionStorage).forEach(key => {
       if (key.startsWith('adminWorkersCache_')) sessionStorage.removeItem(key);
     });

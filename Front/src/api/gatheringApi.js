@@ -121,7 +121,7 @@ export const gatheringApi = {
   // 태그 수정
   updateTag: async (tagId, tagData) => {
     try {
-      const res = await globalApiClient.put(`/api/gathering/tags/${tagId}`, tagData);
+      const res = await globalApiClient.post(`/api/gathering/tags/${tagId}` + '?_method=PUT', tagData);
       return res.data;
     } catch {
       const tags = getLocalData(STORAGE_KEYS.TAGS, DEFAULT_TAGS);
@@ -134,7 +134,7 @@ export const gatheringApi = {
   // 태그 삭제
   deleteTag: async (tagId) => {
     try {
-      await globalApiClient.delete(`/api/gathering/tags/${tagId}`);
+      await globalApiClient.post(`/api/gathering/tags/${tagId}` + '?_method=DELETE');
       return true;
     } catch {
       const tags = getLocalData(STORAGE_KEYS.TAGS, DEFAULT_TAGS);
@@ -257,7 +257,7 @@ export const gatheringApi = {
   // 게시글 수정
   updatePost: async (postId, postData) => {
     try {
-      const res = await globalApiClient.put(`/api/gathering/posts/${postId}`, postData);
+      const res = await globalApiClient.post(`/api/gathering/posts/${postId}` + '?_method=PUT', postData);
       return res.data;
     } catch {
       const posts = getLocalData(STORAGE_KEYS.POSTS, DEFAULT_POSTS);
@@ -287,7 +287,7 @@ export const gatheringApi = {
   // 게시글 논리적 삭제 (Soft Delete)
   deletePost: async (postId) => {
     try {
-      await globalApiClient.delete(`/api/gathering/posts/${postId}`);
+      await globalApiClient.post(`/api/gathering/posts/${postId}` + '?_method=DELETE');
       return true;
     } catch {
       const posts = getLocalData(STORAGE_KEYS.POSTS, DEFAULT_POSTS);
@@ -370,7 +370,7 @@ export const gatheringApi = {
   // 댓글 논리적 삭제 (Soft Delete)
   deleteComment: async (postId, commentId) => {
     try {
-      await globalApiClient.delete(`/api/gathering/comments/${commentId}`);
+      await globalApiClient.post(`/api/gathering/comments/${commentId}` + '?_method=DELETE');
       return true;
     } catch {
       const comments = getLocalData(STORAGE_KEYS.COMMENTS, DEFAULT_COMMENTS);
@@ -453,7 +453,7 @@ export const gatheringApi = {
   // 관리자 신고 처리 (RESOLVED: 조치완료, DISMISSED: 반려)
   resolveReport: async (reportId, action = 'RESOLVED') => {
     try {
-      const res = await globalApiClient.put(`/api/gathering/reports/${reportId}`, { status: action });
+      const res = await globalApiClient.post(`/api/gathering/reports/${reportId}` + '?_method=PUT', { status: action });
       return res.data;
     } catch {
       const reports = getLocalData('pig_gathering_reports', []);

@@ -74,7 +74,7 @@ export const jokeApi = {
   // 농담 수정
   updateJoke: async (jokeId, jokeData) => {
     try {
-      const res = await globalApiClient.put(`/api/jokes/${jokeId}`, jokeData);
+      const res = await globalApiClient.post(`/api/jokes/${jokeId}` + '?_method=PUT', jokeData);
       return res.data;
     } catch {
       let customJokes = [];
@@ -115,7 +115,7 @@ export const jokeApi = {
   // 농담 논리적 삭제 (Soft Delete)
   deleteJoke: async (jokeId) => {
     try {
-      await globalApiClient.delete(`/api/jokes/${jokeId}`);
+      await globalApiClient.post(`/api/jokes/${jokeId}` + '?_method=DELETE');
       return true;
     } catch {
       let customJokes = [];

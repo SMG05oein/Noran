@@ -7,12 +7,15 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.info.BuildProperties;
+
+import java.util.Optional;
 
 @Configuration
 public class SwaggerConfig {
-
     @Bean
-    public OpenAPI openAPI() {
+    public OpenAPI openAPI(Optional<BuildProperties> buildProperties) {
+        String version = buildProperties.map(BuildProperties::getVersion).orElse("Local-Dev");
         String securitySchemeName = "BearerAuth";
         SecurityRequirement securityRequirement = new SecurityRequirement().addList(securitySchemeName);
         Components components = new Components()
@@ -26,7 +29,7 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("Noran Dwaeji API Documentation")
                         .description("노란돼지 백엔드 API 명세서")
-                        .version("1.0.0"))
+                        .version(version))
                 .addSecurityItem(securityRequirement)
                 .components(components);
     }

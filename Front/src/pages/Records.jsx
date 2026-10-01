@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Card, Badge, Form, Row, Col, Button, Modal } from 'react-bootstrap';
-import { format, subMonths, isBefore, isSameDay, startOfDay, parseISO, isWeekend } from 'date-fns';
+import { format, subMonths, isBefore, isSameDay, startOfDay, parseISO, isWeekend, startOfMonth, endOfMonth } from 'date-fns';
 import { RiTimeLine, RiCalendarCheckLine, RiAddLine, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import { isHoliday } from 'korean-holidays';
@@ -55,8 +55,12 @@ const Records = () => {
     setDataLoading(true);
     const [year, month] = monthStr.split('-');
     try {
+      const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+      const startStr = format(startOfMonth(d), 'yyyy-MM-dd');
+      const endStr = format(endOfMonth(d), 'yyyy-MM-dd');
+
       const [recordsRes, requestsRes] = await Promise.all([
-        getMonthlyWorkRecords(parseInt(year, 10), parseInt(month, 10)),
+        getMonthlyWorkRecords(startStr, endStr),
         getMonthlyWorkApplyWorks(parseInt(year, 10), parseInt(month, 10))
       ]);
       

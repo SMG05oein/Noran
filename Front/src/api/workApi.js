@@ -36,12 +36,12 @@ export const fetchWorkRecords = async (params = {}, skipCache = false) => {
 };
 
 // 월별 근무 기록 조회 (캐시 적용)
-export const getMonthlyWorkRecords = async (year, month, skipCache = false) => {
+export const getMonthlyWorkRecords = async (startDate, endDate, skipCache = false) => {
   try {
     const authData = JSON.parse(localStorage.getItem('auth-storage') || '{}');
     const userTypeName = authData?.state?.user?.userTypeName;
     const userKey = authData?.state?.user?.userId || authData?.state?.user?.userIdx || 'unknown';
-    const cacheKey = `workRecordsMonthlyCache_${userKey}_${year}_${month}`;
+    const cacheKey = `workRecordsMonthlyCache_${userKey}_${startDate}_${endDate}`;
     
     if (!skipCache && userTypeName !== '관리자') {
       const cachedStr = sessionStorage.getItem(cacheKey);
@@ -51,7 +51,7 @@ export const getMonthlyWorkRecords = async (year, month, skipCache = false) => {
       }
     }
 
-    const response = await globalApiClient.get('/api/work-record/monthly', { params: { year, month } });
+    const response = await globalApiClient.get('/api/work-record/monthly', { params: { startDate, endDate } });
     const data = response.data?.content !== undefined ? response.data.content : response.data;
     
     sessionStorage.setItem(cacheKey, JSON.stringify({
@@ -228,9 +228,9 @@ export const getMonthlyWorkApplyWorks = async (year, month, skipCache = false) =
 };
 
 // 캘린더 일별 배정 인원 집계 조회
-export const fetchCalendarCounts = async (year, month, workPlaceIdx = null) => {
+export const fetchCalendarCounts = async (startDate, endDate, workPlaceIdx = null) => {
   try {
-    let url = `/api/work-schedule/calendar-counts?year=${year}&month=${month}`;
+    let url = `/api/work-schedule/calendar-counts?startDate=${startDate}&endDate=${endDate}`;
     if (workPlaceIdx) url += `&workPlaceIdx=${workPlaceIdx}`;
     const response = await globalApiClient.get(url);
     return { success: true, data: response.data };

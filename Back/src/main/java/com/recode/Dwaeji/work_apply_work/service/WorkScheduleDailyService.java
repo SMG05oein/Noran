@@ -19,7 +19,7 @@ public interface WorkScheduleDailyService {
 
     List<WorkScheduleDailyResponseDto> getMonthlySchedules(String requesterId, int year, int month);
     /** 날짜별 총 출근 / 피크 인원. value = { total, peak } */
-    Map<String, Map<String, Integer>> getCalendarAssignmentCounts(String requesterId, int year, int month, Long workPlaceIdx);
+    Map<String, Map<String, Integer>> getCalendarAssignmentCounts(String requesterId, LocalDate startDate, LocalDate endDate, Long workPlaceIdx);
     
     // 알바생 신청 API
     /** 최초 신청만. 해당 주에 이미 신청이 있으면 400. */

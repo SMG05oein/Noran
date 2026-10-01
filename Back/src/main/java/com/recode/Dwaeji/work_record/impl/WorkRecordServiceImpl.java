@@ -259,9 +259,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         java.time.YearMonth yearMonth = java.time.YearMonth.of(year, month);
-        // 달력 UI에서 이전/다음 달 날짜가 잘리는 현상 방지 (앞뒤 10일 여유)
-        LocalDate startDate = yearMonth.atDay(1).minusDays(10);
-        LocalDate endDate = yearMonth.atEndOfMonth().plusDays(10);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
 
 
         if (isAdmin(requester)) {
@@ -316,12 +315,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WorkRecordResponseDto> getMonthlyWorkRecords(String requesterId, int year, int month) {
+    public List<WorkRecordResponseDto> getMonthlyWorkRecords(String requesterId, LocalDate startDate, LocalDate endDate) {
         User requester = getRequester(requesterId);
-        
-        java.time.YearMonth yearMonth = java.time.YearMonth.of(year, month);
-        LocalDate startDate = yearMonth.atDay(1);
-        LocalDate endDate = yearMonth.atEndOfMonth();
         
         List<WorkRecord> records = workRecordRepository.findByUserIdxAndDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
         

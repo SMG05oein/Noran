@@ -154,8 +154,8 @@
 
 .cal-cell {
   position: relative !important;
-  height: 74px !important;
-  min-height: 74px !important;
+  height: auto !important;
+  min-height: 84px !important;
   background-color: var(--color-surface) !important;
   border: 1px solid var(--color-border) !important;
   border-radius: 14px !important;
@@ -261,7 +261,7 @@
    Status Marker Box & Icons
    ======================================================== */
 .cal-status-box {
-  height: 22px !important;
+  height: auto !important;
   min-height: 22px !important;
   display: flex !important;
   align-items: center !important;
@@ -339,8 +339,8 @@
   }
 
   .cal-cell {
-    height: 58px !important;
-    min-height: 58px !important;
+    height: auto !important;
+    min-height: 68px !important;
     padding: 4px 2px !important;
     border-radius: 10px !important;
   }
@@ -350,7 +350,7 @@
   }
 
   .cal-status-box {
-    height: 18px !important;
+    height: auto !important;
     min-height: 18px !important;
   }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Row, Col, Badge, Button } from 'react-bootstrap';
-import { parseISO, addDays, isSameDay, isBefore, startOfDay, format, subMonths, addMonths } from 'date-fns';
+import { parseISO, addDays, isSameDay, isBefore, startOfDay, format, subMonths, addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import WorkCalendar from '../components/WorkCalendar';
 import Loading from '../components/Loading';
@@ -25,21 +25,18 @@ const Main = () => {
 
     setLoading(true);
     try {
-      // 달력의 이전 달/다음 달 며칠(Spillover)도 완벽히 커버하기 위해 앞뒤 달도 함께 조회
-      const prevDate = subMonths(targetDate, 1);
-      const nextDate = addMonths(targetDate, 1);
+      // 달력의 이전 달/다음 달 며칠(Spillover)도 완벽히 커버하기 위해 캘린더 화면의 시작/종료일을 구함
+      const monthStart = startOfMonth(targetDate);
+      const startDateStr = format(startOfWeek(monthStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      const endDateStr = format(endOfWeek(endOfMonth(monthStart), { weekStartsOn: 0 }), 'yyyy-MM-dd');
 
-      const [prevRes, currRes, nextRes, reqRes] = await Promise.all([
-        getMonthlyWorkRecords(prevDate.getFullYear(), prevDate.getMonth() + 1, skipCache),
-        getMonthlyWorkRecords(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache),
-        getMonthlyWorkRecords(nextDate.getFullYear(), nextDate.getMonth() + 1, skipCache),
+      const [currRes, reqRes] = await Promise.all([
+        getMonthlyWorkRecords(startDateStr, endDateStr, skipCache),
         getMonthlyWorkApplyWorks(targetDate.getFullYear(), targetDate.getMonth() + 1, skipCache)
       ]);
 
       let mergedRecords = [];
-      if (prevRes.success) mergedRecords = mergedRecords.concat(prevRes.data?.content || prevRes.data || []);
       if (currRes.success) mergedRecords = mergedRecords.concat(currRes.data?.content || currRes.data || []);
-      if (nextRes.success) mergedRecords = mergedRecords.concat(nextRes.data?.content || nextRes.data || []);
 
       setWorkRecords(mergedRecords);
 

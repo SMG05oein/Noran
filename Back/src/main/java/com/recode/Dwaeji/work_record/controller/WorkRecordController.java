@@ -49,13 +49,13 @@ public class WorkRecordController {
         return ResponseEntity.ok(workRecordService.getAllWorkRecords(userDetails.getUsername(), workPlaceIdx, userName, year, month, page, size, sortBy, sortDir));
     }
 
-    @Operation(summary = "알바생 월별 근무 기록 조회", description = "알바생(일반 유저)이 캘린더에서 특정 연/월의 본인 근무 기록을 리스트로 조회합니다.")
+    @Operation(summary = "알바생 월별 근무 기록 조회", description = "알바생(일반 유저)이 캘린더에서 특정 구간의 본인 근무 기록을 리스트로 조회합니다.")
     @GetMapping("/monthly")
     public ResponseEntity<List<WorkRecordResponseDto>> getMonthlyWorkRecords(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam int year,
-            @RequestParam int month) {
-        return ResponseEntity.ok(workRecordService.getMonthlyWorkRecords(userDetails.getUsername(), year, month));
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate) {
+        return ResponseEntity.ok(workRecordService.getMonthlyWorkRecords(userDetails.getUsername(), startDate, endDate));
     }
 
     @Operation(summary = "근무 기록 엑셀 다운로드", description = "특정 월(년/월)의 근무 기록을 엑셀로 다운로드합니다. workPlaceIdx 없으면 근무지별 Sheet로 나눕니다. 관리자 전용.")

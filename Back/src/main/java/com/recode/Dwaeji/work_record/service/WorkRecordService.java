@@ -8,7 +8,7 @@ import org.springframework.data.domain.Page;
 public interface WorkRecordService {
     WorkRecordResponseDto createWorkRecord(String requesterId, WorkRecordRequestDto requestDto);
     Page<WorkRecordResponseDto> getAllWorkRecords(String requesterId, Long workPlaceIdx, String userName, Integer year, Integer month, int page, int size, String sortBy, String sortDir);
-    java.util.List<WorkRecordResponseDto> getMonthlyWorkRecords(String requesterId, int year, int month);
+    java.util.List<WorkRecordResponseDto> getMonthlyWorkRecords(String requesterId, java.time.LocalDate startDate, java.time.LocalDate endDate);
     WorkRecordResponseDto getWorkRecordById(String requesterId, Long wrIdx);
     void updateWorkRecord(String requesterId, Long wrIdx, WorkRecordRequestDto requestDto);
     void deleteWorkRecord(String requesterId, Long wrIdx);

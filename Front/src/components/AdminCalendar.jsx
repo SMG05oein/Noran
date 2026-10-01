@@ -26,9 +26,10 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
   useEffect(() => {
     const loadCounts = async () => {
       if (!selectedBranchIdx) return;
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth() + 1;
-      const res = await fetchCalendarCounts(year, month, selectedBranchIdx);
+      const monthStart = startOfMonth(currentMonth);
+      const startDateStr = format(startOfWeek(monthStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      const endDateStr = format(endOfWeek(endOfMonth(monthStart), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      const res = await fetchCalendarCounts(startDateStr, endDateStr, selectedBranchIdx);
       if (res.success) {
         setCalendarCounts(res.data);
       }
@@ -140,10 +141,15 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
         const isCurrentMonth = isSameMonth(day, monthStart);
         
         const formattedCloneDay = format(cloneDay, 'yyyy-MM-dd');
-        const dayCount = calendarCounts[formattedCloneDay];
-        const dayPeak = typeof dayCount === 'object' && dayCount != null
-          ? Number(dayCount.peak) || 0
-          : 0;
+        
+        // 백엔드에서 배열로 반환할 경우를 대비한 처리
+        let dayCount = calendarCounts[formattedCloneDay];
+        if (Array.isArray(calendarCounts)) {
+          dayCount = calendarCounts.find(c => c.date === formattedCloneDay || c.wsdDate === formattedCloneDay || c.dateStr === formattedCloneDay);
+        }
+
+        const dayPeak = dayCount ? Number(dayCount.peak) || 0 : 0;
+        const dayTotal = dayCount ? Number(dayCount.total) || 0 : 0;
         
         const isSun = day.getDay() === 0;
         const isSat = day.getDay() === 6;
@@ -186,9 +192,15 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
             <span className={`cal-cell-number ${numColorClass}`}>
               {formattedDate}
             </span>
-            <div className="cal-status-box">
+            <div className="cal-status-box d-flex flex-column gap-1">
+              {dayTotal > 0 && (
+                <Badge bg="primary" className="cal-admin-badge text-center rounded-pill fw-bold" style={{ fontSize: '0.75rem' }}>
+                  <span className="d-none d-sm-inline">전체 {dayTotal}명</span>
+                  <span className="d-sm-none">T{dayTotal}</span>
+                </Badge>
+              )}
               {dayPeak > 0 && (
-                <Badge bg="warning" text="dark" className="cal-admin-badge text-center rounded-pill fw-bold">
+                <Badge bg="warning" text="dark" className="cal-admin-badge text-center rounded-pill fw-bold" style={{ fontSize: '0.75rem' }}>
                   <span className="d-none d-sm-inline">피크 {dayPeak}명</span>
                   <span className="d-sm-none">P{dayPeak}</span>
                 </Badge>

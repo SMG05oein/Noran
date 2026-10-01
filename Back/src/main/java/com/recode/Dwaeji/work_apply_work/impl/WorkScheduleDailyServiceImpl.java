@@ -606,10 +606,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Map<String, Integer>> getCalendarAssignmentCounts(String requesterId, int year, int month, Long workPlaceIdx) {
-        YearMonth yearMonth = YearMonth.of(year, month);
-        LocalDate startDate = yearMonth.atDay(1);
-        LocalDate endDate = yearMonth.atEndOfMonth();
+    public Map<String, Map<String, Integer>> getCalendarAssignmentCounts(String requesterId, LocalDate startDate, LocalDate endDate, Long workPlaceIdx) {
 
         List<WorkScheduleDaily> schedules = scheduleRepository.findByWsdDateBetweenFetch(startDate, endDate);
         Map<String, Map<String, Integer>> counts = new HashMap<>();

@@ -3,16 +3,18 @@ package com.recode.Dwaeji.user.impl;
 import com.recode.Dwaeji.JwtUtil;
 import com.recode.Dwaeji.user.database.RefreshToken;
 import com.recode.Dwaeji.user.database.User;
-import com.recode.Dwaeji.user.dto.LoginRequestDto;
-import com.recode.Dwaeji.user.dto.LoginResponseDto;
-import com.recode.Dwaeji.user.dto.SignupRequestDto;
-import com.recode.Dwaeji.user.dto.UserUpdateDto;
-import com.recode.Dwaeji.user.repository.RefreshTokenRepository;
-import com.recode.Dwaeji.user.repository.UserRepository;
-import com.recode.Dwaeji.user.repository.UserTypeRepository;
-import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
+import com.recode.Dwaeji.user.dto.*;
+import com.recode.Dwaeji.user.repository.*;
 import com.recode.Dwaeji.user.service.UserService;
-import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
+import com.recode.Dwaeji.work_record.repository.*;
+import com.recode.Dwaeji.work_apply_work.repository.*;
+import com.recode.Dwaeji.gathering.repository.*;
+import com.recode.Dwaeji.joke.repository.*;
+import com.recode.Dwaeji.common.excel.*;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.*;
+import org.apache.poi.xssf.usermodel.*;
+import org.apache.poi.ss.usermodel.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -36,19 +38,17 @@ public class UserServiceImpl implements UserService {
     private final WorkPlaceRepository workPlaceRepository;
 
     private final WorkRecordRepository workRecordRepository;
-    private final com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository workRecordHistoryRepository;
+    private final WorkRecordHistoryRepository workRecordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
-    private final com.recode.Dwaeji.user.repository.ArchivedUserRepository archivedUserRepository;
-    private final com.recode.Dwaeji.user.repository.ArchiveAccessLogRepository archiveAccessLogRepository;
     private final JwtUtil jwtUtil;
 
-    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository workApplyRepository;
-    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository workApplyDailyRepository;
-    private final com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository workScheduleDailyRepository;
-    private final com.recode.Dwaeji.gathering.repository.GatheringReportRepository gatheringReportRepository;
-    private final com.recode.Dwaeji.gathering.repository.GatheringCommentRepository gatheringCommentRepository;
-    private final com.recode.Dwaeji.gathering.repository.GatheringPostRepository gatheringPostRepository;
-    private final com.recode.Dwaeji.joke.repository.JokeRepository jokeRepository;
+    private final WorkApplyRepository workApplyRepository;
+    private final WorkApplyDailyRepository workApplyDailyRepository;
+    private final WorkScheduleDailyRepository workScheduleDailyRepository;
+    private final GatheringReportRepository gatheringReportRepository;
+    private final GatheringCommentRepository gatheringCommentRepository;
+    private final GatheringPostRepository gatheringPostRepository;
+    private final JokeRepository jokeRepository;
 
     @Override
     @Transactional
@@ -139,10 +139,6 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"이미 사용하는 아이디입니다.");
         }
 
-        // 아카이브 테이블 확인 (탈퇴한 회원 아이디 재사용 방지)
-        if (archivedUserRepository.findByUserId(signupRequestDto.getUserId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "탈퇴한 회원의 아이디는 보존 기간 동안 재사용할 수 없습니다.");
-        }
 
         if (isPhoneDuplicated(signupRequestDto.getUserPhone(), null)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 휴대폰 번호입니다.");
@@ -185,7 +181,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void adminRegisterUser(String requesterId, com.recode.Dwaeji.user.dto.AdminRegisterRequestDto dto) {
+    public void adminRegisterUser(String requesterId, AdminRegisterRequestDto dto) {
         // 1. 요청자 권한 확인
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
@@ -200,10 +196,6 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
         }
 
-        // 아카이브 테이블 확인 (탈퇴한 회원 아이디 재사용 방지)
-        if (archivedUserRepository.findByUserId(lowerUserId).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "탈퇴한 회원의 아이디는 보존 기간 동안 재사용할 수 없습니다.");
-        }
 
         if (dto.getUserPhone() != null && !dto.getUserPhone().isEmpty()
                 && isPhoneDuplicated(dto.getUserPhone(), null)) {
@@ -257,6 +249,10 @@ public class UserServiceImpl implements UserService {
         
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "수정할 사용자를 찾을 수 없습니다."));
+
+        if (targetUser.getUserIsActive() != null && targetUser.getUserIsActive() == 0) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "퇴사자의 정보는 수정할 수 없습니다. 시스템 관리자에게 문의하세요.");
+        }
 
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
         boolean isAdmin = (reqIsAdmin != null && reqIsAdmin == 1);
@@ -334,7 +330,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void bulkUpdateUsers(String requesterId, com.recode.Dwaeji.user.dto.UserBulkUpdateDto dto) {
+    public void bulkUpdateUsers(String requesterId, UserBulkUpdateDto dto) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
@@ -355,6 +351,9 @@ public class UserServiceImpl implements UserService {
 
         java.util.List<User> users = userRepository.findAllById(dto.getUserIdxList());
         for (User u : users) {
+            if (u.getUserIsActive() != null && u.getUserIsActive() == 0) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "퇴사자의 정보는 일괄 수정할 수 없습니다. (" + u.getUserName() + ") 시스템 관리자에게 문의하세요.");
+            }
             boolean isSelf = java.util.Objects.equals(requester.getUserIdx(), u.getUserIdx())
                     || java.util.Objects.equals(requester.getUserId(), u.getUserId());
             if (dto.getUserHourlyWage() != null) {
@@ -605,16 +604,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public com.recode.Dwaeji.user.dto.UserInfoDto getUserInfo(String userId) {
+    public UserInfoDto getUserInfo(String userId) {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        return com.recode.Dwaeji.user.dto.UserInfoDto.fromEntity(user);
+        return UserInfoDto.fromEntity(user);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public com.recode.Dwaeji.user.dto.UserInfoDto getUserInfoByIdx(String requesterId, Long targetUserIdx) {
+    public UserInfoDto getUserInfoByIdx(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
@@ -629,21 +628,21 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 사용자가 존재하지 않습니다."));
 
-        return com.recode.Dwaeji.user.dto.UserInfoDto.fromEntity(user);
+        return UserInfoDto.fromEntity(user);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public com.recode.Dwaeji.user.dto.AccountDetailsDto getAccountDetails(String userId) {
+    public AccountDetailsDto getAccountDetails(String userId) {
         User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        return com.recode.Dwaeji.user.dto.AccountDetailsDto.fromEntity(user);
+        return AccountDetailsDto.fromEntity(user);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public com.recode.Dwaeji.user.dto.SensitiveInfoDto getSensitiveInfo(String requesterId, Long targetUserIdx) {
+    public SensitiveInfoDto getSensitiveInfo(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
@@ -655,12 +654,12 @@ public class UserServiceImpl implements UserService {
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        return com.recode.Dwaeji.user.dto.SensitiveInfoDto.fromEntity(targetUser);
+        return SensitiveInfoDto.fromEntity(targetUser);
     }
 
     @Override
     @Transactional
-    public void updateSensitiveInfo(String requesterId, Long targetUserIdx, com.recode.Dwaeji.user.dto.SensitiveInfoDto dto) {
+    public void updateSensitiveInfo(String requesterId, Long targetUserIdx, SensitiveInfoDto dto) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         
@@ -671,6 +670,10 @@ public class UserServiceImpl implements UserService {
 
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+        if (targetUser.getUserIsActive() != null && targetUser.getUserIsActive() == 0) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "퇴사자의 정보는 수정할 수 없습니다. 시스템 관리자에게 문의하세요.");
+        }
 
 
         if (dto.getUserAccountName() != null) {
@@ -690,7 +693,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public com.recode.Dwaeji.user.dto.TokenRefreshResponseDto refreshAccessToken(String refreshToken) {
+    public TokenRefreshResponseDto refreshAccessToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 없습니다.");
         }
@@ -715,7 +718,7 @@ public class UserServiceImpl implements UserService {
             // 4. 새로운 액세스 토큰 생성
             String newAccessToken = jwtUtil.createAccessToken(user.getUserId(), role, authType);
 
-            return new com.recode.Dwaeji.user.dto.TokenRefreshResponseDto(newAccessToken, "새로운 액세스 토큰이 발급되었습니다.");
+            return new TokenRefreshResponseDto(newAccessToken, "새로운 액세스 토큰이 발급되었습니다.");
             
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.");
@@ -726,7 +729,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir) {
+    public Page<UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -734,17 +737,19 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 직원 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, true);
+        Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, true, isActive);
 
-        org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage = 
+        boolean canAccessArchive = requester.getUserType() != null && requester.getUserType().getUtCanAccessArchive() != null && requester.getUserType().getUtCanAccessArchive() == 1;
+
+        Page<UserWithSeqProjection> projPage = 
                 userRepository.searchWorkersNative(isActive, workPlaceIdx, userName, pageable);
 
-        return mapUserProjectionsWithNameCount(projPage);
+        return mapUserProjectionsWithNameCount(projPage, canAccessArchive);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive, String sortBy, String sortDir) {
+    public Page<UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive, String sortBy, String sortDir) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -752,20 +757,20 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 관리자 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, false);
+        Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, false, isActive);
 
-        org.springframework.data.domain.Page<User> users;
+        Page<User> users;
         if (isActive == null) {
             users = userRepository.findAllWorkersFetch(1, pageable);
         } else {
             users = userRepository.findWorkersFetch(1, isActive, pageable);
         }
-        return users.map(com.recode.Dwaeji.user.dto.UserInfoDto::fromEntity);
+        return users.map(UserInfoDto::fromEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir) {
+    public Page<UserInfoDto> getAllEmployees(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
@@ -773,30 +778,37 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 전체 직원 목록을 조회할 수 있습니다.");
         }
 
-        org.springframework.data.domain.Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, true);
+        Pageable pageable = buildAdminUserPageable(page, size, sortBy, sortDir, true, isActive);
 
-        org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage =
+        boolean canAccessArchive = requester.getUserType() != null && requester.getUserType().getUtCanAccessArchive() != null && requester.getUserType().getUtCanAccessArchive() == 1;
+
+        Page<UserWithSeqProjection> projPage =
                 userRepository.searchAllEmployeesNative(isActive, workPlaceIdx, userName, pageable);
 
-        return mapUserProjectionsWithNameCount(projPage);
+        return mapUserProjectionsWithNameCount(projPage, canAccessArchive);
     }
 
     /**
      * nameSeq = 동일 실명 활성 인원 수.
      * 동명이인 N명이면 전원(첫 조회분 포함) nameSeq = N (&gt; 1) → Front #userIdx 배지.
      */
-    private org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto> mapUserProjectionsWithNameCount(
-            org.springframework.data.domain.Page<com.recode.Dwaeji.user.repository.UserWithSeqProjection> projPage) {
+    private Page<UserInfoDto> mapUserProjectionsWithNameCount(
+            Page<UserWithSeqProjection> projPage, boolean canAccessArchive) {
         java.util.Map<Long, Long> nameCountByUserIdx = new java.util.HashMap<>();
-        for (com.recode.Dwaeji.user.repository.UserWithSeqProjection p : projPage.getContent()) {
+        for (UserWithSeqProjection p : projPage.getContent()) {
             if (p.getUserIdx() == null) continue;
             nameCountByUserIdx.computeIfAbsent(p.getUserIdx(), id -> {
                 Long c = userRepository.findNameSeqByUserIdx(id);
                 return (c != null && c > 0) ? c : 1L;
             });
         }
+        
+        java.time.LocalDateTime oneYearAgo = java.time.LocalDateTime.now().minusYears(1);
 
         return projPage.map(p -> {
+            String userName = p.getUserName();
+            String userPhone = p.getUserPhone();
+            String userBank = p.getUserBank();
             String hasAccount = (p.getUserAccountNumber() != null && !p.getUserAccountNumber().trim().isEmpty() && !p.getUserAccountNumber().equals("기재")) ? "기재" : null;
             if (p.getUserAccountNumber() != null && p.getUserAccountNumber().equals("기재")) {
                 hasAccount = "기재";
@@ -805,13 +817,30 @@ public class UserServiceImpl implements UserService {
                     ? nameCountByUserIdx.getOrDefault(p.getUserIdx(), 1L)
                     : 1L;
 
-            return com.recode.Dwaeji.user.dto.UserInfoDto.builder()
+            if (p.getUserIsActive() != null && p.getUserIsActive() == 0 && p.getUserWithdrawnAt() != null) {
+                if (p.getUserWithdrawnAt().isBefore(oneYearAgo) && !canAccessArchive) {
+                    if (userName != null && !userName.isEmpty()) {
+                        userName = "***";
+                    }
+                    if (userPhone != null && !userPhone.isEmpty()) {
+                        userPhone = "***";
+                    }
+                    if (userBank != null && !userBank.isEmpty()) {
+                        userBank = "***";
+                    }
+                    if (hasAccount != null) {
+                        hasAccount = "***";
+                    }
+                }
+            }
+
+            return UserInfoDto.builder()
                     .userIdx(p.getUserIdx())
                     .userId(p.getUserId())
-                    .userName(p.getUserName())
+                    .userName(userName)
                     .userEmail(p.getUserEmail())
                     .userBirth(p.getUserBirth())
-                    .userPhone(p.getUserPhone())
+                    .userPhone(userPhone)
                     .userTypeName(p.getUserTypeName())
                     .fkUtIdx(p.getFkUtIdx())
                     .workPlaceName(p.getWorkPlaceName())
@@ -819,7 +848,7 @@ public class UserServiceImpl implements UserService {
                     .userIsActive(p.getUserIsActive())
                     .userAccountName(p.getUserAccountName())
                     .userAccountNumber(hasAccount)
-                    .userBank(p.getUserBank())
+                    .userBank(userBank)
                     .userHourlyWage(p.getUserHourlyWage())
                     .userWithdrawnAt(p.getUserWithdrawnAt())
                     .isAdmin(p.getIsAdmin())
@@ -830,7 +859,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateMyBankInfo(String requesterId, com.recode.Dwaeji.user.dto.BankInfoUpdateDto dto) {
+    public void updateMyBankInfo(String requesterId, BankInfoUpdateDto dto) {
         User user = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
 
@@ -878,7 +907,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void changePassword(String requesterId, com.recode.Dwaeji.user.dto.ChangePasswordDto dto) {
+    public void changePassword(String requesterId, ChangePasswordDto dto) {
         User user = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
 
@@ -907,103 +936,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public java.util.List<com.recode.Dwaeji.user.dto.UserTypeDto> getAllUserTypes() {
+    public java.util.List<UserTypeDto> getAllUserTypes() {
         return userTypeRepository.findAll().stream()
-                .map(com.recode.Dwaeji.user.dto.UserTypeDto::fromEntity)
+                .map(UserTypeDto::fromEntity)
                 .collect(java.util.stream.Collectors.toList());
-    }
-
-    @Override
-    @Transactional
-    public org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.ArchivedUserDto> getArchivedUsers(String requesterId, String reason, String ip, int page, int size) {
-        User requester = userRepository.findByUserId(requesterId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
-        if (requester.getUserType() == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 그룹이 설정되지 않아 아카이브 데이터 열람 권한이 없습니다.");
-        }
-        Integer canAccessArchive = requester.getUserType().getUtCanAccessArchive();
-        if (canAccessArchive == null || canAccessArchive != 1) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아카이브 데이터 열람 권한이 없습니다.");
-        }
-        
-        if (reason == null || reason.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회 사유를 반드시 입력해야 합니다.");
-        }
-        
-        // 접근 로그 기록 (비동기 처리가 좋지만 일단 동기 처리)
-        com.recode.Dwaeji.user.database.ArchiveAccessLog log = com.recode.Dwaeji.user.database.ArchiveAccessLog.builder()
-                .accessorUserIdx(requester.getUserIdx())
-                .accessorIp(ip)
-                .accessReason(reason)
-                .build();
-        archiveAccessLogRepository.save(log);
-
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
-        return archivedUserRepository.findAll(pageable)
-                .map(com.recode.Dwaeji.user.dto.ArchivedUserDto::fromEntity);
-    }
-
-    @Override
-    @Transactional
-    public void restoreArchivedUser(String requesterId, Long originalUserIdx) {
-        User requester = userRepository.findByUserId(requesterId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
-        if (requester.getUserType() == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 그룹이 설정되지 않아 아카이브 데이터 복구 권한이 없습니다.");
-        }
-        Integer canAccessArchive = requester.getUserType().getUtCanAccessArchive();
-        if (canAccessArchive == null || canAccessArchive != 1) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아카이브 데이터 복구 권한이 없습니다.");
-        }
-
-        com.recode.Dwaeji.user.database.ArchivedUser archivedUser = archivedUserRepository.findById(originalUserIdx)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "아카이빙된 유저를 찾을 수 없습니다."));
-
-        User originalUser = userRepository.findById(originalUserIdx)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "원본 유저 레코드를 찾을 수 없습니다. (데이터 정합성 오류)"));
-
-        // 복구 전, 동일한 ID를 누군가(혹은 본인이) 새로 가입해서 선점했는지 최종 확인
-        if (userRepository.findByUserId(archivedUser.getUserId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 아이디가 이미 새로운 회원에 의해 사용 중입니다. 복구할 수 없습니다.");
-        }
-
-        // 복구: 마스킹 해제 및 활성화
-        originalUser.setUserId(archivedUser.getUserId());
-        originalUser.setUserName(archivedUser.getUserName());
-        originalUser.setUserPhone(archivedUser.getUserPhone());
-        originalUser.setUserEmail(archivedUser.getUserEmail());
-        originalUser.setUserBirth(archivedUser.getUserBirth());
-        originalUser.setUserAccountNumber(archivedUser.getUserAccountNumber());
-        originalUser.setUserAccountName(archivedUser.getUserAccountName());
-        originalUser.setUserBank(archivedUser.getUserBank());
-        originalUser.setUserIsActive(1);
-        originalUser.setUserWithdrawnAt(null);
-        userRepository.save(originalUser);
-
-        // 아카이브 데이터 완전 삭제
-        archivedUserRepository.delete(archivedUser);
-    }
-
-    @Override
-    @Transactional
-    public void hardDeleteArchivedUser(String requesterId, Long originalUserIdx) {
-        User requester = userRepository.findByUserId(requesterId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
-        if (requester.getUserType() == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "권한 그룹이 설정되지 않아 아카이브 데이터 완전 파기 권한이 없습니다.");
-        }
-        Integer canAccessArchive = requester.getUserType().getUtCanAccessArchive();
-        if (canAccessArchive == null || canAccessArchive != 1) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아카이브 데이터 완전 파기 권한이 없습니다.");
-        }
-
-        com.recode.Dwaeji.user.database.ArchivedUser archivedUser = archivedUserRepository.findById(originalUserIdx)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "아카이빙된 유저를 찾을 수 없습니다."));
-
-        archivedUserRepository.delete(archivedUser);
     }
 
     @Override
@@ -1033,7 +969,7 @@ public class UserServiceImpl implements UserService {
 
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
             String[] headers = {"No", "소속", "이름", "아이디", "시급", "연락처", "상태"};
-            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
+            var dark = ExcelDarkTheme.create(workbook);
             for (Map.Entry<String, List<User>> e : byWp.entrySet()) {
                 org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet(e.getKey());
                 org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
@@ -1052,7 +988,7 @@ public class UserServiceImpl implements UserService {
                     row.createCell(6).setCellValue(status);
                 }
                 for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
-                com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, Math.max(r - 1, 0), headers.length);
+                ExcelDarkTheme.apply(sheet, dark, Math.max(r - 1, 0), headers.length);
             }
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             workbook.write(out);
@@ -1069,42 +1005,47 @@ public class UserServiceImpl implements UserService {
      * native=false: JPQL paths — userName / workPlace.wpName / userIsActive
      * 기본: userName ASC, userIdx ASC
      */
-    private org.springframework.data.domain.Pageable buildAdminUserPageable(
-            int page, int size, String sortBy, String sortDir, boolean nativeQuery) {
-        org.springframework.data.domain.Sort.Direction direction =
+    private Pageable buildAdminUserPageable(
+            int page, int size, String sortBy, String sortDir, boolean nativeQuery, Integer isActive) {
+        Sort.Direction direction =
                 "desc".equalsIgnoreCase(sortDir)
-                        ? org.springframework.data.domain.Sort.Direction.DESC
-                        : org.springframework.data.domain.Sort.Direction.ASC;
+                        ? Sort.Direction.DESC
+                        : Sort.Direction.ASC;
 
         String key = sortBy == null ? "" : sortBy.trim().toLowerCase();
-        org.springframework.data.domain.Sort sort;
+        
+        if (isActive != null && isActive == 0 && key.isEmpty()) {
+            direction = Sort.Direction.DESC;
+        }
+        
+        Sort sort;
         if (nativeQuery) {
             String primary = switch (key) {
                 case "branch" -> "wp.wp_name";
                 case "status" -> "numbered_u.user_is_active";
                 case "name" -> "numbered_u.user_name";
-                default -> "numbered_u.user_name";
+                default -> (isActive != null && isActive == 0) ? "numbered_u.user_withdrawn_at" : "numbered_u.user_name";
             };
             // native: domain property 검증 우회, 화이트리스트 SQL만
-            sort = org.springframework.data.jpa.domain.JpaSort.unsafe(
-                            org.springframework.data.domain.Sort.Direction.DESC, "ut.ut_is_admin")
-                    .and(org.springframework.data.jpa.domain.JpaSort.unsafe(direction, primary))
-                    .and(org.springframework.data.jpa.domain.JpaSort.unsafe(
-                            org.springframework.data.domain.Sort.Direction.ASC, "numbered_u.user_idx"));
+            sort = JpaSort.unsafe(
+                            Sort.Direction.DESC, "ut.ut_is_admin")
+                    .and(JpaSort.unsafe(direction, primary))
+                    .and(JpaSort.unsafe(
+                            Sort.Direction.ASC, "numbered_u.user_idx"));
         } else {
             String primary = switch (key) {
                 case "branch" -> "workPlace.wpName";
                 case "status" -> "userIsActive";
                 case "name" -> "userName";
-                default -> "userName";
+                default -> (isActive != null && isActive == 0) ? "userWithdrawnAt" : "userName";
             };
-            sort = org.springframework.data.domain.Sort
-                    .by(org.springframework.data.domain.Sort.Direction.DESC, "userType.utIsAdmin")
-                    .and(org.springframework.data.domain.Sort.by(direction, primary))
-                    .and(org.springframework.data.domain.Sort.by(
-                            org.springframework.data.domain.Sort.Direction.ASC, "userIdx"));
+            sort = Sort
+                    .by(Sort.Direction.DESC, "userType.utIsAdmin")
+                    .and(Sort.by(direction, primary))
+                    .and(Sort.by(
+                            Sort.Direction.ASC, "userIdx"));
         }
-        return org.springframework.data.domain.PageRequest.of(page, size, sort);
+        return PageRequest.of(page, size, sort);
     }
 
     private boolean isPhoneDuplicated(String userPhone, Long excludeUserIdx) {

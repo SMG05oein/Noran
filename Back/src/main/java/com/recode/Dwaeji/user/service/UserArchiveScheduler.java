@@ -1,8 +1,6 @@
 package com.recode.Dwaeji.user.service;
 
-import com.recode.Dwaeji.user.database.ArchivedUser;
 import com.recode.Dwaeji.user.database.User;
-import com.recode.Dwaeji.user.repository.ArchivedUserRepository;
 import com.recode.Dwaeji.user.repository.RefreshTokenRepository;
 import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
@@ -31,7 +29,6 @@ public class UserArchiveScheduler {
     private UserArchiveScheduler self;
 
     private final UserRepository userRepository;
-    private final ArchivedUserRepository archivedUserRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final WorkRecordRepository workRecordRepository;
     private final WorkRecordHistoryRepository workRecordHistoryRepository;
@@ -66,17 +63,6 @@ public class UserArchiveScheduler {
 
 
         log.info("퇴사 5년 경과 사용자 자동 파기 완료. 총 {}명 삭제됨.", count);
-
-        // 과거 남은 ArchivedUser가 있다면 만료된 건 정리
-        try {
-            List<ArchivedUser> oldArchives = archivedUserRepository.findByDestroyDueAtBefore(LocalDateTime.now());
-            if (!oldArchives.isEmpty()) {
-                self.deleteArchivedUsersInNewTransaction(oldArchives);
-                log.info("기존 아카이브 보존 만료 유저 {}명 파기 완료.", oldArchives.size());
-            }
-        } catch (Exception e) {
-            log.error("기존 아카이브 데이터 정리 중 오류: {}", e.getMessage());
-        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -100,11 +86,6 @@ public class UserArchiveScheduler {
 
         // 사용자 완전 파기
         userRepository.delete(user);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void deleteArchivedUsersInNewTransaction(List<ArchivedUser> oldArchives) {
-        archivedUserRepository.deleteAll(oldArchives);
     }
 
     /**

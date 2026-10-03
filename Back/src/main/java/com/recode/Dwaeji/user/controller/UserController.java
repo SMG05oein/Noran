@@ -1,9 +1,8 @@
 package com.recode.Dwaeji.user.controller;
 
-import com.recode.Dwaeji.user.dto.LoginRequestDto;
-import com.recode.Dwaeji.user.dto.LoginResponseDto;
-import com.recode.Dwaeji.user.dto.SignupRequestDto;
-import com.recode.Dwaeji.user.dto.UserUpdateDto;
+import com.recode.Dwaeji.user.dto.*;
+import org.springframework.data.domain.*;
+import java.util.*;
 import com.recode.Dwaeji.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -150,25 +149,25 @@ public class UserController {
 
     @Operation(summary = "내 정보 조회", description = "현재 로그인된 사용자의 상세 정보를 조회합니다.")
     @GetMapping("/me")
-    public ResponseEntity<com.recode.Dwaeji.user.dto.UserInfoDto> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<UserInfoDto> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             return ResponseEntity.status(401).build();
         }
         String requesterId = userDetails.getUsername();
-        com.recode.Dwaeji.user.dto.UserInfoDto userInfo = userService.getUserInfo(requesterId);
+        UserInfoDto userInfo = userService.getUserInfo(requesterId);
         return ResponseEntity.ok(userInfo);
     }
 
     @Operation(summary = "특정 유저 정보 조회", description = "특정 사용자의 상세 정보(마스킹됨)를 조회합니다. 관리자이거나 본인일 경우에만 조회 가능합니다.")
     @GetMapping("/{userIdx}")
-    public ResponseEntity<com.recode.Dwaeji.user.dto.UserInfoDto> getUserInfoByIdx(
+    public ResponseEntity<UserInfoDto> getUserInfoByIdx(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
         if (userDetails == null) {
             return ResponseEntity.status(401).build();
         }
         String requesterId = userDetails.getUsername();
-        com.recode.Dwaeji.user.dto.UserInfoDto userInfo = userService.getUserInfoByIdx(requesterId, userIdx);
+        UserInfoDto userInfo = userService.getUserInfoByIdx(requesterId, userIdx);
         return ResponseEntity.ok(userInfo);
     }
 
@@ -176,7 +175,7 @@ public class UserController {
     @PutMapping("/bulk-update")
     public ResponseEntity<String> bulkUpdateUsers(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody com.recode.Dwaeji.user.dto.UserBulkUpdateDto dto) {
+            @RequestBody UserBulkUpdateDto dto) {
         if (userDetails == null) return ResponseEntity.status(401).body("로그인이 필요합니다.");
         userService.bulkUpdateUsers(userDetails.getUsername(), dto);
         return ResponseEntity.ok("선택한 유저들의 정보가 성공적으로 일괄 업데이트되었습니다.");
@@ -184,22 +183,22 @@ public class UserController {
 
     @Operation(summary = "토큰 재발급", description = "HttpOnly 쿠키로 전달된 리프레시 토큰을 확인하여 새로운 액세스 토큰을 발급합니다.")
     @PostMapping("/refresh")
-    public ResponseEntity<com.recode.Dwaeji.user.dto.TokenRefreshResponseDto> refresh(
+    public ResponseEntity<TokenRefreshResponseDto> refresh(
             @org.springframework.web.bind.annotation.CookieValue(value = "refreshToken", required = false) String refreshToken) {
-        com.recode.Dwaeji.user.dto.TokenRefreshResponseDto response = userService.refreshAccessToken(refreshToken);
+        TokenRefreshResponseDto response = userService.refreshAccessToken(refreshToken);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "직급(UserType) 목록 조회", description = "전체 직급(UserType) 목록을 조회합니다.")
     @GetMapping("/user-types")
-    public ResponseEntity<java.util.List<com.recode.Dwaeji.user.dto.UserTypeDto>> getAllUserTypes() {
+    public ResponseEntity<java.util.List<UserTypeDto>> getAllUserTypes() {
         return ResponseEntity.ok(userService.getAllUserTypes());
     }
 
 
     @Operation(summary = "일반 직원 검색", description = "관리자 전용. 이름, 소속 지점으로 알바생(직원)을 검색하고 10명 단위로 페이징하여 조회합니다. sortBy=name|branch|status")
     @GetMapping("/admin/workers")
-    public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> searchWorkers(
+    public ResponseEntity<Page<UserInfoDto>> searchWorkers(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) String userName,
             @RequestParam(required = false) Long workPlaceIdx,
@@ -214,7 +213,7 @@ public class UserController {
 
     @Operation(summary = "관리자 목록 조회", description = "관리자 전용. 관리자 계정만 10명 단위로 페이징하여 조회합니다. sortBy=name|branch|status")
     @GetMapping("/admin/managers")
-    public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> getManagers(
+    public ResponseEntity<Page<UserInfoDto>> getManagers(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -227,7 +226,7 @@ public class UserController {
 
     @Operation(summary = "전체 직원 조회", description = "관리자 전용. 직급과 무관하게 전체 직원을 페이징하여 조회합니다. sortBy=name|branch|status")
     @GetMapping("/admin/all")
-    public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.UserInfoDto>> getAllEmployees(
+    public ResponseEntity<Page<UserInfoDto>> getAllEmployees(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) String userName,
             @RequestParam(required = false) Long workPlaceIdx,
@@ -268,7 +267,7 @@ public class UserController {
     @PostMapping("/me/change-password")
     public ResponseEntity<String> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody com.recode.Dwaeji.user.dto.ChangePasswordDto changePasswordDto) {
+            @RequestBody ChangePasswordDto changePasswordDto) {
 
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
@@ -280,7 +279,7 @@ public class UserController {
 
     @Operation(summary = "내 계좌 원문 조회", description = "본인에 한해 마스킹되지 않은 계좌 원문을 조회합니다.")
     @GetMapping("/me/account-details")
-    public ResponseEntity<com.recode.Dwaeji.user.dto.AccountDetailsDto> getMyAccountDetails(
+    public ResponseEntity<AccountDetailsDto> getMyAccountDetails(
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             return ResponseEntity.status(401).build();
@@ -293,7 +292,7 @@ public class UserController {
     @PutMapping("/me/bank-info")
     public ResponseEntity<String> updateMyBankInfo(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody com.recode.Dwaeji.user.dto.BankInfoUpdateDto dto) {
+            @RequestBody BankInfoUpdateDto dto) {
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -304,7 +303,7 @@ public class UserController {
 
     @Operation(summary = "유저 민감 정보 조회", description = "관리자 전용. 특정 유저의 마스킹되지 않은 민감 정보를 조회합니다.")
     @GetMapping("/{userIdx}/sensitive-info")
-    public ResponseEntity<com.recode.Dwaeji.user.dto.SensitiveInfoDto> getSensitiveInfo(
+    public ResponseEntity<SensitiveInfoDto> getSensitiveInfo(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
         if (userDetails == null) {
@@ -319,7 +318,7 @@ public class UserController {
     public ResponseEntity<String> updateSensitiveInfo(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx,
-            @RequestBody com.recode.Dwaeji.user.dto.SensitiveInfoDto dto) {
+            @RequestBody SensitiveInfoDto dto) {
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -331,44 +330,11 @@ public class UserController {
     @PostMapping("/admin/register")
     public ResponseEntity<java.util.Map<String, Object>> adminRegisterUser(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody com.recode.Dwaeji.user.dto.AdminRegisterRequestDto dto) {
+            @Valid @RequestBody AdminRegisterRequestDto dto) {
         if (userDetails == null) {
             return ResponseEntity.status(401).body(java.util.Map.of("success", false, "msg", "로그인이 필요합니다."));
         }
         userService.adminRegisterUser(userDetails.getUsername(), dto);
         return ResponseEntity.status(201).body(java.util.Map.of("success", true, "data", "직원이 성공적으로 등록되었습니다."));
     }
-    @Operation(summary = "아카이빙된 유저 조회", description = "관리자 전용. 1년 이상 경과하여 아카이빙된 유저 목록을 조회합니다. 조회 시 사유를 반드시 입력해야 합니다.")
-    @GetMapping("/admin/archived-workers")
-    public ResponseEntity<org.springframework.data.domain.Page<com.recode.Dwaeji.user.dto.ArchivedUserDto>> getArchivedUsers(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam String reason,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            jakarta.servlet.http.HttpServletRequest request) {
-        if (userDetails == null) return ResponseEntity.status(401).build();
-        String ip = request.getRemoteAddr();
-        return ResponseEntity.ok(userService.getArchivedUsers(userDetails.getUsername(), reason, ip, page, size));
-    }
-
-    @Operation(summary = "아카이빙 유저 영구 삭제", description = "아카이빙된 유저를 DB에서 영구적으로 파기합니다.")
-    @DeleteMapping("/admin/archived-workers/{userIdx}")
-    public ResponseEntity<String> hardDeleteArchivedUser(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long userIdx) {
-        if (userDetails == null) return ResponseEntity.status(401).body("로그인이 필요합니다.");
-        userService.hardDeleteArchivedUser(userDetails.getUsername(), userIdx);
-        return ResponseEntity.ok("아카이브 데이터가 영구 파기되었습니다.");
-    }
-
-    @Operation(summary = "아카이빙 유저 복구(재입사 등)", description = "아카이빙된 유저를 다시 활성 유저로 복구합니다.")
-    @PostMapping("/admin/archived-workers/{userIdx}/restore")
-    public ResponseEntity<String> restoreArchivedUser(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long userIdx) {
-        if (userDetails == null) return ResponseEntity.status(401).body("로그인이 필요합니다.");
-        userService.restoreArchivedUser(userDetails.getUsername(), userIdx);
-        return ResponseEntity.ok("회원이 복구되었습니다.");
-    }
 }
-

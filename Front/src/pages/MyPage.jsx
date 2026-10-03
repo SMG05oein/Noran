@@ -353,7 +353,11 @@ const MyPage = () => {
           <div className="fw-bold text-muted small mb-3 d-flex align-items-center gap-1">
             <RiEdit2Line className="text-primary" /> 계정, 연락처, 급여 정보 관리
           </div>
+          {userInfo?.userIsActive === 0 && (
+            <Alert variant="danger" className="py-2 small fw-bold">퇴사자의 정보는 보호를 위해 수정할 수 없습니다.</Alert>
+          )}
           <Form onSubmit={handleUpdate}>
+            <fieldset disabled={userInfo?.userIsActive === 0}>
             <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">이름 <span className="text-danger">*</span></Form.Label>
               <Form.Control type="text" value={userName} onChange={handleUserNameChange} required ref={userNameRef} className="custom-input" />
@@ -450,13 +454,14 @@ const MyPage = () => {
             </Form.Group>
 
             <div className="d-flex gap-2 flex-wrap">
-              <Button disabled={saving} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2 rounded-3 shadow-sm">
+              <Button disabled={saving || userInfo?.userIsActive === 0} variant="primary" type="submit" className="flex-grow-1 fw-bold py-2 rounded-3 shadow-sm" title={userInfo?.userIsActive === 0 ? "퇴사자의 정보는 수정할 수 없습니다." : ""}>
                 {saving ? <Spinner as="span" animation="border" size="sm" /> : "수정"}
               </Button>
               <Button variant="outline-secondary" className="fw-bold py-2 px-3 rounded-3" onClick={() => setShowPwModal(true)} type="button">
                 <RiLockPasswordLine className="me-1" /> 비밀번호 변경
               </Button>
             </div>
+            </fieldset>
           </Form>
         </Card.Body>
       </Card>
@@ -508,7 +513,7 @@ const MyPage = () => {
           <p className="fw-bold text-dark mb-2">정말로 해당 서비스를 탈퇴하시겠습니까?</p>
           <ul className="text-muted small ps-3 mb-4">
             <li>탈퇴 시 계정은 즉시 비활성화되어 로그인할 수 없습니다.</li>
-            <li>근로기준법 및 관련 법령에 따라 급여 정산 및 근태 기록은 법정 기간(3년) 동안 보관 후 파기됩니다.</li>
+            <li>관련 법령(국세기본법, 근로기준법 등)에 따라 급여 정산 및 근태 기록은 최대 5년 동안 보관 후 파기됩니다.</li>
             <li>이 작업은 되돌릴 수 없습니다.</li>
           </ul>
 

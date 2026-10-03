@@ -37,22 +37,13 @@ const ConsentPolicy = () => {
                   <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>근태관리 및 근무 스케줄 배정</strong></td>
                   <td>근무일, 출퇴근 시각, 휴게시간, 해당 근무지, 주간/일별 신청일</td>
-                  <td><strong>근로관계 종료 후 3년 (근로기준법)</strong></td>
+                  <td><strong>관계 법령(국세기본법 등)에 따라 최대 5년간 보관한 후 파기합니다.</strong></td>
                 </tr>
                 <tr>
                   <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>급여 정산 및 지급, 세무 신고</strong></td>
                   <td>은행명, 예금주명, 계좌번호</td>
-                  <td>
-                    <strong>근로계약 종료 후 근로기준법 등 관계 법령이 정하는 보존기간(최대 3년) 동안 보관한 후 파기합니다.</strong>
-                    <br /><span className="text-muted" style={{fontSize: '0.8rem'}}>(※ 단, 필요한 경우 세무 관련 증빙자료는 소득세법 등에 따라 최대 5년 보존)</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="text-center fw-bold text-danger">필수</td>
-                  <td><strong>서비스 환경 최적화 및 시스템 보안 (자동 수집)</strong></td>
-                  <td>접속 기기 정보(OS), 브라우저 정보(User Agent), 접속 IP 주소, 서비스 이용 기록</td>
-                  <td><strong>관계 법령(통신비밀보호법 등)에 따라 최대 1년간 보관 후 파기</strong></td>
+                  <td><strong>관계 법령(국세기본법 등)에 따라 최대 5년간 보관한 후 파기합니다.</strong></td>
                 </tr>
                 <tr>
                   <td className="text-center text-primary fw-bold">선택</td>
@@ -63,9 +54,14 @@ const ConsentPolicy = () => {
               </tbody>
             </table>
           </div>
-          <p className="small text-muted mb-4">
-            * <strong>파기 원칙:</strong> 원칙적으로 개인정보의 수집 및 이용 목적이 달성된 후(또는 명시된 보유기간 경과 후)에는 해당 정보를 지체 없이(5일 이내) 파기합니다.
-          </p>
+          <div className="bg-light p-3 rounded mb-4">
+            <p className="small text-muted mb-2">
+              * <strong>파기 원칙:</strong> 원칙적으로 개인정보의 수집 및 이용 목적이 달성된 후(또는 명시된 보유기간 경과 후)에는 해당 정보를 지체 없이(5일 이내) 파기합니다.
+            </p>
+            <p className="small text-muted mb-0">
+              * <strong>고유식별정보(주민등록번호 등) 처리 안내:</strong> 회사는 정보주체의 소중한 개인정보 보호 및 보안 리스크 최소화를 위하여 본 전자 시스템을 통한 고유식별정보(주민등록번호, 외국인등록번호 등)의 수집을 원천적으로 배제하고 있습니다. 원천세 신고 등 관련 법령에 따라 필수적으로 요구되는 고유식별정보는 본 전산 시스템을 거치지 않고, 근로계약 체결 시 서면(종이 문서) 등 물리적 채널을 통해 별도로 분리하여 안전하게 수집 및 엄격히 관리됩니다.
+            </p>
+          </div>
 
           <h5 className="fw-bold mt-4 mb-3">2. 동의를 거부할 권리 및 불이익</h5>
           <p className="small text-muted mb-4">

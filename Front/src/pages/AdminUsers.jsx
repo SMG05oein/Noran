@@ -194,11 +194,11 @@ const AdminUsers = () => {
 
   const resolveAccountCell = (u) => {
     if (!hasAccountOnList(u.userAccountNumber)) return '미기재';
-    if (!accountPlainVisible) return '기재';
+    if (!accountPlainVisible) return u.userAccountNumber;
     const plain = accountPlainByIdx[u.userIdx];
     if (plain != null && plain !== '') return plain;
     if (accountPlainLoading) return '…';
-    return '기재';
+    return u.userAccountNumber;
   };
 
   const loadUsers = async (skipCache = false) => {
@@ -391,10 +391,12 @@ const AdminUsers = () => {
     if (!res.success) alert(res.error || '엑셀 다운로드에 실패했습니다.');
   };
 
+  const selectableUsers = users.filter(u => u.userIsActive !== 0);
+
   // 체크박스 제어
   const toggleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedUserIdxs(new Set(users.map(u => u.userIdx)));
+      setSelectedUserIdxs(new Set(selectableUsers.map(u => u.userIdx)));
     } else {
       setSelectedUserIdxs(new Set());
     }
@@ -409,7 +411,7 @@ const AdminUsers = () => {
     });
   };
 
-  const isAllSelected = users.length > 0 && selectedUserIdxs.size === users.length;
+  const isAllSelected = selectableUsers.length > 0 && selectedUserIdxs.size === selectableUsers.length;
 
   const handleOpenBulkModal = () => {
     setBulkStatus('');
@@ -509,7 +511,7 @@ const AdminUsers = () => {
         userAccountName: editAccountName,
         userHourlyWage: editWage ? Number(editWage) : null
       };
-      if (editAccountNo !== '기재') {
+      if (!editAccountNo?.startsWith('기재')) {
         sensitivePayload.userAccountNumber = editAccountNo;
       }
       resSensitive = await updateSensitiveInfo(editUser.userIdx, sensitivePayload);
@@ -757,6 +759,11 @@ const AdminUsers = () => {
             </div>
           </div>
           {copyToast && <Alert variant="success" className="py-2 mt-2 mb-0">{copyToast}</Alert>}
+          {activeStatus === 'INACTIVE' && (
+            <Alert variant="warning" className="py-2 mt-3 mb-0 small text-dark" style={{ fontSize: '0.85rem' }}>
+              <span className="fw-bold">※ 개인정보 보호를 위해 퇴사 후 1년이 경과한 직원의 신상 정보는 마스킹 처리되며, 원본은 권한이 있는 자만 조회할 수 있습니다.</span>
+            </Alert>
+          )}
         </div>
 
         {loading ? <Loading /> : (
@@ -798,15 +805,16 @@ const AdminUsers = () => {
                       {users.map((u, idx) => (
                         <tr key={u.userIdx} className={u.userIsActive === 0 ? 'table-secondary text-muted' : u.userIsActive === 2 ? 'table-leave text-muted' : ''}>
                           <td>
-                            <Form.Check type="checkbox" checked={selectedUserIdxs.has(u.userIdx)} onChange={() => toggleSelectUser(u.userIdx)} />
+                            <Form.Check type="checkbox" checked={selectedUserIdxs.has(u.userIdx)} onChange={() => toggleSelectUser(u.userIdx)} disabled={u.userIsActive === 0} title={u.userIsActive === 0 ? '퇴사자는 일괄 수정할 수 없습니다.' : ''} />
                           </td>
                           <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
                           <td className="fw-bold">{u.workPlaceName || '-'}</td>
                           <td className="fw-bold">
                             <span
-                              className="text-primary"
-                              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                              className={u.userIsActive === 0 ? "text-secondary" : "text-primary"}
+                              style={{ cursor: u.userIsActive === 0 ? 'not-allowed' : 'pointer', textDecoration: u.userIsActive === 0 ? 'none' : 'underline' }}
                               onClick={() => openEditModal(u)}
+                              title={u.userIsActive === 0 ? "퇴사자의 정보는 수정할 수 없습니다." : "클릭하여 상세 조회 및 수정"}
                             >
                               {u.userName}
                               {Number(u.nameSeq) > 1 && u.userIdx != null && (
@@ -949,15 +957,18 @@ const AdminUsers = () => {
         <Modal.Body>
           {editError && <Alert variant="danger" className="py-2">{editError}</Alert>}
           {editSuccess && <Alert variant="success" className="py-2">{editSuccess}</Alert>}
+          {editUser?.userIsActive === 0 && (
+            <Alert variant="danger" className="py-2 small fw-bold">퇴사자의 정보는 보호를 위해 수정할 수 없습니다. (열람만 가능)</Alert>
+          )}
 
           <div className="row">
             <div className="col-md-6">
               <div className="fw-bold text-primary mb-2 border-bottom pb-2">기본 정보</div>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이름</Form.Label><Form.Control value={editUserName} onChange={e => setEditUserName(e.target.value)} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이메일</Form.Label><Form.Control type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">전화번호</Form.Label><Form.Control value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))} /></Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이름</Form.Label><Form.Control value={editUserName} onChange={e => setEditUserName(e.target.value)} disabled={editUser?.userIsActive === 0} /></Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이메일</Form.Label><Form.Control type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} disabled={editUser?.userIsActive === 0} /></Form.Group>
+              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">전화번호</Form.Label><Form.Control value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))} disabled={editUser?.userIsActive === 0} /></Form.Group>
               <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
-                <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))}>
+                <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))} disabled={editUser?.userIsActive === 0}>
                   {branches.filter(b => b.wpIdx !== '').map(b => <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>)}
                 </Form.Select>
               </Form.Group>
@@ -966,7 +977,7 @@ const AdminUsers = () => {
                 <Form.Select
                   value={editFkUtIdx}
                   onChange={e => setEditFkUtIdx(e.target.value)}
-                  disabled={Number(editUser?.userIdx) === Number(me?.userIdx)}
+                  disabled={Number(editUser?.userIdx) === Number(me?.userIdx) || editUser?.userIsActive === 0}
                 >
                   <option value="">직급 선택</option>
                   {userTypes.map(ut => <option key={ut.utIdx} value={String(ut.utIdx)}>{ut.utName}</option>)}
@@ -995,7 +1006,7 @@ const AdminUsers = () => {
                 <>
                   <Form.Group className="mb-3">
                     <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
-                    <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)} disabled={!canEditSensitive}>
+                    <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)} disabled={!canEditSensitive || editUser?.userIsActive === 0}>
                       <option value="">은행 선택</option>
                       {banks.map(bank => (
                         <option key={bank.bankCode || bank.code || bank.bankName} value={bank.bankCode || bank.code}>
@@ -1006,13 +1017,13 @@ const AdminUsers = () => {
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label className="fw-bold text-muted small">예금주명</Form.Label>
-                    <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" disabled={!canEditSensitive} />
+                    <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" disabled={!canEditSensitive || editUser?.userIsActive === 0} />
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
                     <InputGroup>
-                      <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="계좌번호 입력" disabled={!canEditSensitive || (editAccountNo === '기재' && !sensitiveDataLoaded)} />
-                      {canViewSensitive && !sensitiveDataLoaded && editAccountNo === '기재' && (
+                      <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="계좌번호 입력" disabled={!canEditSensitive || (editAccountNo?.startsWith('기재') && !sensitiveDataLoaded) || editUser?.userIsActive === 0} />
+                      {canViewSensitive && !sensitiveDataLoaded && editAccountNo?.startsWith('기재') && (
                         <Button variant="outline-danger" onClick={handleRevealSensitive} disabled={sensitiveLoading} className="fw-bold px-3">
                           {sensitiveLoading ? <Spinner size="sm" /> : '원문 조회'}
                         </Button>
@@ -1021,7 +1032,7 @@ const AdminUsers = () => {
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label className="fw-bold text-muted small">시급</Form.Label>
-                    <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" disabled={!canEditSensitive} />
+                    <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" disabled={!canEditSensitive || editUser?.userIsActive === 0} />
                   </Form.Group>
                 </>
               )}
@@ -1052,7 +1063,7 @@ const AdminUsers = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setEditUser(null)}>닫기</Button>
-          <Button variant="primary" onClick={handleEditSave} disabled={editSaving}>
+          <Button variant="primary" onClick={handleEditSave} disabled={editSaving || editUser?.userIsActive === 0}>
             {editSaving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
           </Button>
         </Modal.Footer>

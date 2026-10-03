@@ -30,29 +30,29 @@ const ConsentPolicy = () => {
                 <tr>
                   <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>서비스 회원가입 및 관리, 본인 식별, 불량회원 부정이용 방지</strong></td>
-                  <td>이름, 아이디, 비밀번호(접근제어용), 생년월일, 휴대전화번호, 소속 지점</td>
+                  <td>아이디, 이름, 비밀번호, 생년월일, 휴대전화번호, 사용자 유형/권한, 소속 근무지</td>
                   <td><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 보존 목적을 위해 최대 5년간 보관한 후 파기합니다.</strong></td>
                 </tr>
                 <tr>
                   <td className="text-center fw-bold text-danger">필수</td>
-                  <td><strong>시스템 보안, 트래픽 제어 및 비정상적 접근(부정이용) 차단</strong></td>
-                  <td>접속 IP 주소, 서비스 이용 기록 (자동 수집)</td>
-                  <td><strong>관계 법령(통신비밀보호법 등)에 따라 최대 1년간 보관 후 파기</strong></td>
-                </tr>
-                <tr>
-                  <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>근태관리 및 근무 스케줄 배정</strong></td>
-                  <td>출퇴근 시간, 휴게시간, 근무지, 배정 시간</td>
+                  <td>근무일, 출퇴근 시각, 휴게시간, 해당 근무지, 주간/일별 신청일</td>
                   <td><strong>근로관계 종료 후 3년 (근로기준법)</strong></td>
                 </tr>
                 <tr>
                   <td className="text-center fw-bold text-danger">필수</td>
                   <td><strong>급여 정산 및 지급, 세무 신고</strong></td>
-                  <td>은행명, 계좌번호, 예금주명</td>
+                  <td>은행명, 예금주명, 계좌번호</td>
                   <td>
                     <strong>근로계약 종료 후 근로기준법 등 관계 법령이 정하는 보존기간(최대 3년) 동안 보관한 후 파기합니다.</strong>
                     <br /><span className="text-muted" style={{fontSize: '0.8rem'}}>(※ 단, 필요한 경우 세무 관련 증빙자료는 소득세법 등에 따라 최대 5년 보존)</span>
                   </td>
+                </tr>
+                <tr>
+                  <td className="text-center fw-bold text-danger">필수</td>
+                  <td><strong>서비스 환경 최적화 및 시스템 보안 (자동 수집)</strong></td>
+                  <td>접속 기기 정보(OS), 브라우저 정보(User Agent), 접속 IP 주소, 서비스 이용 기록</td>
+                  <td><strong>관계 법령(통신비밀보호법 등)에 따라 최대 1년간 보관 후 파기</strong></td>
                 </tr>
                 <tr>
                   <td className="text-center text-primary fw-bold">선택</td>
@@ -73,6 +73,15 @@ const ConsentPolicy = () => {
             * <strong>필수 항목 동의 거부 시:</strong> 서비스의 본질적인 기능(회원가입, 스케줄 관리, 급여 정산 등) 제공이 불가능하므로 <strong>회원가입 및 서비스 이용이 제한</strong>됩니다.<br />
             * <strong>선택 항목 동의 거부 시:</strong> 동의하지 않으셔도 기본적인 서비스 이용에는 불이익이 없으나, 이메일 공지 등의 <strong>일부 부가 기능 이용이 제한</strong>될 수 있습니다.
           </p>
+
+          <div className="mt-5 pt-4 border-top">
+            <p className="small text-muted mb-1">
+              <strong>시행일:</strong> 2026년 09월 26일
+            </p>
+            <p className="small text-muted mb-0">
+              <strong>버전:</strong> v1.0
+            </p>
+          </div>
 
           <div className="text-center mt-5">
             <Button variant="secondary" onClick={() => navigate(-1)} className="px-4 fw-bold">

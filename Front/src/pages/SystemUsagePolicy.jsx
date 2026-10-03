@@ -106,16 +106,16 @@ const SystemUsagePolicy = () => {
           </div>
           <div className="mt-5 pt-5">
             <p className="small text-muted">
-              최초 시행일: 2026-09-01
+              최초 시행일: 2026년 09월 26일
             </p>
             <p className="small text-muted">
-              공고일: 2026-09-26
+              공고일: -
             </p>
             <p className="small text-muted">
-              시행일: 2026-09-27
+              시행일: 2026년 09월 26일
             </p>
             <p className="small text-muted">
-              버전: v1.1
+              버전: v1.0
             </p>
           </div>
 

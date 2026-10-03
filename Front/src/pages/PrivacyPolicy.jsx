@@ -30,8 +30,8 @@ const PrivacyPolicy = () => {
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong>회원 가입 및 관리</strong><br />(본인 식별, 불량회원 부정이용 방지 등)</td>
-                    <td><strong>(필수)</strong> 이름, 아이디, 비밀번호, 생년월일, 휴대전화번호, 소속 지점<br /><strong>(선택)</strong> 이메일</td>
+                    <td><strong>회원 가입 및 관리</strong><br />(본인 식별, 권한 관리, 불량회원 부정이용 방지 등)</td>
+                    <td><strong>(필수)</strong> 아이디, 이름, 비밀번호, 생년월일, 휴대전화번호, 사용자 유형/권한, 소속 근무지<br /><strong>(선택)</strong> 이메일, 시급(관리자용)</td>
                     <td className="text-center"><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 증빙 보존을 위해 최대 5년간 필요한 부분을 마스킹한 후 분리 보관 후 파기합니다.</strong></td>
                     <td className="text-center">
                       정보주체의 동의 (개인정보보호법 제15조 제1항 제1호)<br /><br />
@@ -39,14 +39,8 @@ const PrivacyPolicy = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td><strong>시스템 보호 및 부정이용 방지</strong><br />(트래픽 스로틀링, 매크로 차단, 보안 위협 대응)</td>
-                    <td><strong>(자동 수집)</strong> 접속 IP 주소, 서비스 이용 기록</td>
-                    <td className="text-center"><strong>수집일로부터 최대 1년 보관 후 파기</strong></td>
-                    <td className="text-center">통신비밀보호법에 따른 통신사실확인자료 보존 의무 등</td>
-                  </tr>
-                  <tr>
-                    <td><strong>근태관리 및 근무 스케줄 배정</strong><br />(출퇴근 기록, 근무지별 배정 관리)</td>
-                    <td><strong>(필수)</strong> 출퇴근 시간, 휴게시간, 근무지, 배정 시간</td>
+                    <td><strong>근태관리 및 근무 스케줄 배정</strong><br />(출퇴근 기록, 근무 신청 및 배정 관리)</td>
+                    <td><strong>(필수)</strong> 근무일, 출퇴근 시각, 휴게시간, 해당 근무지, 주간/일별 신청일<br /><strong>(선택)</strong> 근무 비고, 오픈조 지원 여부, 신청 비고</td>
                     <td className="text-center"><strong>근로관계 종료 후 3년</strong></td>
                     <td className="text-center">근로계약 이행 (개인정보보호법 제15조 제1항 제4호)</td>
                   </tr>
@@ -55,6 +49,18 @@ const PrivacyPolicy = () => {
                     <td><strong>(필수)</strong> 은행명, 예금주명, 계좌번호</td>
                     <td className="text-center"><strong>근로관계 종료 후 관계 법령에 따라 보존 후 파기</strong></td>
                     <td className="text-center">근로계약, 임금대장 등: <strong>3년</strong> (근로기준법)<br /><br />세무 관련 증빙서류: <strong>5년</strong> (소득세법, 법인세법)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>서비스 환경 최적화 및 시스템 보호</strong><br />(서비스 이용 및 오류 방지)</td>
+                    <td><strong>(자동 수집)</strong> 접속 기기 정보(OS, 모바일 여부), 브라우저 정보(User Agent), 접속 IP 주소, 서비스 이용 기록</td>
+                    <td className="text-center"><strong>수집일로부터 최대 1년 보관 후 파기</strong></td>
+                    <td className="text-center">통신비밀보호법에 따른 통신사실확인자료 보존 의무 등</td>
+                  </tr>
+                  <tr>
+                    <td><strong>서비스 이용 편의 및 맞춤 설정</strong><br />(로컬/세션 스토리지 활용)</td>
+                    <td><strong>(필수)</strong> 인증(로그인) 토큰 및 상태, API 응답 캐시 데이터<br /><strong>(선택)</strong> 자동 로그인 유지 설정, 팝업/공지사항 숨김 처리 내역</td>
+                    <td className="text-center"><strong>사용자 기기 내 보관<br />(로그아웃 또는 캐시 삭제 시 즉시 파기)</strong></td>
+                    <td className="text-center">정보주체의 동의 (개인정보보호법 제15조 제1항 제1호)</td>
                   </tr>
                 </tbody>
               </table>
@@ -188,20 +194,20 @@ const PrivacyPolicy = () => {
           <div className="mb-4">
             <h5 className="fw-bold mb-3">12. 개인정보 처리방침의 변경 및 고지</h5>
             <p className="small text-muted">
-              이 개인정보 처리방침은 <strong>2026년 09월 17일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
+              이 개인정보 처리방침은 <strong>2026년 09월 26일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
               <br />또한 버전의 의미는 앞 자리는 핵심 내용의 변경 및 추가, 삭제가 있을 시며 뒷 자리는 경미한 내용 수정을 의미합니다.
             </p>
           </div>
 
           <div className="mt-5 pt-5">
             <p className="small text-muted">
-              최초 시행일: -
+              최초 시행일: 2026년 09월 26일
             </p>
             <p className="small text-muted">
               공고일: -
             </p>
             <p className="small text-muted">
-              시행일: -
+              시행일: 2026년 09월 26일
             </p>
             <p className="small text-muted">
               버전: v1.0

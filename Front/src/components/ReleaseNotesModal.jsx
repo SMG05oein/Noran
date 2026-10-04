@@ -3,6 +3,15 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 const releaseHistory = [
   {
+    version: '0.9.10',
+    date: '2026-10-03',
+    features: [
+      '약관 및 동의서(개인정보처리방침, 이용규정, 수집 및 이용 동의서) 팝업 내 전문 노출되도록 개선',
+      '공통 약관 컴포넌트 분리 및 코드 최적화'
+    ],
+    fixes: []
+  },
+  {
     version: '0.9.9',
     date: '2026-10-03',
     features: [

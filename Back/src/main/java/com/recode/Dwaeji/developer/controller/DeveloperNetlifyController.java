@@ -21,6 +21,12 @@ public class DeveloperNetlifyController {
 
     private final NetlifyDeployService netlifyDeployService;
 
+    private static String clientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
+        return request.getRemoteAddr();
+    }
+
     @GetMapping("/status")
     @PreAuthorize("hasRole('DEVELOPER')")
     public ResponseEntity<?> status() {
@@ -78,11 +84,5 @@ public class DeveloperNetlifyController {
         String deployId = body.get("deployId") != null ? body.get("deployId").toString() : null;
         String actor = user != null ? user.getUsername() : "unknown";
         return ResponseEntity.ok(netlifyDeployService.rollback(auth, deployId, actor, clientIp(request)));
-    }
-
-    private static String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
-        return request.getRemoteAddr();
     }
 }

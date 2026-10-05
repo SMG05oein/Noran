@@ -87,7 +87,7 @@ public class DeveloperAuthService {
 
         // 새 비밀번호 암호화 및 저장
         developer.setDevPw(passwordEncoder.encode(request.getNewPw()));
-        
+
         // 임시 비밀번호 관련 설정 초기화
         developer.setDevIsTempPw(0);
         developer.setDevTempPw(null);

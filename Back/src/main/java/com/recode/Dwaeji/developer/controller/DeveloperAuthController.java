@@ -38,14 +38,18 @@ public class DeveloperAuthController {
         return ResponseEntity.ok(response);
     }
 
-    /** IP allowlist 밖일 때: 인증번호 메일 발송 (수신 = spring.mail.username) */
+    /**
+     * IP allowlist 밖일 때: 인증번호 메일 발송 (수신 = spring.mail.username)
+     */
     @PostMapping("/ip-otp/request")
     public ResponseEntity<Map<String, Object>> requestIpOtp(HttpServletRequest request) {
         String ip = DevIpAllowlistFilter.resolveClientIp(request);
         return ResponseEntity.ok(devIpOtpService.requestOtp(ip));
     }
 
-    /** 인증번호 확인 → X-Dev-Ip-Token 발급 (해당 IP에만 유효) */
+    /**
+     * 인증번호 확인 → X-Dev-Ip-Token 발급 (해당 IP에만 유효)
+     */
     @PostMapping("/ip-otp/verify")
     public ResponseEntity<Map<String, Object>> verifyIpOtp(
             @RequestBody DevIpOtpVerifyRequestDto body,

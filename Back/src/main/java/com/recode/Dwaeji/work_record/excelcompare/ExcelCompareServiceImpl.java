@@ -38,15 +38,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExcelCompareServiceImpl implements ExcelCompareService {
 
-    @Autowired
-    @Lazy
-    private ExcelCompareServiceImpl self;
-
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("H:mm");
     private static final DateTimeFormatter TIME_FMT_HH = DateTimeFormatter.ofPattern("HH:mm");
     private static final DataFormatter DATA_FORMATTER = new DataFormatter(Locale.KOREA);
-
     private static final Map<String, Integer> STATUS_ORDER = Map.of(
             "USER_NOT_FOUND", 1,
             "AMBIGUOUS", 2,
@@ -56,11 +51,200 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             "MISMATCH_WORKPLACE", 6,
             "MATCH", 7
     );
-
     private final UserRepository userRepository;
     private final WorkRecordRepository workRecordRepository;
     private final WorkPlaceRepository workPlaceRepository;
     private final ExcelCompareSessionStore sessionStore;
+    @Autowired
+    @Lazy
+    private ExcelCompareServiceImpl self;
+
+    private static void writeTemplateSheet(
+            XSSFWorkbook workbook,
+            com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark,
+            List<String> cols,
+            String baseName,
+            Set<String> usedSheetNames,
+            String[][] demos) {
+        String sheetName = uniqueExcelSheetName(toExcelSheetName(baseName), usedSheetNames);
+        Sheet sheet = workbook.createSheet(sheetName);
+        Row header = sheet.createRow(0);
+        for (int i = 0; i < cols.size(); i++) {
+            header.createCell(i).setCellValue(cols.get(i));
+            sheet.setColumnWidth(i, poiWidthFromDisplay(displayWidth(cols.get(i))));
+        }
+        for (int r = 0; r < demos.length; r++) {
+            Row row = sheet.createRow(r + 1);
+            for (int c = 0; c < demos[r].length; c++) {
+                row.createCell(c).setCellValue(demos[r][c]);
+            }
+        }
+        int lastDataRow = demos.length;
+        sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, lastDataRow, 0, cols.size() - 1));
+        com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, lastDataRow, cols.size());
+    }
+
+    private static boolean workplaceAndTimesEqual(ExcelCompareParsedRow excel, WorkRecord db) {
+        return normalize(excel.getWpName()).equals(normalize(wpNameOf(db)))
+                && Objects.equals(excel.getWrStartTime(), db.getWrStartTime())
+                && Objects.equals(excel.getWrEndTime(), db.getWrEndTime())
+                && Objects.equals(excel.getWrRestTime(), db.getWrRestTime());
+    }
+
+    private static String wpNameOf(WorkRecord r) {
+        return r.getWorkPlace() != null ? r.getWorkPlace().getWpName() : "";
+    }
+
+    private static String normalize(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private static void paintRightCanvas(Row row, int columnCount, org.apache.poi.ss.usermodel.CellStyle bg) {
+        int colSpan = Math.max(52, columnCount + 12);
+        for (int c = columnCount; c < colSpan; c++) {
+            Cell cell = row.createCell(c);
+            cell.setCellStyle(bg);
+        }
+    }
+
+    private static void paintBottomCanvas(Sheet sheet, int lastDataRowInclusive, int columnCount, org.apache.poi.ss.usermodel.CellStyle bg) {
+        int colSpan = Math.max(52, columnCount + 12);
+        for (int c = 0; c < colSpan; c++) {
+            sheet.setDefaultColumnStyle(c, bg);
+        }
+        int lastCanvasRow = Math.max(lastDataRowInclusive + 80, 80);
+        for (int r = lastDataRowInclusive + 1; r <= lastCanvasRow; r++) {
+            Row row = sheet.createRow(r);
+            row.setRowStyle(bg);
+            for (int c = 0; c < colSpan; c++) {
+                Cell cell = row.createCell(c);
+                cell.setCellStyle(bg);
+            }
+        }
+    }
+
+    /**
+     * 결과 시트 그룹 키: 엑셀 근무지 → DB근무지 → 미소속
+     */
+    private static String sheetKeyOf(ResultRow row) {
+        if (row.wpName != null && !row.wpName.isBlank()) {
+            return row.wpName.trim();
+        }
+        if (row.dbWpName != null && !row.dbWpName.isBlank()) {
+            return row.dbWpName.trim();
+        }
+        return "미소속";
+    }
+
+    private static String toExcelSheetName(String name) {
+        if (name == null || name.isBlank()) {
+            return "미소속";
+        }
+        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
+        if (cleaned.isEmpty()) {
+            cleaned = "미소속";
+        }
+        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
+    }
+
+    private static String uniqueExcelSheetName(String base, Set<String> used) {
+        String candidate = base;
+        int n = 2;
+        while (!used.add(candidate)) {
+            String suffix = " (" + n + ")";
+            int maxBase = Math.max(1, 31 - suffix.length());
+            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
+            n++;
+        }
+        return candidate;
+    }
+
+    /**
+     * 다크 배경용 상태별 틴트 — 상태(A열)에만 적용
+     */
+    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildStatusStyles(Workbook workbook) {
+        Map<String, byte[]> colors = Map.of(
+                "USER_NOT_FOUND", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(15, 15, 15),
+                "AMBIGUOUS", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(75, 40, 95),
+                "MISSING_IN_DB", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(110, 36, 36),
+                "ONLY_IN_DB", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(160, 80, 20),
+                "MISMATCH_TIME", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(90, 75, 20),
+                "MISMATCH_WORKPLACE", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(130, 40, 90),
+                "MATCH", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(28, 75, 42)
+        );
+        Map<String, org.apache.poi.ss.usermodel.CellStyle> styles = new HashMap<>();
+        for (Map.Entry<String, byte[]> e : colors.entrySet()) {
+            styles.put(e.getKey(), com.recode.Dwaeji.common.excel.ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
+        }
+        return styles;
+    }
+
+    /**
+     * Bootstrap 느낌: primary / warning / info — 틀린 시간 셀용
+     */
+    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildTimeDiffStyles(Workbook workbook) {
+        Map<String, byte[]> colors = Map.of(
+                "primary", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 110, 253),   // #0d6efd
+                "warning", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(255, 193, 7),  // #ffc107
+                "info", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 202, 240)     // #0dcaf0
+        );
+        Map<String, org.apache.poi.ss.usermodel.CellStyle> styles = new HashMap<>();
+        for (Map.Entry<String, byte[]> e : colors.entrySet()) {
+            styles.put(e.getKey(), com.recode.Dwaeji.common.excel.ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
+        }
+        return styles;
+    }
+
+    private static void tintTimePair(Row excel, int excelCol, int dbCol, org.apache.poi.ss.usermodel.CellStyle style) {
+        if (style == null) {
+            return;
+        }
+        for (int c : new int[]{excelCol, dbCol}) {
+            Cell cell = excel.getCell(c);
+            if (cell == null) {
+                cell = excel.createCell(c);
+            }
+            cell.setCellStyle(style);
+        }
+    }
+
+    /**
+     * 표시 폭: ASCII 1, 그 외(한글 등) 2
+     */
+    private static int displayWidth(String s) {
+        if (s == null || s.isEmpty()) {
+            return 0;
+        }
+        int w = 0;
+        for (int i = 0; i < s.length(); i++) {
+            w += (s.charAt(i) > 0x7F) ? 2 : 1;
+        }
+        return w;
+    }
+
+    private static void noteColDisplay(int[] maxDisplay, int col, String text) {
+        int w = displayWidth(text);
+        if (w > maxDisplay[col]) {
+            maxDisplay[col] = w;
+        }
+    }
+
+    /**
+     * POI 단위(1/256자). 표시폭 × 1.5, 열당 상한으로 설명 장문 폭주 방지
+     */
+    private static int poiWidthFromDisplay(int displayChars) {
+        int capped = Math.min(Math.max(displayChars, 4), 72);
+        int units = (int) Math.round(capped * 1.5 * 256);
+        return Math.min(units, 255 * 256);
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static String formatTime(LocalTime t) {
+        return t == null ? "" : t.format(TIME_FMT_HH);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -91,31 +275,6 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "템플릿 생성 실패");
         }
-    }
-
-    private static void writeTemplateSheet(
-            XSSFWorkbook workbook,
-            com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark,
-            List<String> cols,
-            String baseName,
-            Set<String> usedSheetNames,
-            String[][] demos) {
-        String sheetName = uniqueExcelSheetName(toExcelSheetName(baseName), usedSheetNames);
-        Sheet sheet = workbook.createSheet(sheetName);
-        Row header = sheet.createRow(0);
-            for (int i = 0; i < cols.size(); i++) {
-                header.createCell(i).setCellValue(cols.get(i));
-                sheet.setColumnWidth(i, poiWidthFromDisplay(displayWidth(cols.get(i))));
-            }
-        for (int r = 0; r < demos.length; r++) {
-            Row row = sheet.createRow(r + 1);
-            for (int c = 0; c < demos[r].length; c++) {
-                row.createCell(c).setCellValue(demos[r][c]);
-            }
-        }
-        int lastDataRow = demos.length;
-        sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, lastDataRow, 0, cols.size() - 1));
-        com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, lastDataRow, cols.size());
     }
 
     @Override
@@ -245,11 +404,6 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 대조할 수 있습니다.");
         }
         return requester;
-    }
-
-    private static class ParsedExcel {
-        List<String> columnErrors = new ArrayList<>();
-        List<ExcelCompareParsedRow> rows = new ArrayList<>();
     }
 
     private ParsedExcel parseAndValidate(MultipartFile file) {
@@ -406,7 +560,9 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         return sameDay.stream().anyMatch(r -> workplaceAndTimesEqual(excelRow, r));
     }
 
-    /** 당일·같은 근무지 기록이 있으면 true (시간 불일치 허용) */
+    /**
+     * 당일·같은 근무지 기록이 있으면 true (시간 불일치 허용)
+     */
     private boolean hasSameWorkplaceSameDayRecord(User u, ExcelCompareParsedRow excelRow) {
         if (u.getUserIdx() == null || excelRow.getWrDate() == null) {
             return false;
@@ -422,20 +578,15 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         return sameDay.stream().anyMatch(r -> excelWp.equals(normalize(wpNameOf(r))));
     }
 
-    /** 당일 어느 근무지든 기록이 있으면 true */
+    /**
+     * 당일 어느 근무지든 기록이 있으면 true
+     */
     private boolean hasAnySameDayRecord(User u, ExcelCompareParsedRow excelRow) {
         if (u.getUserIdx() == null || excelRow.getWrDate() == null) {
             return false;
         }
         List<WorkRecord> sameDay = workRecordRepository.findByUser_UserIdxAndWrDate(u.getUserIdx(), excelRow.getWrDate());
         return sameDay != null && !sameDay.isEmpty();
-    }
-
-    private static boolean workplaceAndTimesEqual(ExcelCompareParsedRow excel, WorkRecord db) {
-        return normalize(excel.getWpName()).equals(normalize(wpNameOf(db)))
-                && Objects.equals(excel.getWrStartTime(), db.getWrStartTime())
-                && Objects.equals(excel.getWrEndTime(), db.getWrEndTime())
-                && Objects.equals(excel.getWrRestTime(), db.getWrRestTime());
     }
 
     private CompareOutcome runCompareAndBuildExcel(ExcelCompareSession session) {
@@ -572,27 +723,9 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         return new CompareOutcome(bytes, statusCounts, results.size());
     }
 
-    private static final class CompareOutcome {
-        final byte[] bytes;
-        final Map<String, Integer> statusCounts;
-        final int totalCount;
-
-        CompareOutcome(byte[] bytes, Map<String, Integer> statusCounts, int totalCount) {
-            this.bytes = bytes;
-            this.statusCounts = statusCounts;
-            this.totalCount = totalCount;
-        }
-    }
-
-    private static String wpNameOf(WorkRecord r) {
-        return r.getWorkPlace() != null ? r.getWorkPlace().getWpName() : "";
-    }
-
-    private static String normalize(String s) {
-        return s == null ? "" : s.trim();
-    }
-
-    /** 대조 월 기준: 재직 + 당월 근무기록 있는 휴직·퇴사 포함 (비식별화 제외) */
+    /**
+     * 대조 월 기준: 재직 + 당월 근무기록 있는 휴직·퇴사 포함 (비식별화 제외)
+     */
     private List<User> findUsersForCompare(ExcelCompareSession session, String userName) {
         LocalDate start = LocalDate.of(session.getYear(), session.getMonth(), 1);
         LocalDate end = YearMonth.of(session.getYear(), session.getMonth()).atEndOfMonth();
@@ -634,16 +767,22 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
             Map<String, org.apache.poi.ss.usermodel.CellStyle> statusStyles = buildStatusStyles(workbook);
             Set<String> usedSheetNames = new HashSet<>();
+            Map<String, org.apache.poi.ss.usermodel.CellStyle> timeDiffStyles = buildTimeDiffStyles(workbook);
 
             for (Map.Entry<String, List<ResultRow>> entry : orderedSheets) {
                 String sheetName = uniqueExcelSheetName(toExcelSheetName(entry.getKey()), usedSheetNames);
                 Sheet sheet = workbook.createSheet(sheetName);
                 int[] maxDisplay = new int[headers.length];
+
                 Row header = sheet.createRow(0);
+                header.setHeightInPoints(22);
                 for (int i = 0; i < headers.length; i++) {
-                    header.createCell(i).setCellValue(headers[i]);
+                    Cell cell = header.createCell(i);
+                    cell.setCellValue(headers[i]);
+                    cell.setCellStyle(dark.header());
                     noteColDisplay(maxDisplay, i, headers[i]);
                 }
+                paintRightCanvas(header, headers.length, dark.sheetBg());
 
                 List<ResultRow> sheetRows = entry.getValue();
                 int r = 1;
@@ -665,55 +804,49 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
                             row.userIdx != null ? String.valueOf(row.userIdx) : "",
                             nullToEmpty(row.userPhone)
                     };
+
+                    org.apache.poi.ss.usermodel.CellStyle statusStyle = statusStyles.get(row.status);
+                    org.apache.poi.ss.usermodel.CellStyle baseRowStyle = (r % 2 != 0) ? dark.bodyAlt() : dark.body();
+
                     for (int c = 0; c < cells.length; c++) {
+                        Cell cell = excel.createCell(c);
                         if (c == 12 && row.userIdx != null) {
-                            excel.createCell(c).setCellValue(row.userIdx);
+                            cell.setCellValue(row.userIdx);
                         } else {
-                            excel.createCell(c).setCellValue(cells[c]);
+                            cell.setCellValue(cells[c]);
+                        }
+
+                        cell.setCellStyle(baseRowStyle);
+
+                        if (c == 0 && statusStyle != null) {
+                            cell.setCellStyle(statusStyle);
+                        }
+
+                        if ("MISMATCH_TIME".equals(row.status)) {
+                            if (row.mismatchStart && (c == 5 || c == 9)) {
+                                cell.setCellStyle(timeDiffStyles.get("primary"));
+                            } else if (row.mismatchEnd && (c == 6 || c == 10)) {
+                                cell.setCellStyle(timeDiffStyles.get("warning"));
+                            } else if (row.mismatchRest && (c == 7 || c == 11)) {
+                                cell.setCellStyle(timeDiffStyles.get("info"));
+                            }
+                        } else if ("MISMATCH_WORKPLACE".equals(row.status)) {
+                            if ((c == 4 || c == 8) && statusStyle != null) {
+                                cell.setCellStyle(statusStyle);
+                            }
                         }
                         noteColDisplay(maxDisplay, c, cells[c]);
                     }
+                    paintRightCanvas(excel, headers.length, dark.sheetBg());
                 }
 
-                // 열 너비 = (헤더·데이터 최장 표시폭) × 1.5 — 상수 배열 없음
                 for (int i = 0; i < headers.length; i++) {
                     sheet.setColumnWidth(i, poiWidthFromDisplay(maxDisplay[i]));
                 }
+
                 int lastDataRow = Math.max(r - 1, 0);
-                com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, lastDataRow, headers.length);
-
-                // 상태 열만 상태색. MISMATCH_TIME이면 틀린 출/퇴/휴게 셀만 primary/warning/info
-                Map<String, org.apache.poi.ss.usermodel.CellStyle> timeDiffStyles = buildTimeDiffStyles(workbook);
-                for (int i = 0; i < sheetRows.size(); i++) {
-                    ResultRow rowData = sheetRows.get(i);
-                    Row excel = sheet.getRow(i + 1);
-                    if (excel == null) {
-                        continue;
-                    }
-                    Cell statusCell = excel.getCell(0);
-                    if (statusCell == null) {
-                        statusCell = excel.createCell(0);
-                    }
-                    statusCell.setCellStyle(statusStyles.getOrDefault(rowData.status, dark.body()));
-
-                    if ("MISMATCH_TIME".equals(rowData.status)) {
-                        if (rowData.mismatchStart) {
-                            tintTimePair(excel, 5, 9, timeDiffStyles.get("primary"));
-                        }
-                        if (rowData.mismatchEnd) {
-                            tintTimePair(excel, 6, 10, timeDiffStyles.get("warning"));
-                        }
-                        if (rowData.mismatchRest) {
-                            tintTimePair(excel, 7, 11, timeDiffStyles.get("info"));
-                        }
-                    }
-                    if ("MISMATCH_WORKPLACE".equals(rowData.status)) {
-                        // 근무지 셀(엑셀·DB) — 상태색과 동일
-                        org.apache.poi.ss.usermodel.CellStyle wpStyle =
-                                statusStyles.getOrDefault("MISMATCH_WORKPLACE", dark.body());
-                        tintTimePair(excel, 4, 8, wpStyle);
-                    }
-                }
+                paintBottomCanvas(sheet, lastDataRow, headers.length, dark.sheetBg());
+                sheet.createFreezePane(0, 1);
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -722,188 +855,6 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             return out.toByteArray();
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "결과 엑셀 생성 실패");
-        }
-    }
-
-    /** 결과 시트 그룹 키: 엑셀 근무지 → DB근무지 → 미소속 */
-    private static String sheetKeyOf(ResultRow row) {
-        if (row.wpName != null && !row.wpName.isBlank()) {
-            return row.wpName.trim();
-        }
-        if (row.dbWpName != null && !row.dbWpName.isBlank()) {
-            return row.dbWpName.trim();
-        }
-        return "미소속";
-    }
-
-    private static String toExcelSheetName(String name) {
-        if (name == null || name.isBlank()) {
-            return "미소속";
-        }
-        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
-        if (cleaned.isEmpty()) {
-            cleaned = "미소속";
-        }
-        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
-    }
-
-    private static String uniqueExcelSheetName(String base, Set<String> used) {
-        String candidate = base;
-        int n = 2;
-        while (!used.add(candidate)) {
-            String suffix = " (" + n + ")";
-            int maxBase = Math.max(1, 31 - suffix.length());
-            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
-            n++;
-        }
-        return candidate;
-    }
-
-    /** 다크 배경용 상태별 틴트 — 상태(A열)에만 적용 */
-    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildStatusStyles(Workbook workbook) {
-        Map<String, byte[]> colors = Map.of(
-                "USER_NOT_FOUND", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(110, 36, 36),
-                "AMBIGUOUS", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(90, 50, 20),
-                "MISSING_IN_DB", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(110, 70, 24),
-                "ONLY_IN_DB", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(28, 55, 95),
-                "MISMATCH_TIME", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(100, 85, 22),
-                "MISMATCH_WORKPLACE", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(75, 40, 95),
-                "MATCH", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(28, 75, 42)
-        );
-        Map<String, org.apache.poi.ss.usermodel.CellStyle> styles = new HashMap<>();
-        for (Map.Entry<String, byte[]> e : colors.entrySet()) {
-            styles.put(e.getKey(), com.recode.Dwaeji.common.excel.ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
-        }
-        return styles;
-    }
-
-    /** Bootstrap 느낌: primary / warning / info — 틀린 시간 셀용 */
-    private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildTimeDiffStyles(Workbook workbook) {
-        Map<String, byte[]> colors = Map.of(
-                "primary", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 110, 253),   // #0d6efd
-                "warning", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(255, 193, 7),  // #ffc107
-                "info", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 202, 240)     // #0dcaf0
-        );
-        Map<String, org.apache.poi.ss.usermodel.CellStyle> styles = new HashMap<>();
-        for (Map.Entry<String, byte[]> e : colors.entrySet()) {
-            styles.put(e.getKey(), com.recode.Dwaeji.common.excel.ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
-        }
-        return styles;
-    }
-
-    private static void tintTimePair(Row excel, int excelCol, int dbCol, org.apache.poi.ss.usermodel.CellStyle style) {
-        if (style == null) {
-            return;
-        }
-        for (int c : new int[]{excelCol, dbCol}) {
-            Cell cell = excel.getCell(c);
-            if (cell == null) {
-                cell = excel.createCell(c);
-            }
-            cell.setCellStyle(style);
-        }
-    }
-
-    /** 표시 폭: ASCII 1, 그 외(한글 등) 2 */
-    private static int displayWidth(String s) {
-        if (s == null || s.isEmpty()) {
-            return 0;
-        }
-        int w = 0;
-        for (int i = 0; i < s.length(); i++) {
-            w += (s.charAt(i) > 0x7F) ? 2 : 1;
-        }
-        return w;
-    }
-
-    private static void noteColDisplay(int[] maxDisplay, int col, String text) {
-        int w = displayWidth(text);
-        if (w > maxDisplay[col]) {
-            maxDisplay[col] = w;
-        }
-    }
-
-    /** POI 단위(1/256자). 표시폭 × 1.5, 열당 상한으로 설명 장문 폭주 방지 */
-    private static int poiWidthFromDisplay(int displayChars) {
-        int capped = Math.min(Math.max(displayChars, 4), 72);
-        int units = (int) Math.round(capped * 1.5 * 256);
-        return Math.min(units, 255 * 256);
-    }
-
-    private static String nullToEmpty(String s) {
-        return s == null ? "" : s;
-    }
-
-    private static String formatTime(LocalTime t) {
-        return t == null ? "" : t.format(TIME_FMT_HH);
-    }
-
-    private static class ResultRow {
-        String status;
-        String message;
-        LocalDate wrDate;
-        String userName;
-        String wpName;
-        LocalTime start;
-        LocalTime end;
-        LocalTime rest;
-        String dbWpName;
-        LocalTime dbStart;
-        LocalTime dbEnd;
-        LocalTime dbRest;
-        Long userIdx;
-        String userPhone;
-        boolean mismatchStart;
-        boolean mismatchEnd;
-        boolean mismatchRest;
-
-        static ResultRow fromExcel(ExcelCompareParsedRow e, String status, String message, User user) {
-            ResultRow r = new ResultRow();
-            r.status = status;
-            r.message = message;
-            r.wrDate = e.getWrDate();
-            r.userName = e.getUserName();
-            r.wpName = e.getWpName();
-            r.start = e.getWrStartTime();
-            r.end = e.getWrEndTime();
-            r.rest = e.getWrRestTime();
-            r.userIdx = user != null ? user.getUserIdx() : null;
-            r.userPhone = user != null ? user.getUserPhone() : null;
-            return r;
-        }
-
-        static ResultRow fromBoth(ExcelCompareParsedRow e, WorkRecord db, String status, String message, User user) {
-            ResultRow r = fromExcel(e, status, message, user);
-            r.dbWpName = wpNameOf(db);
-            r.dbStart = db.getWrStartTime();
-            r.dbEnd = db.getWrEndTime();
-            r.dbRest = db.getWrRestTime();
-            if (r.userIdx == null && db.getUser() != null) {
-                r.userIdx = db.getUser().getUserIdx();
-            }
-            if ((r.userPhone == null || r.userPhone.isBlank()) && db.getUser() != null) {
-                r.userPhone = db.getUser().getUserPhone();
-            }
-            return r;
-        }
-
-        static ResultRow fromDbOnly(WorkRecord db, String status, String message) {
-            ResultRow r = new ResultRow();
-            r.status = status;
-            r.message = message;
-            r.wrDate = db.getWrDate();
-            r.userName = db.getUser() != null ? db.getUser().getUserName() : "";
-            r.wpName = wpNameOf(db);
-            r.start = db.getWrStartTime();
-            r.end = db.getWrEndTime();
-            r.rest = db.getWrRestTime();
-            r.dbWpName = r.wpName;
-            r.dbStart = r.start;
-            r.dbEnd = r.end;
-            r.dbRest = r.rest;
-            r.userIdx = db.getUser() != null ? db.getUser().getUserIdx() : null;
-            r.userPhone = db.getUser() != null ? db.getUser().getUserPhone() : null;
-            return r;
         }
     }
 
@@ -967,6 +918,79 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             return LocalTime.parse(raw, TIME_FMT_HH).withSecond(0).withNano(0);
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "시간 형식 오류: " + raw);
+        }
+    }
+
+    private static class ParsedExcel {
+        List<String> columnErrors = new ArrayList<>();
+        List<ExcelCompareParsedRow> rows = new ArrayList<>();
+    }
+
+    private record CompareOutcome(byte[] bytes, Map<String, Integer> statusCounts, int totalCount) {
+    }
+
+    private static class ResultRow {
+        String status;
+        String message;
+        LocalDate wrDate;
+        String userName;
+        String wpName;
+        LocalTime start;
+        LocalTime end;
+        LocalTime rest;
+        String dbWpName;
+        LocalTime dbStart;
+        LocalTime dbEnd;
+        LocalTime dbRest;
+        Long userIdx;
+        String userPhone;
+        boolean mismatchStart;
+        boolean mismatchEnd;
+        boolean mismatchRest;
+
+        static ResultRow fromExcel(ExcelCompareParsedRow e, String status, String message, User user) {
+            ResultRow r = new ResultRow();
+            r.status = status;
+            r.message = message;
+            r.wrDate = e.getWrDate();
+            r.userName = e.getUserName();
+            r.wpName = e.getWpName();
+            r.start = e.getWrStartTime();
+            r.end = e.getWrEndTime();
+            r.rest = e.getWrRestTime();
+            r.userIdx = user != null ? user.getUserIdx() : null;
+            r.userPhone = user != null ? user.getUserPhone() : null;
+            return r;
+        }
+
+        static ResultRow fromBoth(ExcelCompareParsedRow e, WorkRecord db, String status, String message, User user) {
+            ResultRow r = fromExcel(e, status, message, user);
+            r.dbWpName = wpNameOf(db);
+            r.dbStart = db.getWrStartTime();
+            r.dbEnd = db.getWrEndTime();
+            r.dbRest = db.getWrRestTime();
+            if (r.userIdx == null && db.getUser() != null) {
+                r.userIdx = db.getUser().getUserIdx();
+            }
+            if ((r.userPhone == null || r.userPhone.isBlank()) && db.getUser() != null) {
+                r.userPhone = db.getUser().getUserPhone();
+            }
+            return r;
+        }
+
+        static ResultRow fromDbOnly(WorkRecord db, String status, String message) {
+            ResultRow r = new ResultRow();
+            r.status = status;
+            r.message = message;
+            r.wrDate = db.getWrDate();
+            r.userName = db.getUser() != null ? db.getUser().getUserName() : "";
+            r.dbWpName = wpNameOf(db);
+            r.dbStart = db.getWrStartTime();
+            r.dbEnd = db.getWrEndTime();
+            r.dbRest = db.getWrRestTime();
+            r.userIdx = db.getUser() != null ? db.getUser().getUserIdx() : null;
+            r.userPhone = db.getUser() != null ? db.getUser().getUserPhone() : null;
+            return r;
         }
     }
 }

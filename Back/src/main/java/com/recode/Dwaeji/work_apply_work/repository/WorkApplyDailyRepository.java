@@ -18,8 +18,9 @@ public interface WorkApplyDailyRepository extends JpaRepository<WorkApplyDaily, 
     List<WorkApplyDaily> findByWadDateBetweenFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     boolean existsByUser_UserIdxAndWadDate(Long userIdx, LocalDate date);
-    
+
     List<WorkApplyDaily> findByUser_UserIdxInAndWadDate(List<Long> userIdxes, LocalDate date);
+
     java.util.Optional<WorkApplyDaily> findByUser_UserIdxAndWadDate(Long userIdx, LocalDate date);
 
     @Modifying(clearAutomatically = true)
@@ -29,5 +30,6 @@ public interface WorkApplyDailyRepository extends JpaRepository<WorkApplyDaily, 
                                        @Param("endDate") LocalDate endDate);
 
     void deleteByUserAndWadDateIn(com.recode.Dwaeji.user.database.User user, List<LocalDate> dates);
+
     void deleteByUser_UserIdx(Long userIdx);
 }

@@ -68,7 +68,7 @@ public class WorkPlaceServiceImpl implements WorkPlaceService {
         }
         WorkPlace wp = workPlaceRepository.findById(wpIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "근무지를 찾을 수 없습니다."));
-        
+
         if (requestDto.getWpName() != null) wp.setWpName(requestDto.getWpName());
         if (requestDto.getWpAddress() != null) wp.setWpAddress(requestDto.getWpAddress());
         if (requestDto.getWpAddressDetails() != null) wp.setWpAddressDetails(requestDto.getWpAddressDetails());
@@ -82,7 +82,7 @@ public class WorkPlaceServiceImpl implements WorkPlaceService {
         }
         WorkPlace wp = workPlaceRepository.findById(wpIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "근무지를 찾을 수 없습니다."));
-        
+
         // 논리적 삭제 (Soft Delete)
         wp.setWpIsActive(0);
         workPlaceRepository.save(wp);

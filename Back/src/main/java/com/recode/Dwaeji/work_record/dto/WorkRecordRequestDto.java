@@ -20,7 +20,7 @@ public class WorkRecordRequestDto {
     private LocalTime wrEndTime;
 
     private LocalTime wrRestTime;
-    
+
     @Size(max = 255, message = "비고는 255자 이하여야 합니다.")
     private String wrRemarks;
     // 관리자가 특정 유저의 기록을 생성/수정할 경우를 대비해 userIdx를 받음 (일반 유저는 무시하고 본인 ID로 세팅)

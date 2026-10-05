@@ -49,7 +49,9 @@ public class GlobalExceptionHandler {
         return "로그인 전";
     }
 
-    /** 로그인 자격증명 통과 후 IP 미일치 → OTP 필요 (필터와 동일 body) */
+    /**
+     * 로그인 자격증명 통과 후 IP 미일치 → OTP 필요 (필터와 동일 body)
+     */
     @ExceptionHandler(DevIpOtpRequiredException.class)
     public ResponseEntity<Map<String, Object>> handleDevIpOtpRequired(DevIpOtpRequiredException ex, HttpServletRequest request) {
         systemMonitorService.addErrorLog(
@@ -70,13 +72,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleResponseStatusException(ResponseStatusException ex, HttpServletRequest request) {
         HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
         String errorName = (status != null) ? status.getReasonPhrase() : "Unknown Error";
-        
+
         systemMonitorService.addErrorLog(
-                ex.getReason(), 
-                "ResponseStatusException", 
-                request.getRequestURL().toString(), 
-                request.getRequestURI(), 
-                getAuthIdentifier(), 
+                ex.getReason(),
+                "ResponseStatusException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
                 ex.getStatusCode().value(),
                 getReferer(request),
                 getClientIp(request)
@@ -91,11 +93,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponseDto> handleMissingServletRequestParameterException(org.springframework.web.bind.MissingServletRequestParameterException ex, HttpServletRequest request) {
         systemMonitorService.addErrorLog(
-                ex.getMessage(), 
-                "MissingServletRequestParameterException", 
-                request.getRequestURL().toString(), 
-                request.getRequestURI(), 
-                getAuthIdentifier(), 
+                ex.getMessage(),
+                "MissingServletRequestParameterException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
                 HttpStatus.BAD_REQUEST.value(),
                 getReferer(request),
                 getClientIp(request)
@@ -103,8 +105,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponseDto(
-                        HttpStatus.BAD_REQUEST.value(), 
-                        HttpStatus.BAD_REQUEST.getReasonPhrase(), 
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST.getReasonPhrase(),
                         "필수 요청 파라미터가 누락되었습니다: " + ex.getParameterName()
                 ));
     }
@@ -137,11 +139,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {
         systemMonitorService.addErrorLog(
-                ex.getMessage(), 
-                "HttpMessageNotReadableException", 
-                request.getRequestURL().toString(), 
-                request.getRequestURI(), 
-                getAuthIdentifier(), 
+                ex.getMessage(),
+                "HttpMessageNotReadableException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
                 HttpStatus.BAD_REQUEST.value(),
                 getReferer(request),
                 getClientIp(request)
@@ -149,8 +151,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponseDto(
-                        HttpStatus.BAD_REQUEST.value(), 
-                        HttpStatus.BAD_REQUEST.getReasonPhrase(), 
+                        HttpStatus.BAD_REQUEST.value(),
+                        HttpStatus.BAD_REQUEST.getReasonPhrase(),
                         "잘못된 데이터 형식입니다."
                 ));
     }
@@ -164,11 +166,11 @@ public class GlobalExceptionHandler {
                 .getDefaultMessage();
 
         systemMonitorService.addErrorLog(
-                errorMessage, 
-                "MethodArgumentNotValidException", 
-                request.getRequestURL().toString(), 
-                request.getRequestURI(), 
-                getAuthIdentifier(), 
+                errorMessage,
+                "MethodArgumentNotValidException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
                 HttpStatus.BAD_REQUEST.value(),
                 getReferer(request),
                 getClientIp(request)
@@ -187,18 +189,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleAllExceptions(Exception ex, HttpServletRequest request) {
         systemMonitorService.addErrorLog(
-                ex.getMessage(), 
-                ex.getClass().getSimpleName(), 
-                request.getRequestURL().toString(), 
-                request.getRequestURI(), 
-                getAuthIdentifier(), 
+                ex.getMessage(),
+                ex.getClass().getSimpleName(),
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 getReferer(request),
                 getClientIp(request)
         );
-        
+
         log.error("[500 Internal Error] {} - {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
-        
+
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponseDto(

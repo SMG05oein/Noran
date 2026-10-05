@@ -2,7 +2,9 @@ package com.recode.Dwaeji.developer.exception;
 
 import java.util.Map;
 
-/** Thrown when credentials are OK but client IP is outside allowlist (OTP required). */
+/**
+ * Thrown when credentials are OK but client IP is outside allowlist (OTP required).
+ */
 public class DevIpOtpRequiredException extends RuntimeException {
 
     private final Map<String, Object> body;

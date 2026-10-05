@@ -29,24 +29,9 @@ public class PayrollServiceImpl implements PayrollService {
     private final UserRepository userRepository;
     private final WorkPlaceRepository workPlaceRepository;
 
-    private User getRequester(String requesterId) {
-        return userRepository.findByUserId(requesterId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-    }
-
-    private boolean isAdmin(User user) {
-        return user.getUserType() != null
-                && user.getUserType().getUtIsAdmin() != null
-                && user.getUserType().getUtIsAdmin() == 1;
-    }
-
-    private boolean canViewSensitive(User user) {
-        return user.getUserType() != null
-                && user.getUserType().getUtCanViewSensitive() != null
-                && user.getUserType().getUtCanViewSensitive() == 1;
-    }
-
-    /** 퇴근−출근−휴게(분). 자정 넘김 허용. WorkRecord formatTotalWorkHours와 동일. */
+    /**
+     * 퇴근−출근−휴게(분). 자정 넘김 허용. WorkRecord formatTotalWorkHours와 동일.
+     */
     static long netWorkMinutes(LocalTime start, LocalTime end, LocalTime rest) {
         if (start == null || end == null) return 0L;
         long startMinutes = start.getHour() * 60L + start.getMinute();
@@ -63,6 +48,42 @@ public class PayrollServiceImpl implements PayrollService {
     static int calcPreTaxPay(Integer hourlyWage, double totalHours) {
         if (hourlyWage == null) return 0;
         return (int) Math.floor(hourlyWage * totalHours);
+    }
+
+    private static String toExcelSheetName(String name) {
+        if (name == null || name.isBlank()) return "미소속";
+        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
+        if (cleaned.isEmpty()) cleaned = "미소속";
+        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
+    }
+
+    private static String uniqueExcelSheetName(String base, Set<String> used) {
+        String candidate = base;
+        int n = 2;
+        while (!used.add(candidate)) {
+            String suffix = " (" + n + ")";
+            int maxBase = Math.max(1, 31 - suffix.length());
+            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
+            n++;
+        }
+        return candidate;
+    }
+
+    private User getRequester(String requesterId) {
+        return userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+    }
+
+    private boolean isAdmin(User user) {
+        return user.getUserType() != null
+                && user.getUserType().getUtIsAdmin() != null
+                && user.getUserType().getUtIsAdmin() == 1;
+    }
+
+    private boolean canViewSensitive(User user) {
+        return user.getUserType() != null
+                && user.getUserType().getUtCanViewSensitive() != null
+                && user.getUserType().getUtCanViewSensitive() == 1;
     }
 
     private List<WorkRecord> fetchMonthRecords(int year, int month, Long workPlaceIdx) {
@@ -249,25 +270,6 @@ public class PayrollServiceImpl implements PayrollService {
             return month + "월 급여";
         }
         return "미소속";
-    }
-
-    private static String toExcelSheetName(String name) {
-        if (name == null || name.isBlank()) return "미소속";
-        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
-        if (cleaned.isEmpty()) cleaned = "미소속";
-        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
-    }
-
-    private static String uniqueExcelSheetName(String base, Set<String> used) {
-        String candidate = base;
-        int n = 2;
-        while (!used.add(candidate)) {
-            String suffix = " (" + n + ")";
-            int maxBase = Math.max(1, 31 - suffix.length());
-            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
-            n++;
-        }
-        return candidate;
     }
 
     private void writePayrollSheet(

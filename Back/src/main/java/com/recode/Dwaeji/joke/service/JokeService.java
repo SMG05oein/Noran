@@ -3,6 +3,7 @@ package com.recode.Dwaeji.joke.service;
 import com.recode.Dwaeji.joke.dto.JokeCreateRequestDto;
 import com.recode.Dwaeji.joke.dto.JokeResponseDto;
 import com.recode.Dwaeji.joke.dto.JokeUpdateRequestDto;
+
 import java.util.List;
 
 public interface JokeService {

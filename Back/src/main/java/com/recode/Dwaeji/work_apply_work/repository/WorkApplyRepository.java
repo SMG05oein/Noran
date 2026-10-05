@@ -13,11 +13,15 @@ import java.util.Optional;
 @Repository
 public interface WorkApplyRepository extends JpaRepository<WorkApply, Long> {
     Optional<WorkApply> findByUser_UserIdxAndWaDate(Long userIdx, LocalDate waDate);
+
     List<WorkApply> findByUser_UserIdx(Long userIdx);
-    
+
     List<WorkApply> findByUser_WorkPlace_WpIdxAndWaDate(Long wpIdx, LocalDate waDate);
+
     List<WorkApply> findByWaDate(LocalDate waDate);
+
     List<WorkApply> findByWaDateBetween(LocalDate startDate, LocalDate endDate);
+
     void deleteByUser_UserIdx(Long userIdx);
 
     @Query("SELECT a FROM WorkApply a JOIN FETCH a.user u WHERE u.userIdx IN :userIdxList AND a.waDate = :waDate")

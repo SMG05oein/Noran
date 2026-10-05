@@ -31,27 +31,27 @@ public class DevIpOtpService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final JavaMailSender mailSender;
-
+    private final ConcurrentHashMap<String, OtpEntry> otpByIp = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SessionEntry> sessions = new ConcurrentHashMap<>();
     @Value("${spring.mail.username:}")
     private String mailFrom;
-
     @Value("${dev.ip-otp.to:}")
     private String mailToOverride;
-
     @Value("${dev.ip-otp.ttl-seconds:300}")
     private long otpTtlSeconds;
-
     @Value("${dev.ip-otp.session-ttl-seconds:43200}")
     private long sessionTtlSeconds;
-
     @Value("${dev.ip-otp.min-interval-seconds:60}")
     private long minIntervalSeconds;
 
-    private record OtpEntry(String code, Instant expiresAt, Instant lastSentAt) {}
-    private record SessionEntry(String ip, Instant expiresAt) {}
-
-    private final ConcurrentHashMap<String, OtpEntry> otpByIp = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, SessionEntry> sessions = new ConcurrentHashMap<>();
+    private static String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "***";
+        int at = email.indexOf('@');
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() <= 2) return "**" + domain;
+        return local.substring(0, 2) + "***" + domain;
+    }
 
     public Map<String, Object> requestOtp(String clientIp) {
         String to = resolveTo();
@@ -158,12 +158,9 @@ public class DevIpOtpService {
         sessions.entrySet().removeIf(e -> now.isAfter(e.getValue().expiresAt()));
     }
 
-    private static String maskEmail(String email) {
-        if (email == null || !email.contains("@")) return "***";
-        int at = email.indexOf('@');
-        String local = email.substring(0, at);
-        String domain = email.substring(at);
-        if (local.length() <= 2) return "**" + domain;
-        return local.substring(0, 2) + "***" + domain;
+    private record OtpEntry(String code, Instant expiresAt, Instant lastSentAt) {
+    }
+
+    private record SessionEntry(String ip, Instant expiresAt) {
     }
 }

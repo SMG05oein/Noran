@@ -11,8 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class DwaejiApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(DwaejiApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(DwaejiApplication.class, args);
+    }
 
 }

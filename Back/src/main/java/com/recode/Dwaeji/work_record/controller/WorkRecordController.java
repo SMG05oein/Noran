@@ -193,10 +193,10 @@ public class WorkRecordController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
-        
+
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                 page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Order.desc("wrhCreatedAt")));
-        
+
         return ResponseEntity.ok(workRecordService.getWorkRecordHistory(userDetails.getUsername(), year, month, keyword, pageable));
     }
 

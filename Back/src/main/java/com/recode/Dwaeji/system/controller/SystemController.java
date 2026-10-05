@@ -15,7 +15,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-@Tag(name="시스템 관리", description = "시스템 공통 및 관리 API")
+@Tag(name = "시스템 관리", description = "시스템 공통 및 관리 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/system")
@@ -36,7 +36,7 @@ public class SystemController {
         } catch (Exception e) {
             log.error("이용방법 조회 중 오류 발생", e);
         }
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("content", content);
         return ResponseEntity.ok(response);
@@ -58,7 +58,7 @@ public class SystemController {
             response.put("error", "Failed to save file.");
             return ResponseEntity.internalServerError().body(response);
         }
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("message", "성공적으로 저장되었습니다.");
         return ResponseEntity.ok(response);

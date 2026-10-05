@@ -373,8 +373,10 @@ const AdminRecords = () => {
                   variant="success"
                   className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs text-nowrap"
                   id="excel-dropdown"
+                  disabled={downloading}
                 >
-                  <RiFileExcel2Line size={17} /> 엑셀 관리
+                  {downloading ? <Spinner as="span" animation="border" size="sm" /> : <RiFileExcel2Line size={17} />}
+                  <span>{downloading ? '엑셀 다운로드 중...' : '엑셀 관리'}</span>
                 </Dropdown.Toggle>
                 <Dropdown.Menu className="shadow border-0 py-2 rounded-3 mt-1">
                   <Dropdown.Item

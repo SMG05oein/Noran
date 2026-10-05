@@ -45,7 +45,7 @@ public class WorkScheduleDailyResponseDto {
         Long userIdx = schedule != null ? schedule.getUser().getUserIdx() : apply.getUser().getUserIdx();
         String userName = schedule != null ? schedule.getUser().getUserName() : apply.getUser().getUserName();
         String userHomeWpName = schedule != null && schedule.getUser().getWorkPlace() != null ? schedule.getUser().getWorkPlace().getWpName()
-                              : (apply != null && apply.getUser().getWorkPlace() != null ? apply.getUser().getWorkPlace().getWpName() : null);
+                : (apply != null && apply.getUser().getWorkPlace() != null ? apply.getUser().getWorkPlace().getWpName() : null);
 
         return WorkScheduleDailyResponseDto.builder()
                 .wsdIdx(schedule != null ? schedule.getWsdIdx() : null)
@@ -58,8 +58,8 @@ public class WorkScheduleDailyResponseDto {
                 .wsdStartTime(schedule != null ? schedule.getWsdStartTime() : null)
                 .wsdWorkPlaceIdx(schedule != null && schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpIdx() : null)
                 .wsdWorkPlaceName(schedule != null && schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpName() : null)
-                .wsdIsConfirmed(schedule != null ? schedule.getWsdIsConfirmed() : false)
-                .wsdIsOpen(schedule != null ? schedule.getWsdIsOpen() : false)
+                .wsdIsConfirmed(schedule != null && schedule.getWsdIsConfirmed())
+                .wsdIsOpen(schedule != null && schedule.getWsdIsOpen())
                 .wsdRemarks(waRemarks)
                 .wsdCreatedAt(schedule != null ? schedule.getWsdCreatedAt() : null)
                 .wsdUpdatedAt(schedule != null ? schedule.getWsdUpdatedAt() : null)

@@ -10,6 +10,8 @@ import java.util.Optional;
 @Repository
 public interface GatheringTagRepository extends JpaRepository<GatheringTag, Integer> {
     Optional<GatheringTag> findByName(String name);
+
     boolean existsByName(String name);
+
     List<GatheringTag> findAllByOrderByTagIdAsc();
 }

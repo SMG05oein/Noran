@@ -25,23 +25,33 @@ public class DeveloperDashboardService {
     private final DataSource dataSource;
     private final Environment environment;
     private final SystemMonitorService systemMonitorService;
-
+    private final Instant processStart = Instant.now();
     @Value("${spring.application.name:Dwaeji}")
     private String appName;
-
     @Value("${git.sha:unknown}")
     private String gitShaProp;
-
     @Value("${build.time:}")
     private String buildTimeProp;
-
     @Value("${deploy.backend.webhook.url:}")
     private String backendDeployWebhookUrl;
-
     @Value("${deploy.backend.status.url:}")
     private String backendDeployStatusUrl;
 
-    private final Instant processStart = Instant.now();
+    private static double roundGb(long bytes) {
+        return Math.round((bytes / (1024.0 * 1024.0 * 1024.0)) * 100.0) / 100.0;
+    }
+
+    private static String firstNonBlank(String... vals) {
+        if (vals == null) return null;
+        for (String v : vals) {
+            if (v != null && !v.isBlank()) return v;
+        }
+        return null;
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
+    }
 
     public Map<String, Object> buildSystemInfo() {
         Map<String, Object> systemInfo = new LinkedHashMap<>();
@@ -186,21 +196,5 @@ public class DeveloperDashboardService {
             pool.put("waiting", null);
         }
         return pool;
-    }
-
-    private static double roundGb(long bytes) {
-        return Math.round((bytes / (1024.0 * 1024.0 * 1024.0)) * 100.0) / 100.0;
-    }
-
-    private static String firstNonBlank(String... vals) {
-        if (vals == null) return null;
-        for (String v : vals) {
-            if (v != null && !v.isBlank()) return v;
-        }
-        return null;
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
     }
 }

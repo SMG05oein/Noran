@@ -8,5 +8,6 @@ import java.util.Optional;
 
 public interface BankRepository extends JpaRepository<Bank, String> {
     List<Bank> findByIsActiveOrderBySortOrderAscBankNameAsc(Integer isActive);
+
     Optional<Bank> findByBankName(String bankName);
 }

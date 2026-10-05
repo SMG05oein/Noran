@@ -1,13 +1,12 @@
 package com.recode.Dwaeji.user.controller;
 
 import com.recode.Dwaeji.user.dto.*;
-import org.springframework.data.domain.*;
-import java.util.*;
 import com.recode.Dwaeji.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name="회원 인증", description = "회원 인증 관련 API 명세서입니다.")
+@Tag(name = "회원 인증", description = "회원 인증 관련 API 명세서입니다.")
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
@@ -27,7 +26,7 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto) {
         LoginResponseDto loginResponse = userService.login(loginRequestDto);
-        
+
         // HttpOnly 쿠키 생성 (리프레시 토큰)
         ResponseCookie cookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
                 .httpOnly(true)
@@ -55,7 +54,7 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx,
             @Valid @RequestBody UserUpdateDto userUpdateDto) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -69,7 +68,7 @@ public class UserController {
     public ResponseEntity<String> deleteUser(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -83,7 +82,7 @@ public class UserController {
     public ResponseEntity<String> hardDeleteUser(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -97,7 +96,7 @@ public class UserController {
     public ResponseEntity<String> restoreUser(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -111,7 +110,7 @@ public class UserController {
     public ResponseEntity<String> setLeaveStatus(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -125,7 +124,7 @@ public class UserController {
     public ResponseEntity<String> cancelLeave(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userIdx) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -138,7 +137,7 @@ public class UserController {
     @DeleteMapping("/me/withdraw")
     public ResponseEntity<String> withdrawUser(
             @AuthenticationPrincipal UserDetails userDetails) {
-        
+
         if (userDetails == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -326,6 +325,7 @@ public class UserController {
         userService.updateSensitiveInfo(requesterId, userIdx, dto);
         return ResponseEntity.ok("유저 민감 정보가 성공적으로 업데이트되었습니다.");
     }
+
     @Operation(summary = "직원 등록 (관리자 전용)", description = "관리자가 새로운 관리자 또는 알바생 계정을 직접 생성합니다. 관리자 전용.")
     @PostMapping("/admin/register")
     public ResponseEntity<java.util.Map<String, Object>> adminRegisterUser(

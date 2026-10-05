@@ -19,9 +19,12 @@ public final class OpenShiftRules {
     public static final String OPEN_WEEKEND_OR_HOLIDAY = "10:00";
     public static final String OPEN_LABEL = "오픈";
 
-    private OpenShiftRules() {}
+    private OpenShiftRules() {
+    }
 
-    /** 해당 날짜의 공식 오픈 시작 시각 (HH:mm). */
+    /**
+     * 해당 날짜의 공식 오픈 시작 시각 (HH:mm).
+     */
     public static String expectedOpenStart(LocalDate date) {
         if (date == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "날짜가 없습니다.");
@@ -70,7 +73,8 @@ public final class OpenShiftRules {
         return String.format("%02d:%02d", h, min);
     }
 
-    public record NormalizedOpen(boolean isOpen, String startTime) {}
+    public record NormalizedOpen(boolean isOpen, String startTime) {
+    }
 
     /**
      * 고정 공휴일 + 설·추석·부처님오신날(2024–2032) + 주요 대체공휴일.
@@ -162,7 +166,9 @@ public final class OpenShiftRules {
             return isSubstituteMonday(date);
         }
 
-        /** 공휴일이 일요일인 경우 다음 월요일이 대체공휴일인 패턴 (단순화). */
+        /**
+         * 공휴일이 일요일인 경우 다음 월요일이 대체공휴일인 패턴 (단순화).
+         */
         private static boolean isSubstituteMonday(LocalDate date) {
             if (date.getDayOfWeek() != DayOfWeek.MONDAY) return false;
             LocalDate sun = date.minusDays(1);

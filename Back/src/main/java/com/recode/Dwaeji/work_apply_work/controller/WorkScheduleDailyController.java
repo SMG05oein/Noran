@@ -86,12 +86,12 @@ public class WorkScheduleDailyController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        
+
         if (date != null) {
             startDate = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
             endDate = startDate.plusDays(6);
         }
-        
+
         return ResponseEntity.ok(scheduleService.getDailySchedules(userDetails.getUsername(), workPlaceIdx, startDate, endDate));
     }
 
@@ -103,7 +103,6 @@ public class WorkScheduleDailyController {
             @RequestParam(required = false) Long workPlaceIdx) {
         return ResponseEntity.ok(scheduleService.getDayAssignments(userDetails.getUsername(), date, workPlaceIdx));
     }
-
 
 
     @Operation(summary = "캘린더 구간 배정 인원 조회", description = "날짜별 { total: 총출근, peak: 피크(18~20, 오픈제외) }. 임시 저장(미확정) 포함.")

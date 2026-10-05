@@ -32,6 +32,15 @@ public class DeveloperNoticeService {
     private final AtomicReference<Instant> scheduledStart = new AtomicReference<>(null);
     private final AtomicReference<Instant> scheduledEnd = new AtomicReference<>(null);
 
+    private static Instant parseInstant(String iso) {
+        if (iso == null || iso.isBlank()) return null;
+        try {
+            return Instant.parse(iso);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ISO-8601 datetime: " + iso);
+        }
+    }
+
     @Transactional(readOnly = true)
     public AnnouncementListResponseDto getAnnouncementsAndMaintenance() {
         List<AnnouncementResponseDto> notices = announcementRepository.findAllByOrderByAnnIdxDesc()
@@ -145,7 +154,9 @@ public class DeveloperNoticeService {
         return maintenanceStatusMap();
     }
 
-    /** Ensure schedule window flips immediate flag for observability (optional). */
+    /**
+     * Ensure schedule window flips immediate flag for observability (optional).
+     */
     @Scheduled(fixedDelayString = "${alert.check-ms:60000}")
     public void refreshScheduleFlag() {
         // no-op side effects; computeActive() reads schedule live.
@@ -173,14 +184,5 @@ public class DeveloperNoticeService {
         boolean afterStart = start == null || !now.isBefore(start);
         boolean beforeEnd = end == null || !now.isAfter(end);
         return afterStart && beforeEnd;
-    }
-
-    private static Instant parseInstant(String iso) {
-        if (iso == null || iso.isBlank()) return null;
-        try {
-            return Instant.parse(iso);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ISO-8601 datetime: " + iso);
-        }
     }
 }

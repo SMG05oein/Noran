@@ -10,12 +10,13 @@ import java.util.List;
 @Repository
 public interface WorkRecordHistoryRepository extends JpaRepository<WorkRecordHistory, Long> {
     List<WorkRecordHistory> findByTargetUser_UserIdxAndWrDate(Long userIdx, LocalDate wrDate);
+
     List<WorkRecordHistory> findByWrDate(LocalDate wrDate);
 
     @org.springframework.data.jpa.repository.Query("SELECT h FROM WorkRecordHistory h WHERE " +
-           "(:year IS NULL OR YEAR(h.wrDate) = :year) AND " +
-           "(:month IS NULL OR MONTH(h.wrDate) = :month) AND " +
-           "(:keyword IS NULL OR h.targetUser.userName LIKE %:keyword% OR h.adminUser.userName LIKE %:keyword%)")
+            "(:year IS NULL OR YEAR(h.wrDate) = :year) AND " +
+            "(:month IS NULL OR MONTH(h.wrDate) = :month) AND " +
+            "(:keyword IS NULL OR h.targetUser.userName LIKE %:keyword% OR h.adminUser.userName LIKE %:keyword%)")
     org.springframework.data.domain.Page<WorkRecordHistory> searchHistory(
             @org.springframework.data.repository.query.Param("year") Integer year,
             @org.springframework.data.repository.query.Param("month") Integer month,
@@ -23,5 +24,6 @@ public interface WorkRecordHistoryRepository extends JpaRepository<WorkRecordHis
             org.springframework.data.domain.Pageable pageable);
 
     void deleteByTargetUser_UserIdx(Long targetUserIdx);
+
     void deleteByAdminUser_UserIdx(Long adminUserIdx);
 }

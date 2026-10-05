@@ -1,22 +1,28 @@
 package com.recode.Dwaeji.user.impl;
 
 import com.recode.Dwaeji.JwtUtil;
+import com.recode.Dwaeji.common.excel.ExcelDarkTheme;
+import com.recode.Dwaeji.gathering.repository.GatheringCommentRepository;
+import com.recode.Dwaeji.gathering.repository.GatheringPostRepository;
+import com.recode.Dwaeji.gathering.repository.GatheringReportRepository;
+import com.recode.Dwaeji.joke.repository.JokeRepository;
 import com.recode.Dwaeji.user.database.RefreshToken;
 import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.user.dto.*;
 import com.recode.Dwaeji.user.repository.*;
 import com.recode.Dwaeji.user.service.UserService;
-import com.recode.Dwaeji.work_record.repository.*;
-import com.recode.Dwaeji.work_apply_work.repository.*;
-import com.recode.Dwaeji.gathering.repository.*;
-import com.recode.Dwaeji.joke.repository.*;
-import com.recode.Dwaeji.common.excel.*;
-import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.*;
-import org.apache.poi.xssf.usermodel.*;
-import org.apache.poi.ss.usermodel.*;
+import com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository;
+import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
+import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
+import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
+import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -59,7 +65,7 @@ public class UserServiceImpl implements UserService {
 
         // 아이디로 사용자 찾기
         User user = userRepository.findByUserId(loginRequestDto.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"아이디 또는 비밀번호가 잘못되었습니다."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 잘못되었습니다."));
 
         // 비밀번호 검증: 임시비번 상태면 plain text 비교, 일반이면 BCrypt 비교
         boolean isTempPw = user.getUserIsTempPw() != null && user.getUserIsTempPw() == 1;
@@ -119,7 +125,6 @@ public class UserServiceImpl implements UserService {
         }
 
 
-
         if (signupRequestDto.getFkWorkPlaceIdx() == null || signupRequestDto.getFkWorkPlaceIdx() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 근무지입니다.");
         }
@@ -136,7 +141,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (userRepository.findByUserId(signupRequestDto.getUserId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"이미 사용하는 아이디입니다.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용하는 아이디입니다.");
         }
 
 
@@ -246,7 +251,7 @@ public class UserServiceImpl implements UserService {
     public void updateUser(String requesterId, Long targetUserIdx, UserUpdateDto userUpdateDto) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "수정할 사용자를 찾을 수 없습니다."));
 
@@ -314,7 +319,7 @@ public class UserServiceImpl implements UserService {
             }
         }
         targetUser.setUserEmail(userUpdateDto.getUserEmail());
-        
+
         if (userUpdateDto.getEmailConsentAgreed() != null) {
             boolean isAgreed = userUpdateDto.getEmailConsentAgreed() == 1;
             targetUser.setEmailConsentAgreed(isAgreed);
@@ -324,7 +329,7 @@ public class UserServiceImpl implements UserService {
                 targetUser.setEmailConsentDate(null);
             }
         }
-        
+
         userRepository.save(targetUser);
     }
 
@@ -333,12 +338,12 @@ public class UserServiceImpl implements UserService {
     public void bulkUpdateUsers(String requesterId, UserBulkUpdateDto dto) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
         if (reqIsAdmin == null || reqIsAdmin != 1) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "일괄 업데이트 권한이 없습니다.");
         }
-        
+
         if (dto.getUserIdxList() == null || dto.getUserIdxList().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업데이트할 사용자가 선택되지 않았습니다.");
         }
@@ -380,7 +385,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "삭제할 사용자를 찾을 수 없습니다."));
 
@@ -407,7 +412,7 @@ public class UserServiceImpl implements UserService {
     public void withdrawUser(String requesterId) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         // 논리적 삭제
         requester.setUserIsActive(0);
         requester.setUserWithdrawnAt(LocalDateTime.now());
@@ -418,7 +423,7 @@ public class UserServiceImpl implements UserService {
     public void hardDeleteUser(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "삭제할 사용자를 찾을 수 없습니다."));
 
@@ -429,7 +434,7 @@ public class UserServiceImpl implements UserService {
         if (!isAdmin) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "사용자를 영구 삭제할 권한이 없습니다.");
         }
-        
+
         // 본인 계정 물리 삭제 불가 (필요시 제거 가능)
         if (requester.getUserIdx().equals(targetUserIdx)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "자신의 계정은 직접 영구 삭제할 수 없습니다.");
@@ -533,7 +538,7 @@ public class UserServiceImpl implements UserService {
     public void restoreUser(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "복구할 사용자를 찾을 수 없습니다."));
 
@@ -555,7 +560,7 @@ public class UserServiceImpl implements UserService {
     public void setLeaveStatus(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."));
 
@@ -576,7 +581,7 @@ public class UserServiceImpl implements UserService {
     public void cancelLeave(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         User targetUser = userRepository.findById(targetUserIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."));
 
@@ -616,10 +621,10 @@ public class UserServiceImpl implements UserService {
     public UserInfoDto getUserInfoByIdx(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         Integer reqIsAdmin = requester.getUserType().getUtIsAdmin();
         boolean isAdmin = (reqIsAdmin != null && reqIsAdmin == 1);
-        
+
         // 본인 조회이거나 관리자인 경우만 허용
         if (!isAdmin && !requester.getUserIdx().equals(targetUserIdx)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 유저의 정보를 조회할 권한이 없습니다.");
@@ -645,7 +650,7 @@ public class UserServiceImpl implements UserService {
     public SensitiveInfoDto getSensitiveInfo(String requesterId, Long targetUserIdx) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         Integer canViewSensitive = requester.getUserType().getUtCanViewSensitive();
         if (canViewSensitive == null || canViewSensitive != 1) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "민감 정보를 조회할 권한이 없습니다.");
@@ -662,7 +667,7 @@ public class UserServiceImpl implements UserService {
     public void updateSensitiveInfo(String requesterId, Long targetUserIdx, SensitiveInfoDto dto) {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
-        
+
         Integer canEditSensitive = requester.getUserType().getUtCanEditSensitive();
         if (canEditSensitive == null || canEditSensitive != 1) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "민감 정보를 수정할 권한이 없습니다.");
@@ -719,7 +724,7 @@ public class UserServiceImpl implements UserService {
             String newAccessToken = jwtUtil.createAccessToken(user.getUserId(), role, authType);
 
             return new TokenRefreshResponseDto(newAccessToken, "새로운 액세스 토큰이 발급되었습니다.");
-            
+
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.");
         } catch (Exception e) {
@@ -741,7 +746,7 @@ public class UserServiceImpl implements UserService {
 
         boolean canAccessArchive = requester.getUserType() != null && requester.getUserType().getUtCanAccessArchive() != null && requester.getUserType().getUtCanAccessArchive() == 1;
 
-        Page<UserWithSeqProjection> projPage = 
+        Page<UserWithSeqProjection> projPage =
                 userRepository.searchWorkersNative(isActive, workPlaceIdx, userName, pageable);
 
         return mapUserProjectionsWithNameCount(projPage, canAccessArchive);
@@ -802,7 +807,7 @@ public class UserServiceImpl implements UserService {
                 return (c != null && c > 0) ? c : 1L;
             });
         }
-        
+
         java.time.LocalDateTime oneYearAgo = java.time.LocalDateTime.now().minusYears(1);
 
         return projPage.map(p -> {
@@ -872,12 +877,12 @@ public class UserServiceImpl implements UserService {
         if (dto.getUserAccountName() != null && !dto.getUserAccountName().isEmpty()) {
             user.setUserAccountName(dto.getUserAccountName());
         }
-        
+
         if (Boolean.TRUE.equals(dto.getBankConsentAgreed())) {
             user.setBankConsentAgreed(true);
             user.setBankConsentDate(java.time.LocalDateTime.now());
         }
-        
+
         userRepository.save(user);
     }
 
@@ -1013,18 +1018,19 @@ public class UserServiceImpl implements UserService {
                         : Sort.Direction.ASC;
 
         String key = sortBy == null ? "" : sortBy.trim().toLowerCase();
-        
+
         if (isActive != null && isActive == 0 && key.isEmpty()) {
             direction = Sort.Direction.DESC;
         }
-        
+
         Sort sort;
         if (nativeQuery) {
             String primary = switch (key) {
                 case "branch" -> "wp.wp_name";
                 case "status" -> "numbered_u.user_is_active";
                 case "name" -> "numbered_u.user_name";
-                default -> (isActive != null && isActive == 0) ? "numbered_u.user_withdrawn_at" : "numbered_u.user_name";
+                default ->
+                        (isActive != null && isActive == 0) ? "numbered_u.user_withdrawn_at" : "numbered_u.user_name";
             };
             // native: domain property 검증 우회, 화이트리스트 SQL만
             sort = JpaSort.unsafe(

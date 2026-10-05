@@ -6,6 +6,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.http.CacheControl;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -13,7 +14,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.http.CacheControl;
+
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -44,11 +45,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins(
-                    "http://localhost:3000",
-                    "http://localhost:5173",
-                    "https://dwaeji.kr", 
-                    "https://www.dwaeji.kr"
-                    // 만약 Netlify 배포 주소가 따로 있다면 여기에 추가해 주세요. (예: "https://my-app.netlify.app")
+                        "http://localhost:3000",
+                        "http://localhost:5173",
+                        "https://dwaeji.kr",
+                        "https://www.dwaeji.kr"
+                        // 만약 Netlify 배포 주소가 따로 있다면 여기에 추가해 주세요. (예: "https://my-app.netlify.app")
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

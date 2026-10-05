@@ -22,6 +22,8 @@ const AdminUserTypes = () => {
   const [utIsAdmin, setUtIsAdmin] = useState(0);
   const [utIsSuperAdmin, setUtIsSuperAdmin] = useState(0);
   
+  const isEditingMyRole = editMode && Number(currentId) === Number(myUtIdx);
+  
   const [utCanAccessArchive, setUtCanAccessArchive] = useState(0);
   const [utCanViewSensitive, setUtCanViewSensitive] = useState(0);
   const [utCanEditSensitive, setUtCanEditSensitive] = useState(0);
@@ -171,14 +173,16 @@ const AdminUserTypes = () => {
                             : <Badge bg="secondary" className="px-3 py-1">일반 직원</Badge>}
                         </td>
                         <td>
-                          {isMyRole ? (
-                            <div className="text-muted small">본인 직급은 수정할 수 없습니다</div>
-                          ) : (
-                            <div className="d-flex justify-content-center gap-2">
-                              <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-3" onClick={() => handleOpenEdit(ut)}>수정</Button>
-                              <Button size="sm" variant="outline-danger" className="rounded-pill fw-bold px-3" onClick={() => handleDelete(ut.utIdx, ut.utName)}>삭제</Button>
-                            </div>
-                          )}
+                          <div className="d-flex justify-content-center gap-2">
+                            {isMyRole ? (
+                              <Button size="sm" variant="outline-secondary" className="rounded-pill fw-bold px-3" onClick={() => handleOpenEdit(ut)}>권한 보기</Button>
+                            ) : (
+                              <>
+                                <Button size="sm" variant="outline-primary" className="rounded-pill fw-bold px-3" onClick={() => handleOpenEdit(ut)}>수정</Button>
+                                <Button size="sm" variant="outline-danger" className="rounded-pill fw-bold px-3" onClick={() => handleDelete(ut.utIdx, ut.utName)}>삭제</Button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                       );
@@ -207,6 +211,7 @@ const AdminUserTypes = () => {
         <Modal.Body className="p-4">
           {errorMsg && <Alert variant="danger" className="py-2 rounded-3 text-center">{errorMsg}</Alert>}
           {successMsg && <Alert variant="success" className="py-2 rounded-3 text-center">{successMsg}</Alert>}
+          {isEditingMyRole && <Alert variant="warning" className="py-2 rounded-3 text-center mb-3">본인의 직급 정보 및 권한은 조회만 가능합니다.</Alert>}
           
           <Form.Group className="mb-3">
             <Form.Label className="fw-bold text-muted small">직급명 *</Form.Label>
@@ -215,6 +220,7 @@ const AdminUserTypes = () => {
               onChange={e => setUtName(e.target.value)} 
               placeholder="예: 파트타임, 홀매니저, 정규직 등"
               className="custom-input"
+              disabled={isEditingMyRole}
             />
           </Form.Group>
 
@@ -234,6 +240,7 @@ const AdminUserTypes = () => {
                 }
               }} 
               className="custom-input"
+              disabled={isEditingMyRole}
             >
               <option value={0}>일반 알바생 / 직원 (관리자 기능 제한)</option>
               <option value={1}>관리자 (관리자 대시보드 접근 허용)</option>
@@ -250,6 +257,7 @@ const AdminUserTypes = () => {
                 checked={utCanAccessArchive === 1}
                 onChange={e => setUtCanAccessArchive(e.target.checked ? 1 : 0)}
                 className="mb-2"
+                disabled={isEditingMyRole}
               />
               <Form.Check 
                 type="switch" 
@@ -258,6 +266,7 @@ const AdminUserTypes = () => {
                 checked={utCanViewSensitive === 1}
                 onChange={e => setUtCanViewSensitive(e.target.checked ? 1 : 0)}
                 className="mb-2"
+                disabled={isEditingMyRole}
               />
               <Form.Check 
                 type="switch" 
@@ -266,6 +275,7 @@ const AdminUserTypes = () => {
                 checked={utCanEditSensitive === 1}
                 onChange={e => setUtCanEditSensitive(e.target.checked ? 1 : 0)}
                 className="mb-2"
+                disabled={isEditingMyRole}
               />
               <Form.Check 
                 type="switch" 
@@ -274,6 +284,7 @@ const AdminUserTypes = () => {
                 checked={utCanExportExcel === 1}
                 onChange={e => setUtCanExportExcel(e.target.checked ? 1 : 0)}
                 className="mb-2"
+                disabled={isEditingMyRole}
               />
               <Form.Check 
                 type="switch" 
@@ -281,15 +292,18 @@ const AdminUserTypes = () => {
                 label="직급 및 권한 설정 관리 권한" 
                 checked={utCanManageRoles === 1}
                 onChange={e => setUtCanManageRoles(e.target.checked ? 1 : 0)}
+                disabled={isEditingMyRole}
               />
             </div>
           )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)} className="rounded-3">닫기</Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving} className="rounded-3 px-3">
-            {saving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
-          </Button>
+          {!isEditingMyRole && (
+            <Button variant="primary" onClick={handleSave} disabled={saving} className="rounded-3 px-3">
+              {saving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </div>

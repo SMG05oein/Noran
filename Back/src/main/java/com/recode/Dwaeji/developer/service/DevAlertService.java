@@ -26,23 +26,17 @@ public class DevAlertService {
     private final DeveloperDashboardService dashboardService;
     private final DevExecutorAuth executorAuth;
     private final RestClient.Builder restClientBuilder;
-
+    private final ConcurrentHashMap<String, Instant> lastSent = new ConcurrentHashMap<>();
     @Value("${alert.webhook.url:}")
     private String webhookUrl;
-
     @Value("${alert.memory.used-percent-threshold:85}")
     private double memoryThreshold;
-
     @Value("${alert.disk.free-percent-threshold:15}")
     private double diskFreeThreshold;
-
     @Value("${alert.server-error.delta-threshold:20}")
     private long serverErrorDeltaThreshold;
-
     @Value("${alert.cooldown-ms:300000}")
     private long cooldownMs;
-
-    private final ConcurrentHashMap<String, Instant> lastSent = new ConcurrentHashMap<>();
     private long lastServerErrorSnapshot = 0;
 
     public Map<String, Object> configPublic() {

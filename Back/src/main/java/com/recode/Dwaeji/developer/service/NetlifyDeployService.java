@@ -36,6 +36,19 @@ public class NetlifyDeployService {
     @Value("${netlify.site-admin-url:}")
     private String siteAdminUrl;
 
+    private static String text(JsonNode n, String field) {
+        if (n == null || !n.has(field) || n.get(field).isNull()) return null;
+        return n.get(field).asText();
+    }
+
+    private static String first(String a, String b) {
+        return a != null ? a : b;
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
+    }
+
     public boolean isConfigured() {
         return token != null && !token.isBlank() && siteId != null && !siteId.isBlank();
     }
@@ -164,18 +177,5 @@ public class NetlifyDeployService {
             m.put("adminUrl", null);
         }
         return m;
-    }
-
-    private static String text(JsonNode n, String field) {
-        if (n == null || !n.has(field) || n.get(field).isNull()) return null;
-        return n.get(field).asText();
-    }
-
-    private static String first(String a, String b) {
-        return a != null ? a : b;
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
     }
 }

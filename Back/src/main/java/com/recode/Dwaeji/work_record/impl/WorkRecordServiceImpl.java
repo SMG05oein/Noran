@@ -36,6 +36,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WorkRecordServiceImpl implements WorkRecordService {
 
+    private static final String ACTION_CREATE = "CREATE";
+    private static final String ACTION_UPDATE = "UPDATE";
+    private static final String ACTION_DELETE = "DELETE";
+    private static final String ACTION_RESTORE = "RESTORE";
+    private static final java.time.format.DateTimeFormatter HH_MM = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
     private final WorkRecordRepository workRecordRepository;
     private final UserRepository userRepository;
     private final WorkRecordHistoryRepository workRecordHistoryRepository;
@@ -44,12 +49,70 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private final WorkPlaceRepository workPlaceRepository;
     private final com.recode.Dwaeji.user.repository.UserTypeRepository userTypeRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
-
     @Value("${work-record.edit-deadline-day-of-month:1}")
     private int editDeadlineDayOfMonth;
-
     @Value("${work-record.edit-deadline-time:23:59:59}")
     private String editDeadlineTime;
+
+    private static long toMinutes(LocalTime t) {
+        return t.getHour() * 60L + t.getMinute();
+    }
+
+    /**
+     * [start, end) in minutes from wrDate 00:00; end earlier than start = next-day checkout
+     */
+    private static long[] toInterval(LocalTime start, LocalTime end) {
+        long s = toMinutes(start);
+        long e = toMinutes(end);
+        if (e < s) e += 24 * 60;
+        return new long[]{s, e};
+    }
+
+    private static LocalTime truncateToMinutes(LocalTime t) {
+        return t != null ? t.truncatedTo(java.time.temporal.ChronoUnit.MINUTES) : null;
+    }
+
+    /**
+     * Legacy rows have no action_type → infer from before/after
+     */
+    private static String resolveActionType(WorkRecordHistory h) {
+        if (h.getActionType() != null) return h.getActionType();
+        if (h.getAfterStartTime() == null) return ACTION_DELETE;
+        if (h.getBeforeStartTime() == null) return ACTION_CREATE;
+        return ACTION_UPDATE;
+    }
+
+    private static String toExcelSheetName(String name) {
+        if (name == null || name.isBlank()) return "미소속";
+        // Excel sheet: max 31, 금지 문자 \ / ? * [ ]
+        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
+        if (cleaned.isEmpty()) cleaned = "미소속";
+        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
+    }
+
+    private static String uniqueExcelSheetName(String base, Set<String> used) {
+        String candidate = base;
+        int n = 2;
+        while (!used.add(candidate)) {
+            String suffix = " (" + n + ")";
+            int maxBase = Math.max(1, 31 - suffix.length());
+            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
+            n++;
+        }
+        return candidate;
+    }
+
+    /**
+     * 기록 근무지 ≠ 유저 소속 지점이면 타지점
+     */
+    private static boolean isOtherBranchWorker(WorkRecord record) {
+        if (record.getUser() == null || record.getUser().getWorkPlace() == null || record.getWorkPlace() == null) {
+            return false;
+        }
+        Long homeWpIdx = record.getUser().getWorkPlace().getWpIdx();
+        Long recordWpIdx = record.getWorkPlace().getWpIdx();
+        return homeWpIdx != null && recordWpIdx != null && !homeWpIdx.equals(recordWpIdx);
+    }
 
     private User getRequester(String requesterId) {
         return userRepository.findByUserId(requesterId)
@@ -96,29 +159,6 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return String.format("%d:%02d", actual / 60, actual % 60);
     }
 
-    private static final String ACTION_CREATE = "CREATE";
-    private static final String ACTION_UPDATE = "UPDATE";
-    private static final String ACTION_DELETE = "DELETE";
-    private static final String ACTION_RESTORE = "RESTORE";
-
-    private static final java.time.format.DateTimeFormatter HH_MM = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
-
-    private static long toMinutes(LocalTime t) {
-        return t.getHour() * 60L + t.getMinute();
-    }
-
-    /** [start, end) in minutes from wrDate 00:00; end earlier than start = next-day checkout */
-    private static long[] toInterval(LocalTime start, LocalTime end) {
-        long s = toMinutes(start);
-        long e = toMinutes(end);
-        if (e < s) e += 24 * 60;
-        return new long[]{s, e};
-    }
-
-    private static LocalTime truncateToMinutes(LocalTime t) {
-        return t != null ? t.truncatedTo(java.time.temporal.ChronoUnit.MINUTES) : null;
-    }
-
     private void validateWorkTimes(LocalTime start, LocalTime end, LocalTime rest) {
         if (start == null || end == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "출근 시간과 퇴근 시간을 입력해 주세요.");
@@ -145,14 +185,6 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                         other.getWrStartTime().format(HH_MM), other.getWrEndTime().format(HH_MM)));
             }
         }
-    }
-
-    /** Legacy rows have no action_type → infer from before/after */
-    private static String resolveActionType(WorkRecordHistory h) {
-        if (h.getActionType() != null) return h.getActionType();
-        if (h.getAfterStartTime() == null) return ACTION_DELETE;
-        if (h.getBeforeStartTime() == null) return ACTION_CREATE;
-        return ACTION_UPDATE;
     }
 
     @Override
@@ -196,7 +228,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
         if (workPlace != null
                 && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(
-                        targetUser.getUserIdx(), requestDto.getWrDate(), workPlace.getWpIdx())) {
+                targetUser.getUserIdx(), requestDto.getWrDate(), workPlace.getWpIdx())) {
             boolean forSelf = requester.getUserIdx().equals(targetUser.getUserIdx());
             String msg = forSelf
                     ? "이 날짜·지점에 이미 근무 기록이 있습니다."
@@ -245,10 +277,18 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         org.springframework.data.domain.Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? org.springframework.data.domain.Sort.Direction.ASC : org.springframework.data.domain.Sort.Direction.DESC;
         String sortProperty;
         switch (sortBy != null ? sortBy : "date") {
-            case "userName": sortProperty = "user.userName"; break;
-            case "workPlace": sortProperty = "workPlace.wpName"; break;
-            case "date": sortProperty = "wrDate"; break;
-            default: sortProperty = "wrDate"; break;
+            case "userName":
+                sortProperty = "user.userName";
+                break;
+            case "workPlace":
+                sortProperty = "workPlace.wpName";
+                break;
+            case "date":
+                sortProperty = "wrDate";
+                break;
+            default:
+                sortProperty = "wrDate";
+                break;
         }
 
         Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(direction, sortProperty));
@@ -317,9 +357,9 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     @Transactional(readOnly = true)
     public List<WorkRecordResponseDto> getMonthlyWorkRecords(String requesterId, LocalDate startDate, LocalDate endDate) {
         User requester = getRequester(requesterId);
-        
+
         List<WorkRecord> records = workRecordRepository.findByUserIdxAndDateBetweenFetch(requester.getUserIdx(), startDate, endDate);
-        
+
         List<Long> userIdxList = records.stream().map(r -> r.getUser().getUserIdx()).distinct().collect(Collectors.toList());
         Set<LocalDate> dateSet = records.stream().map(WorkRecord::getWrDate).collect(java.util.stream.Collectors.toSet());
 
@@ -396,7 +436,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
         if (keyChanged && newWpIdx != null
                 && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdxAndWrIdxNot(
-                        record.getUser().getUserIdx(), newDate, newWpIdx, record.getWrIdx())) {
+                record.getUser().getUserIdx(), newDate, newWpIdx, record.getWrIdx())) {
             boolean forSelf = requester.getUserIdx().equals(record.getUser().getUserIdx());
             String msg = forSelf
                     ? "이 날짜·지점에 이미 근무 기록이 있습니다."
@@ -443,7 +483,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         if (requestDto.getWrRemarks() != null) {
             record.setWrRemarks(requestDto.getWrRemarks());
         }
-        if (newWp != null && (oldWpIdx == null || !newWp.getWpIdx().equals(oldWpIdx))) {
+        if (newWp != null && (!newWp.getWpIdx().equals(oldWpIdx))) {
             record.setWorkPlace(newWp);
         }
 
@@ -472,7 +512,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     @Transactional
     public void deleteWorkRecord(String requesterId, Long wrIdx) {
         User requester = getRequester(requesterId);
-        
+
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "근무 기록은 관리자만 삭제할 수 있습니다.");
         }
@@ -519,7 +559,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         com.recode.Dwaeji.user.database.WorkPlace restoreWp = history.getTargetUser().getWorkPlace();
         if (restoreWp != null
                 && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(
-                        history.getTargetUser().getUserIdx(), history.getWrDate(), restoreWp.getWpIdx())) {
+                history.getTargetUser().getUserIdx(), history.getWrDate(), restoreWp.getWpIdx())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "해당 직원은 이 날짜·지점에 이미 근무 기록이 있어 복구할 수 없습니다.");
         }
         if (history.getBeforeStartTime() != null && history.getBeforeEndTime() != null) {
@@ -562,7 +602,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     @Transactional(readOnly = true)
     public Page<WorkRecordHistoryResponseDto> getWorkRecordHistory(String requesterId, Integer year, Integer month, String keyword, org.springframework.data.domain.Pageable pageable) {
         User requester = getRequester(requesterId);
-        
+
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 수정 이력을 조회할 수 있습니다.");
         }
@@ -619,7 +659,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             enrichEditMeta(dto, wrDate);
             return dto;
         }
-        
+
         WorkScheduleDaily schedule = workScheduleDailyRepository
                 .findByUser_UserIdxAndWsdDate(record.getUser().getUserIdx(), wrDate)
                 .orElse(null);
@@ -725,36 +765,6 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             return month + "월 근무기록";
         }
         return "미소속";
-    }
-
-    private static String toExcelSheetName(String name) {
-        if (name == null || name.isBlank()) return "미소속";
-        // Excel sheet: max 31, 금지 문자 \ / ? * [ ]
-        String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
-        if (cleaned.isEmpty()) cleaned = "미소속";
-        return cleaned.length() > 31 ? cleaned.substring(0, 31) : cleaned;
-    }
-
-    private static String uniqueExcelSheetName(String base, Set<String> used) {
-        String candidate = base;
-        int n = 2;
-        while (!used.add(candidate)) {
-            String suffix = " (" + n + ")";
-            int maxBase = Math.max(1, 31 - suffix.length());
-            candidate = (base.length() > maxBase ? base.substring(0, maxBase) : base) + suffix;
-            n++;
-        }
-        return candidate;
-    }
-
-    /** 기록 근무지 ≠ 유저 소속 지점이면 타지점 */
-    private static boolean isOtherBranchWorker(WorkRecord record) {
-        if (record.getUser() == null || record.getUser().getWorkPlace() == null || record.getWorkPlace() == null) {
-            return false;
-        }
-        Long homeWpIdx = record.getUser().getWorkPlace().getWpIdx();
-        Long recordWpIdx = record.getWorkPlace().getWpIdx();
-        return homeWpIdx != null && recordWpIdx != null && !homeWpIdx.equals(recordWpIdx);
     }
 
     private void writeWorkRecordSheet(

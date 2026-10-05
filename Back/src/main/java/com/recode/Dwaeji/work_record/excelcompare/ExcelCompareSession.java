@@ -18,7 +18,9 @@ public class ExcelCompareSession {
     private int year;
     private int month;
     private List<ExcelCompareParsedRow> rows;
-    /** rowIndex → userIdx after admin resolution */
+    /**
+     * rowIndex → userIdx after admin resolution
+     */
     @Builder.Default
     private Map<Integer, Long> resolutions = new HashMap<>();
     private byte[] resultBytes;

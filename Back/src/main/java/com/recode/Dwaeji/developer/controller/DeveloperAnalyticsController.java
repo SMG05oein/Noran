@@ -23,6 +23,12 @@ public class DeveloperAnalyticsController {
 
     private final SystemMonitorService systemMonitorService;
 
+    private static int normalizeHours(Integer hours) {
+        if (hours == null) return 24;
+        if (ALLOWED_HOURS.contains(hours)) return hours;
+        return 24;
+    }
+
     @GetMapping("/top-endpoints")
     @PreAuthorize("hasRole('DEVELOPER')")
     public ResponseEntity<List<TopEndpointDto>> getTopEndpoints(
@@ -49,11 +55,5 @@ public class DeveloperAnalyticsController {
     public ResponseEntity<Map<String, Long>> getStatusBreakdown(
             @RequestParam(defaultValue = "24") int hours) {
         return ResponseEntity.ok(systemMonitorService.getStatusBreakdown(normalizeHours(hours)));
-    }
-
-    private static int normalizeHours(Integer hours) {
-        if (hours == null) return 24;
-        if (ALLOWED_HOURS.contains(hours)) return hours;
-        return 24;
     }
 }

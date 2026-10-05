@@ -154,7 +154,7 @@ public class GatheringServiceImpl implements GatheringService {
         // unmask=true 는 관리자만 허용
         boolean doUnmask = Boolean.TRUE.equals(unmask);
         if (doUnmask) {
-            if (currentUser == null || !isAdmin(currentUser)) {
+            if (!isAdmin(currentUser)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "실명 열람 권한이 없습니다. (관리자 전용)");
             }
         }
@@ -506,6 +506,7 @@ public class GatheringServiceImpl implements GatheringService {
                 .viewedAt(now)
                 .build();
     }
+
     @Override
     @Transactional
     public GatheringAdminUnmaskResponseDto adminUnmask(GatheringAdminUnmaskRequestDto requestDto, String username) {

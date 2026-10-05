@@ -35,7 +35,7 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
             if (countData[0] != currentSecond) {
                 countData[0] = currentSecond;
                 countData[1] = 0;
-                
+
                 // 가끔씩 메모리 확보용 정리 (10000개 IP 초과시)
                 if (requestCounts.size() > 10000) {
                     requestCounts.clear();
@@ -80,7 +80,7 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
             if (request.getUserPrincipal() != null) {
                 who = request.getUserPrincipal().getName();
             }
-            
+
             String referer = request.getHeader("Referer");
             if (referer == null || referer.isEmpty()) {
                 referer = request.getHeader("Origin");
@@ -88,7 +88,7 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
             if (referer == null || referer.isEmpty()) {
                 referer = "알 수 없음";
             }
-            
+
             String clientIp = request.getHeader("X-Forwarded-For");
             if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
                 clientIp = request.getRemoteAddr();

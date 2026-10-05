@@ -36,6 +36,22 @@ public class DevIpAllowlistFilter extends OncePerRequestFilter {
         this.ipAccessService = ipAccessService;
     }
 
+    public static String resolveClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        String remote = request.getRemoteAddr();
+        if ("::1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote)) {
+            return "::1";
+        }
+        return remote != null ? remote : "";
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // CORS preflight must pass before IP check
@@ -71,21 +87,5 @@ public class DevIpAllowlistFilter extends OncePerRequestFilter {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write(objectMapper.writeValueAsString(ipAccessService.otpRequiredBody()));
-    }
-
-    public static String resolveClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        String remote = request.getRemoteAddr();
-        if ("::1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote)) {
-            return "::1";
-        }
-        return remote != null ? remote : "";
     }
 }

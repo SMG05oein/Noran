@@ -1,6 +1,11 @@
 package com.recode.Dwaeji.developer.service;
 
 import com.recode.Dwaeji.developer.dto.TopEndpointDto;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -10,25 +15,17 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import java.util.stream.Collectors;
 
 @Service
 public class SystemMonitorService {
 
-    @Autowired(required = false)
-    private JavaMailSender mailSender;
-
-    @Value("${spring.mail.username:}")
-    private String alertEmailTo;
-
-    private long lastServerErrorCount = 0;
-
-
+    private static final int MAX_ERRORS = 50;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /**
+     * Ring buffer of recent calls for time-window analytics.
+     */
+    private static final int MAX_CALL_SAMPLES = 20_000;
     private final AtomicLong successCount = new AtomicLong(0);
     private final AtomicLong redirectionCount = new AtomicLong(0);
     private final AtomicLong notFoundCount = new AtomicLong(0);
@@ -38,37 +35,14 @@ public class SystemMonitorService {
     private final AtomicLong totalCount = new AtomicLong(0);
 
     private final ConcurrentLinkedDeque<Map<String, Object>> recentErrors = new ConcurrentLinkedDeque<>();
-    private static final int MAX_ERRORS = 50;
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final AtomicLong errorNoGenerator = new AtomicLong(1);
-
-    private static class EndpointMetrics {
-        final String path;
-        final String method;
-        final AtomicLong count = new AtomicLong(0);
-        final AtomicLong totalDurationMs = new AtomicLong(0);
-        final AtomicLong maxDurationMs = new AtomicLong(0);
-
-        EndpointMetrics(String path, String method) {
-            this.path = path;
-            this.method = method;
-        }
-
-        void record(long durationMs) {
-            count.incrementAndGet();
-            totalDurationMs.addAndGet(durationMs);
-            maxDurationMs.updateAndGet(prev -> Math.max(prev, durationMs));
-        }
-    }
-
     private final ConcurrentHashMap<String, EndpointMetrics> endpointMetricsMap = new ConcurrentHashMap<>();
-
-    /** Ring buffer of recent calls for time-window analytics. */
-    private static final int MAX_CALL_SAMPLES = 20_000;
-
-    private record CallSample(Instant at, String path, String method, long durationMs, int statusCode) {}
-
     private final ConcurrentLinkedDeque<CallSample> callSamples = new ConcurrentLinkedDeque<>();
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
+    @Value("${spring.mail.username:}")
+    private String alertEmailTo;
+    private long lastServerErrorCount = 0;
 
     public void recordTraffic(int statusCode) {
         totalCount.incrementAndGet();
@@ -87,7 +61,9 @@ public class SystemMonitorService {
         }
     }
 
-    /** Backward-compatible overload. */
+    /**
+     * Backward-compatible overload.
+     */
     public void recordEndpointCall(String path, String method, long responseTimeMs) {
         recordEndpointCall(path, method, responseTimeMs, 0);
     }
@@ -144,7 +120,9 @@ public class SystemMonitorService {
         return m;
     }
 
-    /** Server-error count for alert delta (lifetime counter). */
+    /**
+     * Server-error count for alert delta (lifetime counter).
+     */
     public long getServerErrorCount() {
         return serverErrorCount.get();
     }
@@ -260,14 +238,14 @@ public class SystemMonitorService {
         double memoryUsed = memoryUsedPercent();
         long currentErrors = serverErrorCount.get();
         long newErrors = currentErrors - lastServerErrorCount;
-        
+
         // 메모리 85% 이상이거나 1분간 서버에러(500) 100회 이상 폭주 시
         if (memoryUsed > 85.0 || newErrors >= 100) {
             String subject = "🚨 [긴급] Dwaeji 서버 상태 위험 알림";
             String text = "현재 서버 상태가 위험 수준입니다.\n\n" +
-                          "- 메모리 사용량: " + String.format("%.2f", memoryUsed) + "%\n" +
-                          "- 최근 1분간 발생한 서버 에러(5xx): " + newErrors + "건\n\n" +
-                          "대시보드를 확인하여 즉각 조치해 주세요.";
+                    "- 메모리 사용량: " + String.format("%.2f", memoryUsed) + "%\n" +
+                    "- 최근 1분간 발생한 서버 에러(5xx): " + newErrors + "건\n\n" +
+                    "대시보드를 확인하여 즉각 조치해 주세요.";
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
                 message.setTo(alertEmailTo);
@@ -279,5 +257,27 @@ public class SystemMonitorService {
             }
         }
         lastServerErrorCount = currentErrors;
+    }
+
+    private static class EndpointMetrics {
+        final String path;
+        final String method;
+        final AtomicLong count = new AtomicLong(0);
+        final AtomicLong totalDurationMs = new AtomicLong(0);
+        final AtomicLong maxDurationMs = new AtomicLong(0);
+
+        EndpointMetrics(String path, String method) {
+            this.path = path;
+            this.method = method;
+        }
+
+        void record(long durationMs) {
+            count.incrementAndGet();
+            totalDurationMs.addAndGet(durationMs);
+            maxDurationMs.updateAndGet(prev -> Math.max(prev, durationMs));
+        }
+    }
+
+    private record CallSample(Instant at, String path, String method, long durationMs, int statusCode) {
     }
 }

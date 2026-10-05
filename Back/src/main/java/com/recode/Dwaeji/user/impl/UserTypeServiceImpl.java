@@ -25,15 +25,15 @@ public class UserTypeServiceImpl implements UserTypeService {
     private void checkManageRolePermission(String requesterId) {
         com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
-        
+
         com.recode.Dwaeji.user.database.UserType ut = requester.getUserType();
         if (ut == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "직급 정보가 없습니다.");
         }
-        
+
         boolean isSuperAdmin = ut.getUtIsSuperAdmin() != null && ut.getUtIsSuperAdmin() == 1;
         boolean canManageRoles = ut.getUtCanManageRoles() != null && ut.getUtCanManageRoles() == 1;
-        
+
         if (!isSuperAdmin && !canManageRoles) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "직급 및 권한을 관리할 권한이 없습니다.");
         }
@@ -43,7 +43,7 @@ public class UserTypeServiceImpl implements UserTypeService {
     @Transactional
     public UserTypeDto createUserType(String requesterId, UserTypeRequestDto requestDto) {
         checkManageRolePermission(requesterId);
-        
+
         UserType userType = UserType.builder()
                 .utName(requestDto.getUtName())
                 .utIsAdmin(requestDto.getUtIsAdmin())
@@ -90,18 +90,23 @@ public class UserTypeServiceImpl implements UserTypeService {
 
         UserType userType = userTypeRepository.findById(utIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 직급을 찾을 수 없습니다."));
-        
+
         if (requestDto.getUtName() != null) userType.setUtName(requestDto.getUtName());
         if (requestDto.getUtIsAdmin() != null) userType.setUtIsAdmin(requestDto.getUtIsAdmin());
         if (requestDto.getUtIsSuperAdmin() != null) userType.setUtIsSuperAdmin(requestDto.getUtIsSuperAdmin());
-        if (requestDto.getUtCanAccessArchive() != null) userType.setUtCanAccessArchive(requestDto.getUtCanAccessArchive());
-        if (requestDto.getUtCanViewSensitive() != null) userType.setUtCanViewSensitive(requestDto.getUtCanViewSensitive());
-        if (requestDto.getUtCanEditSensitive() != null) userType.setUtCanEditSensitive(requestDto.getUtCanEditSensitive());
+        if (requestDto.getUtCanAccessArchive() != null)
+            userType.setUtCanAccessArchive(requestDto.getUtCanAccessArchive());
+        if (requestDto.getUtCanViewSensitive() != null)
+            userType.setUtCanViewSensitive(requestDto.getUtCanViewSensitive());
+        if (requestDto.getUtCanEditSensitive() != null)
+            userType.setUtCanEditSensitive(requestDto.getUtCanEditSensitive());
         if (requestDto.getUtCanExportExcel() != null) userType.setUtCanExportExcel(requestDto.getUtCanExportExcel());
         if (requestDto.getUtCanManageRoles() != null) userType.setUtCanManageRoles(requestDto.getUtCanManageRoles());
-        if (requestDto.getUtAllowMultiWorkplace() != null) userType.setUtAllowMultiWorkplace(requestDto.getUtAllowMultiWorkplace());
-        if (requestDto.getUtCanManageSchedule() != null) userType.setUtCanManageSchedule(requestDto.getUtCanManageSchedule());
-        
+        if (requestDto.getUtAllowMultiWorkplace() != null)
+            userType.setUtAllowMultiWorkplace(requestDto.getUtAllowMultiWorkplace());
+        if (requestDto.getUtCanManageSchedule() != null)
+            userType.setUtCanManageSchedule(requestDto.getUtCanManageSchedule());
+
         return UserTypeDto.fromEntity(userType);
     }
 

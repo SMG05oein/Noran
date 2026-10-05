@@ -22,7 +22,9 @@ public class UserInfoDto {
     private LocalDate userBirth;
     private String userPhone;
     private String userTypeName;
-    /** 본인 직급 ID — 권한 상세는 GET /api/user-types 에서 조회 */
+    /**
+     * 본인 직급 ID — 권한 상세는 GET /api/user-types 에서 조회
+     */
     private Long fkUtIdx;
     private String workPlaceName;
     private Long workPlaceIdx;
@@ -32,14 +34,16 @@ public class UserInfoDto {
     private String userAccountNumber; // 기재 여부만 반환 ("기재" or null)
     private String userBank;
     private Integer userHourlyWage;
-    
+
     private java.time.LocalDateTime userWithdrawnAt;
-    
+
     @JsonProperty("is_admin")
     private Integer isAdmin;
-    
+
     private Integer emailConsentAgreed;
-    /** 동명이인 플래그: 동일 실명 활성 인원 수. &gt;1 이면 관리자 UI에 #userIdx */
+    /**
+     * 동명이인 플래그: 동일 실명 활성 인원 수. &gt;1 이면 관리자 UI에 #userIdx
+     */
     private Long nameSeq;
 
     public static UserInfoDto fromEntity(User user) {
@@ -72,12 +76,14 @@ public class UserInfoDto {
                 .build();
     }
 
-    /** Front 호환: bankCode 별칭 */
+    /**
+     * Front 호환: bankCode 별칭
+     */
     @JsonProperty("bankCode")
     public String getBankCode() {
         return userBank;
     }
-    
+
     @JsonProperty("isAdmin")
     public Integer getIsAdminCamel() {
         return isAdmin;

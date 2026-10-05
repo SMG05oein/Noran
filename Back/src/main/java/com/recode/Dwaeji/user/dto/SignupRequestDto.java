@@ -40,7 +40,9 @@ public class SignupRequestDto {
 
     private Boolean emailConsentAgreed;
 
-    /** 은행명 또는 은행코드 (Front는 bankCode로 전송) */
+    /**
+     * 은행명 또는 은행코드 (Front는 bankCode로 전송)
+     */
     @JsonAlias("bankCode")
     private String userBank;
 

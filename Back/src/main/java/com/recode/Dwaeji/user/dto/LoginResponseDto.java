@@ -10,7 +10,7 @@ import lombok.*;
 @Builder
 public class LoginResponseDto {
     private String accessToken;
-    
+
     @JsonIgnore
     private String refreshToken;
     private String msg;

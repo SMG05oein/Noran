@@ -14,16 +14,19 @@ import java.util.Map;
  * </ul>
  */
 public final class ExcelCompareHeaders {
-    private ExcelCompareHeaders() {}
-
-    /** 논리 컬럼 키 (매핑 결과·에러 메시지용) */
+    /**
+     * 논리 컬럼 키 (매핑 결과·에러 메시지용)
+     */
     public static final List<String> REQUIRED = List.of(
             "날짜", "이름", "근무지", "출근", "퇴근", "휴게"
     );
 
+    private ExcelCompareHeaders() {
+    }
+
     /**
      * @param headerByColIndex 컬럼 인덱스 → 원본 헤더 문자열 (빈 칸 제외)
-     * @param errorsOut 매핑 실패 시 메시지 추가
+     * @param errorsOut        매핑 실패 시 메시지 추가
      * @return 논리키 → 컬럼 인덱스. 실패 시 빈 맵 또는 부분 맵(errorsOut 비지 않음)
      */
     public static Map<String, Integer> resolve(Map<Integer, String> headerByColIndex, List<String> errorsOut) {
@@ -56,7 +59,9 @@ public final class ExcelCompareHeaders {
         return resolved;
     }
 
-    /** 헤더 문자열 → 논리 키. 해당 없으면 null(무시). */
+    /**
+     * 헤더 문자열 → 논리 키. 해당 없으면 null(무시).
+     */
     static String matchLogicalKey(String header) {
         if (header == null || header.isBlank()) {
             return null;

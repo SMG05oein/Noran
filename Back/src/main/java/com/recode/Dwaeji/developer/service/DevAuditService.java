@@ -9,7 +9,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** In-memory audit ring for destructive / privileged dev actions. */
+/**
+ * In-memory audit ring for destructive / privileged dev actions.
+ */
 @Service
 public class DevAuditService {
 
@@ -17,7 +19,14 @@ public class DevAuditService {
     private final ConcurrentLinkedDeque<Map<String, Object>> entries = new ConcurrentLinkedDeque<>();
     private final AtomicLong seq = new AtomicLong(1);
 
-    /** DB query audit shape expected by Front. */
+    private static String truncate(String s, int max) {
+        if (s == null) return "";
+        return s.length() <= max ? s : s.substring(0, max);
+    }
+
+    /**
+     * DB query audit shape expected by Front.
+     */
     public void recordSql(String executorId, String sql, String type, boolean success, String message, Integer affectedRows, String clientIp) {
         Map<String, Object> row = new java.util.LinkedHashMap<>();
         row.put("id", seq.getAndIncrement());
@@ -65,10 +74,5 @@ public class DevAuditService {
             if (out.size() >= n) break;
         }
         return out;
-    }
-
-    private static String truncate(String s, int max) {
-        if (s == null) return "";
-        return s.length() <= max ? s : s.substring(0, max);
     }
 }

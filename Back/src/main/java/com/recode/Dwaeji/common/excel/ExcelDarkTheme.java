@@ -17,13 +17,14 @@ public final class ExcelDarkTheme {
     private static final byte[] BORDER = rgb(64, 64, 64);        // #404040
     private static final byte[] TAB = rgb(88, 166, 255);
 
-    /** Visible canvas beyond the data table (cols / extra rows). */
+    /**
+     * Visible canvas beyond the data table (cols / extra rows).
+     */
     private static final int SHEET_COL_SPAN = 52;   // A–AZ
     private static final int SHEET_EXTRA_ROWS = 80;
 
-    private ExcelDarkTheme() {}
-
-    public record Styles(CellStyle header, CellStyle body, CellStyle bodyAlt, CellStyle sheetBg) {}
+    private ExcelDarkTheme() {
+    }
 
     public static Styles create(Workbook workbook) {
         XSSFWorkbook xssf;
@@ -74,7 +75,7 @@ public final class ExcelDarkTheme {
 
     /**
      * @param lastDataRowInclusive last row index that has data (0 = header only)
-     * @param columnCount number of table columns to style
+     * @param columnCount          number of table columns to style
      */
     public static void apply(Sheet sheet, Styles styles, int lastDataRowInclusive, int columnCount) {
         if (columnCount <= 0) {
@@ -188,7 +189,9 @@ public final class ExcelDarkTheme {
         return style;
     }
 
-    /** Convenience for callers that want RGB without duplicating the helper. */
+    /**
+     * Convenience for callers that want RGB without duplicating the helper.
+     */
     public static byte[] rgbBytes(int r, int g, int b) {
         return rgb(r, g, b);
     }
@@ -212,5 +215,8 @@ public final class ExcelDarkTheme {
 
     private static byte[] rgb(int r, int g, int b) {
         return new byte[]{(byte) r, (byte) g, (byte) b};
+    }
+
+    public record Styles(CellStyle header, CellStyle body, CellStyle bodyAlt, CellStyle sheetBg) {
     }
 }

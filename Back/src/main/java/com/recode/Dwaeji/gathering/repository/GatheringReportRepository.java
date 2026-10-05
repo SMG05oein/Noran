@@ -11,9 +11,14 @@ import java.util.List;
 @Repository
 public interface GatheringReportRepository extends JpaRepository<GatheringReport, Long> {
     List<GatheringReport> findByPostId(Long postId);
+
     List<GatheringReport> findByCommentId(Long commentId);
+
     List<GatheringReport> findByStatusOrderByCreatedAtDesc(String status);
+
     Page<GatheringReport> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     Page<GatheringReport> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
+
     void deleteByUser_UserIdx(Long userIdx);
 }

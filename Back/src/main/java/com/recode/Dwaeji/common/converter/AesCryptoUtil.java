@@ -12,22 +12,10 @@ import java.util.Base64;
 @Component
 public class AesCryptoUtil {
 
+    private static final String ALGORITHM = "AES/ECB/PKCS5Padding"; // ECB for simplicity in this demo, though CBC is better
+    private static String SECRET_KEY;
     @Value("${aes.secret-key}")
     private String injectedKey;
-
-    private static String SECRET_KEY;
-    private static final String ALGORITHM = "AES/ECB/PKCS5Padding"; // ECB for simplicity in this demo, though CBC is better
-
-    @PostConstruct
-    public void init() {
-        SECRET_KEY = injectedKey;
-        // 패딩 처리 (32바이트 맞추기 위해 잘라내거나 0으로 채움)
-        if (SECRET_KEY != null && SECRET_KEY.length() < 32) {
-            SECRET_KEY = String.format("%-32s", SECRET_KEY).replace(' ', '0');
-        } else if (SECRET_KEY != null && SECRET_KEY.length() > 32) {
-            SECRET_KEY = SECRET_KEY.substring(0, 32);
-        }
-    }
 
     public static String encrypt(String plainText) {
         if (plainText == null || plainText.isEmpty()) return plainText;
@@ -52,6 +40,17 @@ public class AesCryptoUtil {
             return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new RuntimeException("Decryption failed", e);
+        }
+    }
+
+    @PostConstruct
+    public void init() {
+        SECRET_KEY = injectedKey;
+        // 패딩 처리 (32바이트 맞추기 위해 잘라내거나 0으로 채움)
+        if (SECRET_KEY != null && SECRET_KEY.length() < 32) {
+            SECRET_KEY = String.format("%-32s", SECRET_KEY).replace(' ', '0');
+        } else if (SECRET_KEY != null && SECRET_KEY.length() > 32) {
+            SECRET_KEY = SECRET_KEY.substring(0, 32);
         }
     }
 }

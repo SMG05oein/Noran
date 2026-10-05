@@ -24,10 +24,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserArchiveScheduler {
 
-    @Autowired
-    @Lazy
-    private UserArchiveScheduler self;
-
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final WorkRecordRepository workRecordRepository;
@@ -39,6 +35,9 @@ public class UserArchiveScheduler {
     private final com.recode.Dwaeji.gathering.repository.GatheringCommentRepository gatheringCommentRepository;
     private final com.recode.Dwaeji.gathering.repository.GatheringPostRepository gatheringPostRepository;
     private final com.recode.Dwaeji.joke.repository.JokeRepository jokeRepository;
+    @Autowired
+    @Lazy
+    private UserArchiveScheduler self;
 
     /**
      * 매일 새벽 3시: 퇴사 후 5년이 경과한 사용자 완전 파기 (영구 삭제)

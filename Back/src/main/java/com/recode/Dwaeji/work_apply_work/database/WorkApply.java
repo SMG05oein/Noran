@@ -38,7 +38,6 @@ public class WorkApply {
     private LocalDate waDate; // 해당 주의 월요일 날짜
 
 
-
     @Column(name = "wa_remarks", columnDefinition = "TEXT")
     @Comment("신청 비고")
     private String waRemarks;

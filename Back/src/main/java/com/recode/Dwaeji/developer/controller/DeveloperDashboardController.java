@@ -36,6 +36,14 @@ public class DeveloperDashboardController {
     private final ConfigurableApplicationContext applicationContext;
     private final RestClient.Builder restClientBuilder;
 
+    private static String clientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
     @GetMapping("/system-info")
     @PreAuthorize("hasRole('DEVELOPER')")
     public ResponseEntity<Map<String, Object>> getSystemInfo() {
@@ -143,13 +151,5 @@ public class DeveloperDashboardController {
                 System.exit(code);
             }
         }, 1500, TimeUnit.MILLISECONDS);
-    }
-
-    private static String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

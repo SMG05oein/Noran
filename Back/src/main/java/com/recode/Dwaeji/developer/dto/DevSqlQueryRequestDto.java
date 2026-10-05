@@ -11,8 +11,12 @@ public class DevSqlQueryRequestDto {
     private String id;
     private String pw;
     private String sql;
-    /** default true */
+    /**
+     * default true
+     */
     private Boolean readOnly;
-    /** required for dangerous SQL */
+    /**
+     * required for dangerous SQL
+     */
     private Boolean confirmDangerous;
 }

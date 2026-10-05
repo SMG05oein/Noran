@@ -15,7 +15,9 @@ public class BankInfoUpdateDto {
     @JsonAlias("bankCode")
     private String userBank;
 
-    /** 마스킹('기재')된 경우 Front가 생략할 수 있음 */
+    /**
+     * 마스킹('기재')된 경우 Front가 생략할 수 있음
+     */
     private String userAccountNumber;
 
     @NotBlank(message = "예금주명을 입력해주세요.")

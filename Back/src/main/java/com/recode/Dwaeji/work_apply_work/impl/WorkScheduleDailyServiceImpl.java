@@ -65,17 +65,23 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         return userIdx + "_" + date + "_" + (workPlaceIdx != null ? workPlaceIdx : "null");
     }
 
-    /** 실제 출근 배정. 알바생 화면/캘린더 집계에 쓴다. */
+    /**
+     * 실제 출근 배정. 알바생 화면/캘린더 집계에 쓴다.
+     */
     private boolean isAssignment(ApplyStatus status) {
         return status == ApplyStatus.출근;
     }
 
-    /** 관리자가 주간 배정표에 남기는 행. 미출근은 '일부러 안 넣은' 결정을 기억하기 위해 저장한다. */
+    /**
+     * 관리자가 주간 배정표에 남기는 행. 미출근은 '일부러 안 넣은' 결정을 기억하기 위해 저장한다.
+     */
     private boolean isPersistedSchedule(ApplyStatus status) {
         return isAssignment(status) || status == ApplyStatus.미출근;
     }
 
-    /** 알바생에게 공개할 배정. 임시저장(미확정)은 숨기지만, 확정된 결과(출근, 미출근/반려)는 모두 보여준다. */
+    /**
+     * 알바생에게 공개할 배정. 임시저장(미확정)은 숨기지만, 확정된 결과(출근, 미출근/반려)는 모두 보여준다.
+     */
     private boolean isVisibleToWorker(WorkScheduleDaily schedule) {
         return schedule != null
                 && Boolean.TRUE.equals(schedule.getWsdIsConfirmed());
@@ -188,9 +194,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 continue;
             }
 
-            boolean confirmedFlag = assignMode.forcesUnconfirmed()
-                    ? false
-                    : Boolean.TRUE.equals(dto.getIsConfirmed());
+            boolean confirmedFlag = !assignMode.forcesUnconfirmed() && Boolean.TRUE.equals(dto.getIsConfirmed());
 
             OpenShiftRules.NormalizedOpen openNorm =
                     OpenShiftRules.normalizeScheduleOpen(dto.getDate(), dto.getIsOpen(), dto.getStartTime());
@@ -363,7 +367,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         } else {
             applies = applyRepository.findByWadDateBetweenFetch(rangeStart, rangeEnd);
             schedules = scheduleRepository.findByWsdDateBetweenFetch(rangeStart, rangeEnd);
-            
+
             if (workPlaceIdx != null) {
                 // 특정 지점 조회일 경우, 해당 지점에 신청/배정된 데이터만 남김
                 // 단, DB에 지점이 null로 저장된 경우(본인 소속 지점 신청) 유저의 소속 지점이 해당 지점인지 확인
@@ -398,7 +402,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
         List<WorkScheduleDailyResponseDto> results = new ArrayList<>();
         Set<String> processedKeys = new HashSet<>();
-        
+
         // 1. 해당 지점 소속 알바생 + 타지점 소속이지만 이 지점에 신청/배정된 알바생 수집
         Map<Long, com.recode.Dwaeji.user.database.User> targetUserMap = new HashMap<>();
         if (workPlaceIdx != null) {
@@ -417,11 +421,11 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             for (com.recode.Dwaeji.user.database.User u : targetUserMap.values()) {
                 Long uid = u.getUserIdx();
                 for (LocalDate d = rangeStart; !d.isAfter(rangeEnd); d = d.plusDays(1)) {
-                    String key = uid + "_" + d.toString();
-                    
+                    String key = uid + "_" + d;
+
                     List<WorkApplyDaily> applyList = applyMap.getOrDefault(key, new ArrayList<>());
                     List<WorkScheduleDaily> scheduleList = scheduleMap.getOrDefault(key, new ArrayList<>());
-                    
+
                     // 안전한 병합 로직 (지점 기준)
                     String waRemarks = weeklyRemarksMap.get(uid);
                     results.addAll(mergeAppliesAndSchedules(applyList, scheduleList, waRemarks, uid, u, d));
@@ -433,23 +437,23 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             Set<String> allKeys = new HashSet<>();
             allKeys.addAll(applyMap.keySet());
             allKeys.addAll(scheduleMap.keySet());
-            
+
             // 만약 알바생 본인 조회라면 본인의 기간 전체 껍데기를 만들어야 함
             if (targetUserIdx != null) {
                 for (LocalDate d = rangeStart; !d.isAfter(rangeEnd); d = d.plusDays(1)) {
-                    String key = targetUserIdx + "_" + d.toString();
+                    String key = targetUserIdx + "_" + d;
                     if (!allKeys.contains(key)) {
                         String waRemarks = weeklyRemarksMap.get(targetUserIdx);
                         results.add(WorkScheduleDailyResponseDto.builder()
-                            .userIdx(targetUserIdx)
-                            .userName(requester.getUserName())
-                            .workPlaceName(requester.getWorkPlace() != null ? requester.getWorkPlace().getWpName() : null)
-                            .date(d)
-                            .wsdStatus(null)
-                            .wsdIsConfirmed(false)
-                            .openApplied(false)
-                            .wsdRemarks(waRemarks)
-                            .build());
+                                .userIdx(targetUserIdx)
+                                .userName(requester.getUserName())
+                                .workPlaceName(requester.getWorkPlace() != null ? requester.getWorkPlace().getWpName() : null)
+                                .date(d)
+                                .wsdStatus(null)
+                                .wsdIsConfirmed(false)
+                                .openApplied(false)
+                                .wsdRemarks(waRemarks)
+                                .build());
                     }
                 }
             }
@@ -458,12 +462,12 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 if (processedKeys.contains(key)) continue;
                 List<WorkApplyDaily> applyList = applyMap.getOrDefault(key, new ArrayList<>());
                 List<WorkScheduleDaily> scheduleList = scheduleMap.getOrDefault(key, new ArrayList<>());
-                
+
                 // 안전한 병합 로직 (지점 기준)
                 Long uIdx = null;
                 if (!applyList.isEmpty()) uIdx = applyList.get(0).getUser().getUserIdx();
                 else if (!scheduleList.isEmpty()) uIdx = scheduleList.get(0).getUser().getUserIdx();
-                
+
                 String waRemarks = uIdx != null ? weeklyRemarksMap.get(uIdx) : null;
                 results.addAll(mergeAppliesAndSchedules(applyList, scheduleList, waRemarks, null, null, null));
             }
@@ -507,13 +511,13 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 .map(s -> {
                     Long seq = userRepository.findNameSeqByUserIdx(s.getUser().getUserIdx());
                     return com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto.builder()
-                        .userIdx(s.getUser().getUserIdx())
-                        .userName(s.getUser().getUserName())
-                        .nameSeq(seq != null ? seq : 1L)
-                        .workPlaceName(s.getWorkPlace() != null ? s.getWorkPlace().getWpName()
-                                : (s.getUser().getWorkPlace() != null ? s.getUser().getWorkPlace().getWpName() : null))
-                        .startTime(s.getWsdStartTime())
-                        .build();
+                            .userIdx(s.getUser().getUserIdx())
+                            .userName(s.getUser().getUserName())
+                            .nameSeq(seq != null ? seq : 1L)
+                            .workPlaceName(s.getWorkPlace() != null ? s.getWorkPlace().getWpName()
+                                    : (s.getUser().getWorkPlace() != null ? s.getUser().getWorkPlace().getWpName() : null))
+                            .startTime(s.getWsdStartTime())
+                            .build();
                 })
                 .collect(Collectors.toList());
     }
@@ -591,11 +595,11 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             Long wp = resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser());
             sByWp.put(wp != null ? wp : -1L, s);
         }
-        
+
         Set<Long> allWps = new HashSet<>();
         allWps.addAll(aByWp.keySet());
         allWps.addAll(sByWp.keySet());
-        
+
         for (Long wp : allWps) {
             WorkApplyDaily a = aByWp.get(wp);
             WorkScheduleDaily s = sByWp.get(wp);
@@ -635,7 +639,9 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         return counts;
     }
 
-    /** 피크: 18:00 <= t < 20:00 (요일 무관). 오픈은 제외. */
+    /**
+     * 피크: 18:00 <= t < 20:00 (요일 무관). 오픈은 제외.
+     */
     private boolean isPeakAssignment(WorkScheduleDaily s) {
         if (Boolean.TRUE.equals(s.getWsdIsOpen())) {
             return false;

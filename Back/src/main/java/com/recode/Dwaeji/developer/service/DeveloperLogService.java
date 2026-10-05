@@ -13,6 +13,18 @@ import java.util.stream.Collectors;
 @Service
 public class DeveloperLogService {
 
+    private static boolean matchLevel(String line, String level) {
+        if (level == null || level.isBlank()) return true;
+        String lv = level.trim().toUpperCase(Locale.ROOT);
+        String upper = line.toUpperCase(Locale.ROOT);
+        return upper.contains(" " + lv + " ") || upper.contains("[" + lv + "]") || upper.contains(" " + lv + ":");
+    }
+
+    private static boolean matchKeyword(String line, String keyword) {
+        if (keyword == null || keyword.isBlank()) return true;
+        return line.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
+    }
+
     public LogResponseDto getRecentLogs(int lines, String level, String keyword) {
         if (lines <= 0) {
             lines = 200;
@@ -88,17 +100,5 @@ public class DeveloperLogService {
             }
         }
         return null;
-    }
-
-    private static boolean matchLevel(String line, String level) {
-        if (level == null || level.isBlank()) return true;
-        String lv = level.trim().toUpperCase(Locale.ROOT);
-        String upper = line.toUpperCase(Locale.ROOT);
-        return upper.contains(" " + lv + " ") || upper.contains("[" + lv + "]") || upper.contains(" " + lv + ":");
-    }
-
-    private static boolean matchKeyword(String line, String keyword) {
-        if (keyword == null || keyword.isBlank()) return true;
-        return line.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
     }
 }

@@ -20,17 +20,23 @@ public enum AssignMode {
         return confirmedFallback ? CONFIRM : DRAFT;
     }
 
-    /** CONFIRM만 신청→미출근 일괄 변환 */
+    /**
+     * CONFIRM만 신청→미출근 일괄 변환
+     */
     public boolean convertsUnassignedApplies() {
         return this == CONFIRM;
     }
 
-    /** DRAFT는 isConfirmed를 항상 false로 강제 */
+    /**
+     * DRAFT는 isConfirmed를 항상 false로 강제
+     */
     public boolean forcesUnconfirmed() {
         return this == DRAFT;
     }
 
-    /** DRAFT/PARTIAL은 payload 키만 upsert. CONFIRM은 기간·지점 단위로 미포함 행 삭제 */
+    /**
+     * DRAFT/PARTIAL은 payload 키만 upsert. CONFIRM은 기간·지점 단위로 미포함 행 삭제
+     */
     public boolean replacesWholeRange() {
         return this == CONFIRM;
     }

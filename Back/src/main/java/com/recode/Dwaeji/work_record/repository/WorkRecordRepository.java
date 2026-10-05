@@ -18,55 +18,60 @@ public interface WorkRecordRepository extends JpaRepository<WorkRecord, Long> {
     // 근무지 필터/표시는 기록의 r.workPlace(실제 근무 지점). 소속 u.workPlace와 구분.
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE u.userIdx = :userIdx",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.user.userIdx = :userIdx")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.user.userIdx = :userIdx")
     Page<WorkRecord> findByUserIdxFetch(@Param("userIdx") Long userIdx, Pageable pageable);
 
     @Query("SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE u.userIdx = :userIdx AND r.wrDate BETWEEN :startDate AND :endDate ORDER BY r.wrDate DESC")
     List<WorkRecord> findByUserIdxAndDateBetweenFetch(@Param("userIdx") Long userIdx, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE r.workPlace.wpIdx = :wpIdx",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.workPlace.wpIdx = :wpIdx")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.workPlace.wpIdx = :wpIdx")
     Page<WorkRecord> findByWorkPlaceIdxFetch(@Param("wpIdx") Long wpIdx, Pageable pageable);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE u.userName LIKE %:userName%",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.user.userName LIKE %:userName%")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.user.userName LIKE %:userName%")
     Page<WorkRecord> findByUserNameFetch(@Param("userName") String userName, Pageable pageable);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE r.workPlace.wpIdx = :wpIdx AND u.userName LIKE %:userName%",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.workPlace.wpIdx = :wpIdx AND r.user.userName LIKE %:userName%")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.workPlace.wpIdx = :wpIdx AND r.user.userName LIKE %:userName%")
     Page<WorkRecord> findByWorkPlaceIdxAndUserNameFetch(@Param("wpIdx") Long wpIdx, @Param("userName") String userName, Pageable pageable);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE r.wrDate BETWEEN :startDate AND :endDate",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate")
     Page<WorkRecord> findByDateBetweenFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx")
     Page<WorkRecord> findByDateBetweenAndWorkPlaceFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, @Param("wpIdx") Long wpIdx, Pageable pageable);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE r.wrDate BETWEEN :startDate AND :endDate AND u.userName LIKE %:userName%",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.user.userName LIKE %:userName%")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.user.userName LIKE %:userName%")
     Page<WorkRecord> findByDateBetweenAndUserNameFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, @Param("userName") String userName, Pageable pageable);
 
     @Query(value = "SELECT r FROM WorkRecord r JOIN FETCH r.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH r.workPlace WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx AND u.userName LIKE %:userName%",
-           countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx AND r.user.userName LIKE %:userName%")
+            countQuery = "SELECT COUNT(r) FROM WorkRecord r WHERE r.wrDate BETWEEN :startDate AND :endDate AND r.workPlace.wpIdx = :wpIdx AND r.user.userName LIKE %:userName%")
     Page<WorkRecord> findByDateBetweenAndWorkPlaceAndUserNameFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, @Param("wpIdx") Long wpIdx, @Param("userName") String userName, Pageable pageable);
 
 
     // For Excel Download — 기록의 실제 근무 지점 기준
     @EntityGraph(attributePaths = {"user", "user.workPlace", "workPlace"})
     List<WorkRecord> findByWrDateBetween(LocalDate startDate, LocalDate endDate);
-    
+
     @EntityGraph(attributePaths = {"user", "user.workPlace", "workPlace"})
     List<WorkRecord> findByUser_WorkPlace_WpIdxAndWrDateBetween(Long wpIdx, LocalDate startDate, LocalDate endDate);
-    
+
     @EntityGraph(attributePaths = {"user", "user.workPlace", "workPlace"})
     List<WorkRecord> findByWorkPlace_WpIdxAndWrDateBetween(Long wpIdx, LocalDate startDate, LocalDate endDate);
 
     boolean existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(Long userIdx, LocalDate wrDate, Long wpIdx);
+
     boolean existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdxAndWrIdxNot(Long userIdx, LocalDate wrDate, Long wpIdx, Long wrIdx);
+
     java.util.Optional<WorkRecord> findByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(Long userIdx, LocalDate wrDate, Long wpIdx);
+
     java.util.List<WorkRecord> findByUser_UserIdxAndWrDate(Long userIdx, LocalDate wrDate);
+
     List<WorkRecord> findByUser_UserIdx(Long userIdx);
+
     void deleteByUser_UserIdx(Long userIdx);
 }

@@ -11,7 +11,9 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Builder
 public class ExcelCompareParsedRow {
-    /** 0-based data row index (header excluded) */
+    /**
+     * 0-based data row index (header excluded)
+     */
     private int rowIndex;
     private LocalDate wrDate;
     private String userName;

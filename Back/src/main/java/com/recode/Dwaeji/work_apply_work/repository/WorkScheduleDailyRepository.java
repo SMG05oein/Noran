@@ -17,8 +17,10 @@ public interface WorkScheduleDailyRepository extends JpaRepository<WorkScheduleD
     List<WorkScheduleDaily> findByWsdDateBetweenFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     boolean existsByUser_UserIdxAndWsdDate(Long userIdx, LocalDate date);
-    
+
     List<WorkScheduleDaily> findByUser_UserIdxInAndWsdDate(List<Long> userIdxes, LocalDate date);
+
     java.util.Optional<WorkScheduleDaily> findByUser_UserIdxAndWsdDate(Long userIdx, LocalDate date);
+
     void deleteByUser_UserIdx(Long userIdx);
 }

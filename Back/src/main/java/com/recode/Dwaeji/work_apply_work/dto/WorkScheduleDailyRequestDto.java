@@ -11,9 +11,9 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class WorkScheduleDailyRequestDto {
-    private Long userIdx; 
+    private Long userIdx;
     private LocalDate date;
-    
+
     private ApplyStatus status;
     private String startTime; // "10:00" or "오픈"
     private Long workPlaceIdx;

@@ -22,7 +22,6 @@ import ApiAnalyticsViewer from '../components/ApiAnalyticsViewer';
 import AnnouncementManager from '../components/AnnouncementManager';
 import NetlifyDeployManager from '../components/NetlifyDeployManager';
 import DevExecutorAuthModal from '../components/DevExecutorAuthModal';
-import TopologyMap from '../components/TopologyMap';
 
 
 const statusBadge = (status) => {
@@ -172,7 +171,7 @@ const DevMain = () => {
                                   <Cell key="cell-1" fill="#00d2ff" />
                                 </Pie>
                                 <RechartsTooltip contentStyle={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a', color: '#fff', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
-                                <Legend verticalAlign="bottom" height={20} wrapperStyle={{ fontSize: '12px' }}/>
+                                <Legend verticalAlign="bottom" height={20} wrapperStyle={{ fontSize: '12px' }} />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
@@ -300,12 +299,7 @@ const DevMain = () => {
                   </Col>
                 </Row>
 
-                {/* Topology Map */}
-                <Row className="mt-4 g-4">
-                  <Col md={12}>
-                    <TopologyMap sysInfo={sysInfo} />
-                  </Col>
-                </Row>
+
 
                 {/* Alerts */}
                 <Row className="mt-4 g-4">

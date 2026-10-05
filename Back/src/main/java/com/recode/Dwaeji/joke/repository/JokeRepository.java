@@ -42,5 +42,6 @@ public interface JokeRepository extends JpaRepository<Joke, Long> {
     List<Joke> findAllActiveJokes();
 
     Optional<Joke> findByJokeIdAndIsDeletedFalse(Long jokeId);
+
     void deleteByUser_UserIdx(Long userIdx);
 }

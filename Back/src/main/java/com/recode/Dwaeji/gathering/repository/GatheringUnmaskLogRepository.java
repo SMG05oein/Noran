@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface GatheringUnmaskLogRepository extends JpaRepository<GatheringUnmaskLog, Long> {
     List<GatheringUnmaskLog> findByTargetTypeAndTargetIdOrderByViewedAtDesc(String targetType, Long targetId);
+
     List<GatheringUnmaskLog> findByAdminIdOrderByViewedAtDesc(String adminId);
 }

@@ -41,6 +41,7 @@ const ServerDownOverlay = () => {
         <p className="text-muted mb-4" style={{ wordBreak: 'keep-all' }}>
           현재 백엔드 서버가 재시작 중이거나 통신이 원활하지 않습니다.<br />
           버전 배포 또는 안정화 작업이 진행 중일 수 있습니다.
+          잠시후 다시 시도해주세요
         </p>
         <div className="d-flex justify-content-center gap-3">
           <Button variant="primary" className="fw-bold px-4 py-2 d-flex align-items-center gap-2 rounded-pill shadow-sm" onClick={handleRetry}>

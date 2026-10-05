@@ -345,7 +345,7 @@ export const getExcelCompareStatus = async (sessionId) => {
 export const downloadExcelCompareResult = async (sessionId, year, month) => {
   try {
     const response = await globalApiClient.get('/api/work-record/excel-compare/result', {
-      params: { sessionId },
+      params: { compareId: sessionId },
       responseType: 'blob',
     });
     const label = year && month ? `_${year}년_${month}월` : '';

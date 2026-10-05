@@ -126,11 +126,13 @@ public class WorkRecordController {
     @GetMapping("/excel-compare/result")
     public ResponseEntity<byte[]> downloadExcelCompareResult(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam String sessionId) {
+            @RequestParam(name = "compareId", required = false) String compareId,
+            @RequestParam(name = "sessionId", required = false) String sessionId) {
         if (userDetails == null) {
             return ResponseEntity.status(401).build();
         }
-        byte[] bytes = excelCompareService.downloadResult(userDetails.getUsername(), sessionId);
+        String id = compareId != null ? compareId : sessionId;
+        byte[] bytes = excelCompareService.downloadResult(userDetails.getUsername(), id);
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "work_record_compare_result.xlsx");

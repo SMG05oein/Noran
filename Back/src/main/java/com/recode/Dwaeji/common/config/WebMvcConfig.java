@@ -79,6 +79,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(filter);
         // 필터 체인에서 가장 먼저 실행되도록 설정 (스프링 시큐리티보다 앞서 동작해야 CORS Preflight 오류가 없음)
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        // 에러 발생 시(/error 포워딩)에도 CORS 헤더가 유지되도록 DispatcherType 추가
+        bean.setDispatcherTypes(jakarta.servlet.DispatcherType.REQUEST, jakarta.servlet.DispatcherType.ERROR, jakarta.servlet.DispatcherType.FORWARD, jakarta.servlet.DispatcherType.ASYNC);
         return bean;
     }
 }

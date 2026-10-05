@@ -95,39 +95,6 @@ export const changeDevPassword = async (oldPw, newPw) => {
   }
 };
 
-export const fetchDatabaseSchema = async () => {
-  try {
-    const response = await devApiClient.get(`${addUrl}/database/schema`);
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, 'DB 스키마를 불러오는데 실패했습니다.') };
-  }
-};
-
-export const fetchDatabaseAudit = async (limit = 50) => {
-  try {
-    const response = await devApiClient.get(`${addUrl}/database/audit`, { params: { limit } });
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, 'DB 감사 로그를 불러오는데 실패했습니다.') };
-  }
-};
-
-export const executeDbQuery = async (id, pw, sql, { readOnly = true, confirmDangerous = false } = {}) => {
-  try {
-    const response = await devApiClient.post(`${addUrl}/database/query`, {
-      id,
-      pw,
-      sql,
-      readOnly,
-      confirmDangerous,
-    });
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, '쿼리 실행 중 오류가 발생했습니다.') };
-  }
-};
-
 export const fetchDevLogs = async (lines = 200, { level = '', keyword = '' } = {}) => {
   try {
     const params = { lines };

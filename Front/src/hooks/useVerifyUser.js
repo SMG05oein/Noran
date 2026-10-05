@@ -32,9 +32,16 @@ const useVerifyUser = () => {
           const currentTokens = useAuthStore.getState().user?.tokens;
           login({ ...userInfo, tokens: currentTokens });
         } else {
-          // 정보 조회 실패 시(리프레시 토큰 만료 등) 강제 로그아웃
-          logout();
-          navigate('/login');
+          // 정보 조회 실패 처리
+          const status = infoRes.status;
+          // 서버 통신 장애(5xx 또는 undefined)일 때는 강제 로그아웃을 방지
+          if (!status || (status >= 500 && status <= 504)) {
+            console.warn("서버 통신 오류로 인해 내 정보 갱신을 건너뜁니다.");
+          } else {
+            // 그 외(예: 401, 403 리프레시 토큰 만료 등)는 강제 로그아웃
+            logout();
+            navigate('/login');
+          }
         }
       }
       setIsInitializing(false);

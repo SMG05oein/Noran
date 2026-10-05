@@ -11,7 +11,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.http.CacheControl;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @RequiredArgsConstructor
@@ -23,6 +26,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(trafficMonitorInterceptor)
                 .addPathPatterns("/api/**"); // Only monitor API traffic
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 1. index.html은 절대 캐싱하지 않음 (항상 최신 JS 해시값을 읽어야 함)
+        registry.addResourceHandler("/index.html", "/")
+                .addResourceLocations("classpath:/static/")
+                .setCacheControl(CacheControl.noStore().mustRevalidate());
+        // 2. JS, CSS, 이미지 등 정적 자원은 1년 등 길게 캐싱해도 됨 (어차피 파일명에 해시가 붙어 다름)
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/")
+                .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic());
     }
 
     @Override

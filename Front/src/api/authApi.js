@@ -43,7 +43,7 @@ export const fetchMyInfo = async (token) => {
     const response = await apiClient.get(`${addUrl}/me`, config);
     return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, error: '내 정보를 불러오는데 실패했습니다.' };
+    return { success: false, error: '내 정보를 불러오는데 실패했습니다.', status: error.response?.status };
   }
 };
 

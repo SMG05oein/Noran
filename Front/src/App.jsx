@@ -13,6 +13,7 @@ import NoticeModal from './components/NoticeModal';
 import DevIpOtpGate from './components/DevIpOtpGate';
 import Loading from './components/Loading';
 import PwaInstallBanner from './components/PwaInstallBanner';
+import ServerDownOverlay from './components/ServerDownOverlay';
 import './App.css';
 
 const Login = React.lazy(() => import('./pages/Login'));
@@ -123,6 +124,7 @@ function App() {
     <>
       <PwaInstallBanner />
       <NoticeModal />
+      <ServerDownOverlay />
       {!location.pathname.startsWith('/dev/dashboard') && <DevIpOtpGate />}
       <Suspense fallback={PageFallback}>
         <Routes>

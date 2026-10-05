@@ -1,5 +1,6 @@
 import axios from 'axios';
 import useAuthStore from '../store/useAuthStore';
+import useServerStateStore from '../store/useServerStateStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -38,6 +39,12 @@ globalApiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    const status = error.response?.status;
+    if (!error.response || status === 502 || status === 503 || status === 504) {
+      useServerStateStore.getState().setServerDown(true);
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/login')) {
@@ -54,8 +61,19 @@ globalApiClient.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
         return globalApiClient(originalRequest);
       } catch (refreshError) {
-        useAuthStore.getState().logout();
-        window.location.href = '/login';
+        // 서버 다운(502)이나 네트워크 에러일 때는 로그아웃시키지 않고,
+        // 정확히 401(또는 403) 인증 에러일 때만 토큰 삭제 및 로그아웃 수행
+        const refreshStatus = refreshError.response?.status;
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          console.warn("인증이 만료되었습니다. 로그아웃 처리됩니다.");
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+        } else if (!refreshError.response || refreshStatus === 502 || refreshStatus === 503 || refreshStatus === 504) {
+          console.error("서버 재시작/통신 오류로 인해 토큰 갱신에 실패했습니다.");
+          useServerStateStore.getState().setServerDown(true);
+        } else {
+          console.error("기타 서버 통신 오류로 인해 토큰 갱신에 실패했습니다.");
+        }
         return Promise.reject(refreshError);
       }
     }

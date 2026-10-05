@@ -13,13 +13,17 @@ import {
 import {
   Container, Row, Col, Card, Button, Spinner, Modal, Form, Alert, Badge, Tabs, Tab, Table,
 } from 'react-bootstrap';
+import {
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
+} from 'recharts';
 import DevLogViewer from '../components/DevLogViewer';
 import ApiAnalyticsViewer from '../components/ApiAnalyticsViewer';
 import AnnouncementManager from '../components/AnnouncementManager';
 import NetlifyDeployManager from '../components/NetlifyDeployManager';
 import DevExecutorAuthModal from '../components/DevExecutorAuthModal';
+import TopologyMap from '../components/TopologyMap';
 
-const DatabaseManager = React.lazy(() => import('../components/DatabaseManager'));
 
 const statusBadge = (status) => {
   const up = String(status).toUpperCase() === 'UP';
@@ -152,10 +156,31 @@ const DevMain = () => {
                     <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
                       <Card.Body>
                         <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">JVM 메모리 현황</Card.Title>
-                        <p className="mb-2"><strong>총 메모리 (Total):</strong> {sysInfo.memory?.total_mb} MB</p>
-                        <p className="mb-2"><strong>사용 중 (Used):</strong> {sysInfo.memory?.used_mb} MB</p>
-                        <p className="mb-2"><strong>여유 메모리 (Free):</strong> {sysInfo.memory?.free_mb} MB</p>
-                        <p className="mb-0"><strong>최대 할당 (Max):</strong> {sysInfo.memory?.max_mb} MB</p>
+                        {sysInfo.memory && (
+                          <div style={{ height: 180, width: '100%' }}>
+                            <ResponsiveContainer>
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: '사용 중', value: sysInfo.memory.used_mb },
+                                    { name: '여유', value: sysInfo.memory.free_mb }
+                                  ]}
+                                  cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2}
+                                  dataKey="value"
+                                >
+                                  <Cell key="cell-0" fill="#ff4d4d" />
+                                  <Cell key="cell-1" fill="#00d2ff" />
+                                </Pie>
+                                <RechartsTooltip contentStyle={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a', color: '#fff', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                                <Legend verticalAlign="bottom" height={20} wrapperStyle={{ fontSize: '12px' }}/>
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                        <div className="d-flex justify-content-between small text-secondary mt-3 px-2">
+                          <span>총 메모리: {sysInfo.memory?.total_mb} MB</span>
+                          <span>최대 할당: {sysInfo.memory?.max_mb} MB</span>
+                        </div>
                       </Card.Body>
                     </Card>
                   </Col>
@@ -275,6 +300,13 @@ const DevMain = () => {
                   </Col>
                 </Row>
 
+                {/* Topology Map */}
+                <Row className="mt-4 g-4">
+                  <Col md={12}>
+                    <TopologyMap sysInfo={sysInfo} />
+                  </Col>
+                </Row>
+
                 {/* Alerts */}
                 <Row className="mt-4 g-4">
                   <Col md={12}>
@@ -306,34 +338,33 @@ const DevMain = () => {
 
                 <Row className="mt-4 g-4">
                   <Col md={4}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4">
+                    <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
                       <Card.Body>
-                        <Card.Title className="fw-bold mb-4 text-primary">트래픽 응답 현황</Card.Title>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span><Badge bg="success">성공 (2xx)</Badge></span>
-                          <span className="fw-bold">{sysInfo.traffic?.success}건</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span><Badge bg="primary">리다이렉션 (3xx)</Badge></span>
-                          <span className="fw-bold">{sysInfo.traffic?.redirection}건</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span><Badge bg="warning" text="dark">찾을 수 없음 (404)</Badge></span>
-                          <span className="fw-bold">{sysInfo.traffic?.notFound}건</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span><Badge bg="danger">클라이언트 오류 (4xx)</Badge></span>
-                          <span className="fw-bold">{sysInfo.traffic?.clientError}건</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span><Badge bg="danger">서버 내부 오류 (5xx)</Badge></span>
-                          <span className="fw-bold">{sysInfo.traffic?.serverError}건</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2">
-                          <span><Badge bg="secondary">요청 제한 초과 (429)</Badge></span>
-                          <span className="fw-bold">{sysInfo.traffic?.rateLimited}건</span>
-                        </div>
-                        <div className="d-flex justify-content-between fs-5 text-primary">
+                        <Card.Title className="fw-bold mb-4" style={{ color: '#00d2ff' }}>트래픽 응답 현황</Card.Title>
+                        {sysInfo.traffic && (
+                          <div style={{ height: 230, width: '100%' }}>
+                            <ResponsiveContainer>
+                              <BarChart
+                                data={[
+                                  { name: '2xx', value: sysInfo.traffic.success, fill: '#198754' },
+                                  { name: '3xx', value: sysInfo.traffic.redirection, fill: '#0d6efd' },
+                                  { name: '404', value: sysInfo.traffic.notFound, fill: '#ffc107' },
+                                  { name: '4xx', value: sysInfo.traffic.clientError, fill: '#dc3545' },
+                                  { name: '5xx', value: sysInfo.traffic.serverError, fill: '#a71d2a' },
+                                  { name: '429', value: sysInfo.traffic.rateLimited, fill: '#6c757d' },
+                                ]}
+                                margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#adb5bd' }} />
+                                <YAxis tick={{ fontSize: 12, fill: '#adb5bd' }} />
+                                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
+                                <Bar dataKey="value" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                        <div className="d-flex justify-content-between fs-6 mt-3 border-top pt-3" style={{ borderColor: '#3f3f5a', color: '#00d2ff' }}>
                           <span className="fw-bold">총 요청 수</span>
                           <span className="fw-bold">{sysInfo.traffic?.total}건</span>
                         </div>
@@ -427,12 +458,6 @@ const DevMain = () => {
                     </Card>
                   </Col>
                 </Row>
-              </Tab>
-
-              <Tab eventKey="database" title="데이터베이스 관리">
-                <React.Suspense fallback={<div className="text-center py-5"><Spinner animation="border" variant="warning" /></div>}>
-                  <DatabaseManager />
-                </React.Suspense>
               </Tab>
 
               <Tab eventKey="logs" title="실시간 로그">

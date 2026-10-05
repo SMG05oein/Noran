@@ -3,6 +3,16 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 const releaseHistory = [
   {
+    version: '0.9.11',
+    date: '2026-10-05',
+    features: [
+      '서버 재시작 시 안내 팝업 추가'
+    ],
+    fixes: [
+      '서버 최신화 시 기존 로직으로 인해 화이트 페이지가 노출되고 로그아웃되는 버그 수정'
+    ]
+  },
+  {
     version: '0.9.10',
     date: '2026-10-03',
     features: [
@@ -65,7 +75,6 @@ const releaseHistory = [
     version: '0.9.5',
     date: '2026-09-24',
     features: [
-      '개발자 대시보드 고도화 및 보안 강화',
       '노란돼지 사내 커뮤니티 오픈',
       '급여 관리 기능 및 UI 신규 추가',
       '스케줄 배정 휴직 직원 판별 가능하도록 개선'
@@ -105,7 +114,7 @@ const releaseHistory = [
     version: '0.7.0',
     date: '2026-08-27',
     features: [
-      '직급(UserType) 개념 도입 및 개인정보 보호법 의거 은행/계좌정보 체계 구축',
+      '직급 개념 도입 및 개인정보 보호법 의거 은행/계좌정보 체계 구축',
       '페이징 바 컴포넌트 추가 및 UX 최적화',
       '동명이인 정렬 로직 및 관리자 메인 페이지 추가'
     ],
@@ -132,7 +141,7 @@ const ReleaseNotesModal = ({ show, onHide }) => {
     <Modal show={show} onHide={onHide} centered scrollable size="lg">
       <Modal.Header closeButton className="border-bottom">
         <Modal.Title className="fw-bold">
-          🎉 업데이트 내역 (Release Notes)
+          업데이트 내역 (Release Notes)
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="bg-light px-4 py-4">

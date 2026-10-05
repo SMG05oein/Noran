@@ -3,6 +3,12 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 const releaseHistory = [
   {
+    version: '0.9.12',
+    date: '2026-10-06',
+    features: [],
+    fixes: ['배포 환경에서 엑셀 대조 후 다운로드가 안 되는 버그 수정']
+  },
+  {
     version: '0.9.11',
     date: '2026-10-05',
     features: [

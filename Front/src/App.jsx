@@ -14,6 +14,7 @@ import DevIpOtpGate from './components/DevIpOtpGate';
 import Loading from './components/Loading';
 import PwaInstallBanner from './components/PwaInstallBanner';
 import ServerDownOverlay from './components/ServerDownOverlay';
+import GlobalConsentGuard from './components/GlobalConsentGuard';
 import './App.css';
 
 const Login = React.lazy(() => import('./pages/Login'));
@@ -125,6 +126,7 @@ function App() {
       <PwaInstallBanner />
       <NoticeModal />
       <ServerDownOverlay />
+      <GlobalConsentGuard />
       {!location.pathname.startsWith('/dev/dashboard') && <DevIpOtpGate />}
       <Suspense fallback={PageFallback}>
         <Routes>

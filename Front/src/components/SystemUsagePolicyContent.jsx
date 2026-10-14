@@ -85,14 +85,23 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">9. 문의 및 이의제기</h5>
+        <h5 className="fw-bold mb-3 text-dark">9. 보안 관리 및 부정이용 방지</h5>
+        <p className="small text-muted">
+          ① 시스템은 계정 도용, 대리 출석 등 부정이용을 방지하고 안전한 이용 환경을 제공하기 위해 접속 IP 주소 및 로그인 일시를 수집하여 보관합니다.<br />
+          ② 수집된 접속 기록은 오직 보안 및 부정이용 확인 목적으로만 사용되며, 외부에 제공되지 않습니다.<br />
+          ③ 직원이 제7조(금지행위)를 위반하여 시스템을 부정하게 이용한 정황이 발견될 경우, 매장은 보관 중인 접속 기록을 근거로 소명 요청 및 시스템 이용 제한 등의 조치를 취할 수 있습니다.
+        </p>
+      </div>
+
+      <div className="mb-4">
+        <h5 className="fw-bold mb-3 text-dark">10. 문의 및 이의제기</h5>
         <p className="small text-muted">
           시스템 이용 중 발생하는 문의, 오류 신고, 근태·급여 관련 이의제기는 시스템 담당자(근태·급여 제외) 또는 관리자에게 직접 연락하여 처리합니다.
         </p>
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">10. 이용규정 변경 및 버전 정보</h5>
+        <h5 className="fw-bold mb-3 text-dark">11. 이용규정 변경 및 버전 정보</h5>
         <p className="small text-muted">
           ① 매장은 규정 내용을 변경하는 경우 시행 전에 직원에게 안내합니다.<br />
           ② 변경 전 최소 3일 전에 고지합니다. 다만 근태 기록 수정기한 등 이미 진행 중인 절차에 영향을 미치는 변경은 해당 주기(주)가 끝난 이후부터 적용합니다.<br />
@@ -101,9 +110,18 @@ const SystemUsagePolicyContent = () => {
       </div>
       
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">11. 개정 이력</h5>
+        <h5 className="fw-bold mb-3 text-dark">12. 개정 이력</h5>
         <RevisionHistory 
           histories={[
+            {
+              version: 'v1.2',
+              date: '2026-10-17',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>보안 관리 및 부정이용 방지 관련 제9조 항목 신설</li>
+                </ul>
+              )
+            },
             {
               version: 'v1.1',
               date: '2026-10-03',
@@ -138,13 +156,13 @@ const SystemUsagePolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 10월 03일
+          공고일: 2026년 10월 10일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 10월 03일
+          시행일: 2026년 10월 17일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.1
+          버전: v1.2
         </p>
       </div>
     </div>

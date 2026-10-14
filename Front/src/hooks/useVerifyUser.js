@@ -26,7 +26,10 @@ const useVerifyUser = () => {
             userType: infoRes.data.userTypeName,
             userHourlyWage: infoRes.data.userHourlyWage,
             isAdmin: infoRes.data.is_admin,
-            fkUtIdx: infoRes.data.fkUtIdx
+            fkUtIdx: infoRes.data.fkUtIdx,
+            needsPrivacyConsent: infoRes.data.needsPrivacyConsent,
+            needsCollectionConsent: infoRes.data.needsCollectionConsent,
+            needsTermsConsent: infoRes.data.needsTermsConsent
           };
           // 최신 정보로 스토어 업데이트 (토큰은 인터셉터 갱신 로직을 타기 때문에 상태 유지)
           const currentTokens = useAuthStore.getState().user?.tokens;

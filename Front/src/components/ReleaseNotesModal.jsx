@@ -3,6 +3,16 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 const releaseHistory = [
   {
+    version: '0.9.13',
+    date: '2026-10-10',
+    features: [
+      '보안 강화를 위한 접속 IP 및 로그인 일시 수집 기능 도입',
+      '개인정보처리방침 및 시스템 이용규정 개정(v1.2) 반영',
+      '약관 개정에 따른 필수 약관 재동의 기능 추가'
+    ],
+    fixes: []
+  },
+  {
     version: '0.9.12',
     date: '2026-10-06',
     features: [],

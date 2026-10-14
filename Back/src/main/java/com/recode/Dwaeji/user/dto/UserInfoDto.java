@@ -41,6 +41,9 @@ public class UserInfoDto {
     private Integer isAdmin;
 
     private Integer emailConsentAgreed;
+    private Integer privacyConsentAgreed;
+    private Integer collectionConsentAgreed;
+    private Integer termsConsentAgreed;
     /**
      * 동명이인 플래그: 동일 실명 활성 인원 수. &gt;1 이면 관리자 UI에 #userIdx
      */
@@ -52,6 +55,13 @@ public class UserInfoDto {
         String hasAccount = (user.getUserAccountNumber() != null && !user.getUserAccountNumber().trim().isEmpty()) ? "기재" : null;
         Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null) ? user.getUserType().getUtIsAdmin() : 0;
         Integer emailConsent = (user.getEmailConsentAgreed() != null && user.getEmailConsentAgreed()) ? 1 : 0;
+        
+        // 약관 개정일 설정 (2026-10-17)
+        java.time.LocalDateTime revisionDate = java.time.LocalDateTime.of(2026, 10, 17, 0, 0);
+        Integer privacyConsent = (user.getPrivacyConsentDate() != null && !user.getPrivacyConsentDate().isBefore(revisionDate)) ? 1 : 0;
+        Integer collectionConsent = (user.getCollectionConsentDate() != null && !user.getCollectionConsentDate().isBefore(revisionDate)) ? 1 : 0;
+        Integer termsConsent = (user.getTermsConsentDate() != null && !user.getTermsConsentDate().isBefore(revisionDate)) ? 1 : 0;
+
         var ut = user.getUserType();
 
         return UserInfoDto.builder()
@@ -73,6 +83,9 @@ public class UserInfoDto {
                 .userWithdrawnAt(user.getUserWithdrawnAt())
                 .isAdmin(adminFlag)
                 .emailConsentAgreed(emailConsent)
+                .privacyConsentAgreed(privacyConsent)
+                .collectionConsentAgreed(collectionConsent)
+                .termsConsentAgreed(termsConsent)
                 .build();
     }
 

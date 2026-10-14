@@ -451,3 +451,12 @@ export const deleteArchivedUser = async (userIdx) => {
   }
 };
 
+export const updateTermsConsent = async (consentType) => {
+  try {
+    const response = await apiClient.put(`${addUrl}/me/terms-consent/${consentType}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    const errMsg = error.response?.data?.message || '약관 동의 처리에 실패했습니다.';
+    return { success: false, error: errMsg };
+  }
+};

@@ -58,7 +58,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public LoginResponseDto login(LoginRequestDto loginRequestDto) {
+    public LoginResponseDto login(LoginRequestDto loginRequestDto, String clientIp) {
         if (loginRequestDto.getUserId() != null) {
             loginRequestDto.setUserId(loginRequestDto.getUserId().toLowerCase());
         }
@@ -108,6 +108,11 @@ public class UserServiceImpl implements UserService {
                 .rfExpiryDate(LocalDateTime.now().plusDays(3))
                 .build();
         refreshTokenRepository.save(refreshToken);
+
+        // 로그인 성공 시 IP와 날짜 업데이트
+        user.setLastLoginIp(clientIp);
+        user.setLastLoginDate(LocalDateTime.now());
+        userRepository.save(user);
 
         return LoginResponseDto.builder()
                 .accessToken(accessToken)
@@ -169,6 +174,12 @@ public class UserServiceImpl implements UserService {
                 .userBank(signupRequestDto.getUserBank())
                 .userAccountName(signupRequestDto.getUserAccountName())
                 .userAccountNumber(signupRequestDto.getUserAccountNumber())
+                .privacyConsentAgreed(true)
+                .privacyConsentDate(LocalDateTime.now())
+                .collectionConsentAgreed(true)
+                .collectionConsentDate(LocalDateTime.now())
+                .termsConsentAgreed(true)
+                .termsConsentDate(LocalDateTime.now())
                 .bankConsentAgreed(
                         signupRequestDto.getUserBank() != null && !signupRequestDto.getUserBank().isBlank()
                                 && signupRequestDto.getUserAccountNumber() != null && !signupRequestDto.getUserAccountNumber().isBlank())
@@ -241,6 +252,12 @@ public class UserServiceImpl implements UserService {
                 .userType(userType)
                 .workPlace(workPlace)
                 .userIsActive(1)
+                .privacyConsentAgreed(true)
+                .privacyConsentDate(LocalDateTime.now())
+                .collectionConsentAgreed(true)
+                .collectionConsentDate(LocalDateTime.now())
+                .termsConsentAgreed(true)
+                .termsConsentDate(LocalDateTime.now())
                 .build();
 
         userRepository.save(newUser);
@@ -881,6 +898,32 @@ public class UserServiceImpl implements UserService {
         if (Boolean.TRUE.equals(dto.getBankConsentAgreed())) {
             user.setBankConsentAgreed(true);
             user.setBankConsentDate(java.time.LocalDateTime.now());
+        }
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void updateTermsConsent(String requesterId, String consentType) {
+        User user = userRepository.findByUserId(requesterId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
+
+        switch (consentType.toLowerCase()) {
+            case "privacy":
+                user.setPrivacyConsentAgreed(true);
+                user.setPrivacyConsentDate(java.time.LocalDateTime.now());
+                break;
+            case "collection":
+                user.setCollectionConsentAgreed(true);
+                user.setCollectionConsentDate(java.time.LocalDateTime.now());
+                break;
+            case "terms":
+                user.setTermsConsentAgreed(true);
+                user.setTermsConsentDate(java.time.LocalDateTime.now());
+                break;
+            default:
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 약관 종류입니다. (지원: privacy, collection, terms)");
         }
 
         userRepository.save(user);

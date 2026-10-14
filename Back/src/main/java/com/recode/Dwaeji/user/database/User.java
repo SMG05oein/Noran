@@ -2,6 +2,7 @@ package com.recode.Dwaeji.user.database;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -109,6 +110,27 @@ public class User {
     @Comment("이메일 수신 동의 일시")
     private LocalDateTime emailConsentDate;
 
+    @Column(name = "privacy_consent_agreed", nullable = false)
+    @ColumnDefault("false")
+    private Boolean privacyConsentAgreed = false;
+
+    @Column(name = "privacy_consent_date")
+    private LocalDateTime privacyConsentDate;
+
+    @Column(name = "collection_consent_agreed", nullable = false)
+    @ColumnDefault("false")
+    private Boolean collectionConsentAgreed = false;
+
+    @Column(name = "collection_consent_date")
+    private LocalDateTime collectionConsentDate;
+
+    @Column(name = "terms_consent_agreed", nullable = false)
+    @ColumnDefault("false")
+    private Boolean termsConsentAgreed = false;
+
+    @Column(name = "terms_consent_date")
+    private LocalDateTime termsConsentDate;
+
     @Builder.Default
     @Column(name = "is_temp_user", nullable = false, columnDefinition = "TINYINT(1)")
     @Comment("관리자 엑셀 업로드로 생성된 임시 유저 여부 (1: 임시, 0: 일반)")
@@ -127,6 +149,14 @@ public class User {
     @Column(name = "user_withdrawn_at")
     @Comment("탈퇴 일시")
     private LocalDateTime userWithdrawnAt;
+
+    @Column(name = "last_login_ip", length = 50)
+    @Comment("최근 로그인 IP")
+    private String lastLoginIp;
+
+    @Column(name = "last_login_date")
+    @Comment("최근 로그인 일시")
+    private LocalDateTime lastLoginDate;
 
     public String getDisplayName() {
         if (this.userPhone != null && this.userPhone.length() >= 4) {

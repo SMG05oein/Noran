@@ -44,6 +44,8 @@ dependencies {
 	implementation 'org.apache.poi:poi-ooxml:5.2.3'
 
     implementation 'com.github.pjfanning:excel-streaming-reader:4.0.5'
+
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
 }
 
 tasks.named('test') {

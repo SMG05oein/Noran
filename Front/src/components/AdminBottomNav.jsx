@@ -52,9 +52,6 @@ const AdminBottomNav = () => {
           <Dropdown.Item as={Link} to="/admin/user-types" className="fw-bold py-2 text-dark">
             <RiUserStarLine className="me-2 text-primary" /> 직급
           </Dropdown.Item>
-          <Dropdown.Item as={Link} to="/admin/board" className="fw-bold py-2 text-dark">
-            <RiChatSmile2Line className="me-2 text-primary" /> 게시판
-          </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown>
       <NavLink to="/admin/mypage" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>

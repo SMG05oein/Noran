@@ -46,6 +46,12 @@ const ConsentPolicyContent = () => {
               <td>이메일</td>
               <td>선택 항목 동의 철회 또는 회원 탈퇴 시 지체 없이 파기합니다.</td>
             </tr>
+            <tr>
+              <td className="text-center fw-bold text-danger">필수</td>
+              <td><strong>서비스 부정이용 방지 및 보안 관리</strong></td>
+              <td>접속 IP 주소, 최근 로그인 일시</td>
+              <td><strong>회원 탈퇴 후 최대 5년간 보관한 후 파기합니다.</strong></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -69,6 +75,15 @@ const ConsentPolicyContent = () => {
       <div className="mb-4">
         <RevisionHistory 
           histories={[
+            {
+              version: 'v1.2',
+              date: '2026-10-17',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>보안 강화 및 부정이용 방지를 위한 수집 항목(IP 주소, 로그인 일시) 추가</li>
+                </ul>
+              )
+            },
             {
               version: 'v1.1',
               date: '2026-10-03',
@@ -102,13 +117,13 @@ const ConsentPolicyContent = () => {
           <strong>최초 시행일:</strong> 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          <strong>공고일:</strong> 2026년 10월 03일
+          <strong>공고일:</strong> 2026년 10월 10일
         </p>
         <p className="small text-muted mb-1">
-          <strong>시행일:</strong> 2026년 10월 03일
+          <strong>시행일:</strong> 2026년 10월 17일
         </p>
         <p className="small text-muted mb-0">
-          <strong>버전:</strong> v1.1
+          <strong>버전:</strong> v1.2
         </p>
       </div>
     </div>

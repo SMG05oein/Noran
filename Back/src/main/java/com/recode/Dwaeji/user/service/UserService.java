@@ -4,7 +4,7 @@ import com.recode.Dwaeji.user.dto.*;
 import org.springframework.data.domain.Page;
 
 public interface UserService {
-    LoginResponseDto login(LoginRequestDto loginRequestDto);
+    LoginResponseDto login(LoginRequestDto loginRequestDto, String clientIp);
 
     void signup(SignupRequestDto signupRequestDto);
 
@@ -49,6 +49,8 @@ public interface UserService {
     void changePassword(String requesterId, ChangePasswordDto dto);
 
     void updateMyBankInfo(String requesterId, BankInfoUpdateDto dto);
+
+    void updateTermsConsent(String requesterId, String consentType);
 
     java.util.List<UserTypeDto> getAllUserTypes();
 

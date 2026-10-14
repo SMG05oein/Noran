@@ -1,7 +1,7 @@
 {
   "name": "Front",
   "private": true,
-  "version": "0.9.12",
+  "version": "0.9.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "bootstrap": "^5.3.8",
     "date-fns": "^4.4.0",
     "date-holidays": "^3.32.0",
+    "firebase": "^13.0.0",
     "holiday-kr": "^0.1.5",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",

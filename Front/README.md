@@ -59,4 +59,14 @@ VITE_API_URL=http://localhost:8080
 | `/admin/employees` | 직원 |
 | `/admin/records` | 근무 기록 |
 | `/admin/payroll` | 급여 |
-| `/admin/workplaces` | 근무지 |
+| `/admin/workplaces` | 지점(근무지) |
+| `/admin/user-types` | 직급 |
+| `/privacy` | 개인정보처리방침 |
+| `/terms` | 시스템 이용규정 |
+| `/consent` | 개인정보 수집 및 이용 동의서 |
+| `/howtouse` | 시스템 이용방법 |
+
+## 최근 업데이트 (v0.9.13)
+- 보안 강화를 위한 접속 IP 및 로그인 일시 수집 기능 도입
+- 개인정보처리방침 및 시스템 이용규정 개정(v1.2) 반영
+- 약관 개정에 따른 필수 약관 재동의 기능 추가

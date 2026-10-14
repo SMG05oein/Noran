@@ -51,6 +51,12 @@ const PrivacyPolicyContent = () => {
                 <td className="text-center"><strong>사용자 기기 내 보관<br />(로그아웃 또는 캐시 삭제 시 즉시 파기)</strong></td>
                 <td className="text-center">정보주체의 동의 (개인정보보호법 제15조 제1항 제1호)</td>
               </tr>
+              <tr>
+                <td><strong>서비스 부정이용 방지 및 보안 관리</strong><br />(비정상 접근 차단 및 계정 보호)</td>
+                <td><strong>(필수)</strong> 접속 IP 주소, 최근 로그인 일시</td>
+                <td className="text-center"><strong>회원 탈퇴 후 최대 5년간 보관 후 파기</strong></td>
+                <td className="text-center">법령상 의무 준수 및 증빙 (국세기본법 제85조의3)</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -187,7 +193,7 @@ const PrivacyPolicyContent = () => {
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">12. 개인정보 처리방침의 변경 및 고지</h5>
         <p className="small text-muted">
-          이 개인정보 처리방침은 <strong>2026년 10월 03일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
+          이 개인정보 처리방침은 <strong>2026년 10월 17일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
           <br />또한 버전의 의미는 앞 자리는 핵심 내용의 변경 및 추가, 삭제가 있을 시며 뒷 자리는 경미한 내용 수정을 의미합니다.
         </p>
       </div>
@@ -196,6 +202,15 @@ const PrivacyPolicyContent = () => {
         <h5 className="fw-bold mb-3 text-dark">13. 개정 이력</h5>
         <RevisionHistory 
           histories={[
+            {
+              version: 'v1.2',
+              date: '2026-10-17',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>보안 강화 및 부정이용 방지를 위한 수집 항목(IP 주소, 로그인 일시) 추가</li>
+                </ul>
+              )
+            },
             {
               version: 'v1.1',
               date: '2026-10-03',
@@ -231,13 +246,13 @@ const PrivacyPolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 10월 03일
+          공고일: 2026년 10월 10일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 10월 03일
+          시행일: 2026년 10월 17일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.1
+          버전: v1.2
         </p>
       </div>
     </div>

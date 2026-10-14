@@ -105,7 +105,6 @@ const GNB = () => {
             <div className="mb-3">대표 번호: 010-5833-9279</div>
 
             <div className="fw-bold text-dark mb-1">시스템 개선 문의</div>
-            <div className="mb-1">010-2011-1392 (카카오톡)</div>
             <div className="mb-1">010-3189-1392 (문자, 카카오톡)</div>
             <div className="mb-3"><AppVersion /></div>
 
@@ -125,9 +124,6 @@ const GNB = () => {
               </Link>
               <Link to="/consent" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
                 개인정보 수집 및 이용 동의서
-              </Link>
-              <Link to="/gathering" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
-                돼지들 모임 🐷
               </Link>
             </div>
 

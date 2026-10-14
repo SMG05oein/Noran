@@ -24,8 +24,15 @@ public class UserController {
 
     @Operation(summary = "로그인", description = "아이디와 비밀번호로 로그인합니다. 성공 시 액세스 토큰을 반환하고, 리프레시 토큰은 HttpOnly 쿠키로 발급합니다.")
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto) {
-        LoginResponseDto loginResponse = userService.login(loginRequestDto);
+    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto, jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+            clientIp = request.getRemoteAddr();
+        } else {
+            clientIp = clientIp.split(",")[0].trim();
+        }
+        
+        LoginResponseDto loginResponse = userService.login(loginRequestDto, clientIp);
 
         // HttpOnly 쿠키 생성 (리프레시 토큰)
         ResponseCookie cookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
@@ -299,6 +306,20 @@ public class UserController {
         userService.updateMyBankInfo(requesterId, dto);
         return ResponseEntity.ok("은행 정보가 성공적으로 수정되었습니다.");
     }
+
+    @Operation(summary = "개별 약관 재동의", description = "규정 변경 시 특정 약관(privacy, collection, terms)에 대한 동의 일시를 현재 시간으로 갱신합니다.")
+    @PutMapping("/me/terms-consent/{consentType}")
+    public ResponseEntity<String> updateTermsConsent(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String consentType) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body("로그인이 필요합니다.");
+        }
+        String requesterId = userDetails.getUsername();
+        userService.updateTermsConsent(requesterId, consentType);
+        return ResponseEntity.ok("해당 약관의 동의 일시가 성공적으로 갱신되었습니다.");
+    }
+
 
     @Operation(summary = "유저 민감 정보 조회", description = "관리자 전용. 특정 유저의 마스킹되지 않은 민감 정보를 조회합니다.")
     @GetMapping("/{userIdx}/sensitive-info")

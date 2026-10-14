@@ -26,7 +26,6 @@ const Footer = () => {
             <div style={{ color: 'var(--color-text-muted)' }}>
               <div className="mb-2">
                 <div>시스템 개선 문의 </div>
-                <div>010-2011-1392(카카오톡)</div>
                 010-3189-1392(문자, 카카오톡)<br />
                 <AppVersion />
               </div>

@@ -31,7 +31,7 @@ globalApiClient.interceptors.response.use(
     if (error.response?.status === 429) {
       if (!isRateLimitAlertShown) {
         isRateLimitAlertShown = true;
-        alert("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.");
+        alert("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
         setTimeout(() => {
           isRateLimitAlertShown = false;
         }, 2000);

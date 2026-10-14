@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Container, Card, Form, Button, Modal, Table, Alert } from 'react-bootstrap';
+import { Container, Card, Form, Button, Modal, Table, Alert, Dropdown, ButtonGroup } from 'react-bootstrap';
 import { format, startOfWeek, addDays, subMonths, addMonths, parseISO, getDay } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
 import { RiFileList3Line, RiEyeLine, RiAddLine, RiDeleteBinLine } from 'react-icons/ri';
@@ -13,27 +13,58 @@ import Loading from '../components/Loading';
 
 const DAY_LABELS = { 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토', 0: '일' };
 const DAYS_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const WEEKENDS = ['Sat', 'Sun'];
 
-const cycleDayState = (block, day) => {
-  const applied = block.days[day];
-  const isOpen = block.openShift[day];
-  if (!applied) {
-    return {
-      days: { ...block.days, [day]: true },
-      openShift: { ...block.openShift, [day]: false }
-    };
-  }
-  if (!isOpen) {
-    return {
-      days: block.days,
-      openShift: { ...block.openShift, [day]: true }
-    };
-  }
-  return {
-    days: { ...block.days, [day]: false },
-    openShift: { ...block.openShift, [day]: false }
-  };
-};
+const BatchApplyBar = ({ onBatch }) => (
+  <div className="req-batch-bar d-flex align-items-center gap-1 mb-2 flex-wrap">
+    <span className="small text-muted fw-bold me-1" style={{ fontSize: '0.8rem' }}>일괄:</span>
+    <Dropdown as={ButtonGroup} size="sm">
+      <Dropdown.Toggle variant="outline-secondary" className="req-batch-toggle">
+        모두
+      </Dropdown.Toggle>
+      <Dropdown.Menu className="req-batch-menu">
+        <Dropdown.Item onClick={() => onBatch('ALL', 'NORMAL')}>전체 신청 (월~일)</Dropdown.Item>
+        <Dropdown.Item onClick={() => onBatch('ALL', 'OPEN')}>전체 오픈 (월~일)</Dropdown.Item>
+        <Dropdown.Divider />
+        <Dropdown.Item onClick={() => onBatch('ALL', 'CLEAR')} className="text-danger">전체 해제</Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>
+
+    <Dropdown as={ButtonGroup} size="sm">
+      <Dropdown.Toggle variant="outline-secondary" className="req-batch-toggle">
+        평일
+      </Dropdown.Toggle>
+      <Dropdown.Menu className="req-batch-menu">
+        <Dropdown.Item onClick={() => onBatch('WEEKDAY', 'NORMAL')}>평일 신청 (월~금)</Dropdown.Item>
+        <Dropdown.Item onClick={() => onBatch('WEEKDAY', 'OPEN')}>평일 오픈 (월~금)</Dropdown.Item>
+        <Dropdown.Divider />
+        <Dropdown.Item onClick={() => onBatch('WEEKDAY', 'CLEAR')} className="text-danger">평일 해제</Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>
+
+    <Dropdown as={ButtonGroup} size="sm">
+      <Dropdown.Toggle variant="outline-secondary" className="req-batch-toggle">
+        주말
+      </Dropdown.Toggle>
+      <Dropdown.Menu className="req-batch-menu">
+        <Dropdown.Item onClick={() => onBatch('WEEKEND', 'NORMAL')}>주말 신청 (토·일)</Dropdown.Item>
+        <Dropdown.Item onClick={() => onBatch('WEEKEND', 'OPEN')}>주말 오픈 (토·일)</Dropdown.Item>
+        <Dropdown.Divider />
+        <Dropdown.Item onClick={() => onBatch('WEEKEND', 'CLEAR')} className="text-danger">주말 해제</Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>
+
+    <button
+      type="button"
+      className="btn btn-sm btn-outline-danger ms-auto req-batch-reset-btn"
+      onClick={() => onBatch('ALL', 'CLEAR')}
+      title="모든 요일 선택 해제"
+    >
+      초기화
+    </button>
+  </div>
+);
 
 const PlaceSelect = ({ workPlaces, value, onChange }) => (
   <Form.Group className="mb-3">
@@ -51,33 +82,50 @@ const PlaceSelect = ({ workPlaces, value, onChange }) => (
   </Form.Group>
 );
 
-const ApplyWeekGrid = ({ monday, block, onCycleDay }) => (
-  <div className="req-week-scroll">
-    <div className="req-week-grid">
-      {DAYS_ORDER.map((day, i) => {
-        const date = addDays(monday, i);
-        const dayNum = getDay(date);
-        const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
-        const isSat = dayNum === 6 && !isHoly;
-        const applied = block.days[day];
-        const isOpen = applied && block.openShift[day];
-        const cellState = !applied ? 'off' : isOpen ? 'open' : 'applied';
-        const label = !applied ? '—' : isOpen ? '오픈' : '신청';
-        return (
-          <div key={day} className="req-week-day">
-            <div className={`req-week-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
-              {DAY_LABELS[dayNum]}
+const ApplyWeekGrid = ({ monday, block, onToggleType }) => {
+  if (!block) return null;
+  return (
+    <div className="req-week-scroll">
+      <div className="req-split-grid">
+        {DAYS_ORDER.map((day, i) => {
+          const date = addDays(monday, i);
+          const dayNum = getDay(date);
+          const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
+          const isSat = dayNum === 6 && !isHoly;
+          const applied = block.days[day];
+          const isOpen = applied && block.openShift[day];
+          const isNormal = applied && !isOpen;
+          const colClass = isOpen ? 'has-open' : isNormal ? 'has-applied' : '';
+
+          return (
+            <div key={day} className={`req-split-col ${colClass}`}>
+              <div className={`req-week-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
+                {DAY_LABELS[dayNum]}
+              </div>
+              <div className="req-week-day-date mb-1">{format(date, 'd')}</div>
+              <div className="req-split-btn-group">
+                <button
+                  type="button"
+                  className={`req-split-btn ${isNormal ? 'active-normal' : ''}`}
+                  onClick={() => onToggleType(day, 'NORMAL')}
+                >
+                  신청
+                </button>
+                <button
+                  type="button"
+                  className={`req-split-btn ${isOpen ? 'active-open' : ''}`}
+                  onClick={() => onToggleType(day, 'OPEN')}
+                >
+                  오픈
+                </button>
+              </div>
             </div>
-            <div className="req-week-day-date">{format(date, 'd')}</div>
-            <button type="button" className={`req-day-cell ${cellState}`} onClick={() => onCycleDay(day)}>
-              {label}
-            </button>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const isPublicAssignment = (s) =>
   (s?.wsdStatus === '출근' || s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') && s?.wsdIsConfirmed === true;
@@ -207,10 +255,51 @@ const Requests = () => {
     setRequestBlocks(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b));
   };
 
-  const cycleBlockDay = (id, day) => {
+  const handleToggleBlockDayType = (blockId, day, type) => {
     setRequestBlocks(prev => prev.map(b => {
-      if (b.id !== id) return b;
-      return { ...b, ...cycleDayState(b, day) };
+      if (b.id !== blockId) return b;
+      const applied = b.days[day];
+      const isOpen = b.openShift[day];
+      if (type === 'NORMAL') {
+        const nextApplied = !(applied && !isOpen);
+        return {
+          ...b,
+          days: { ...b.days, [day]: nextApplied },
+          openShift: { ...b.openShift, [day]: false }
+        };
+      }
+      if (type === 'OPEN') {
+        const nextOpen = !(applied && isOpen);
+        return {
+          ...b,
+          days: { ...b.days, [day]: nextOpen },
+          openShift: { ...b.openShift, [day]: nextOpen }
+        };
+      }
+      return b;
+    }));
+  };
+
+  const handleBatchApply = (blockId, scope, type) => {
+    const targetDays = scope === 'WEEKDAY' ? WEEKDAYS : scope === 'WEEKEND' ? WEEKENDS : DAYS_ORDER;
+    setRequestBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      const nextDays = { ...b.days };
+      const nextOpen = { ...b.openShift };
+      targetDays.forEach(day => {
+        if (type === 'CLEAR') {
+          nextDays[day] = false;
+          nextOpen[day] = false;
+        } else if (type === 'OPEN') {
+          nextDays[day] = true;
+          nextOpen[day] = true;
+        } else {
+          // NORMAL (신청)
+          nextDays[day] = true;
+          nextOpen[day] = false;
+        }
+      });
+      return { ...b, days: nextDays, openShift: nextOpen };
     }));
   };
 
@@ -362,10 +451,50 @@ const Requests = () => {
     setEditTarget({ monDate, weekSchs });
   };
 
-  const cycleEditBlockDay = (id, day) => {
+  const handleToggleEditBlockDayType = (blockId, day, type) => {
     setEditBlocks(prev => prev.map(b => {
-      if (b.id !== id) return b;
-      return { ...b, ...cycleDayState(b, day) };
+      if (b.id !== blockId) return b;
+      const applied = b.days[day];
+      const isOpen = b.openShift[day];
+      if (type === 'NORMAL') {
+        const nextApplied = !(applied && !isOpen);
+        return {
+          ...b,
+          days: { ...b.days, [day]: nextApplied },
+          openShift: { ...b.openShift, [day]: false }
+        };
+      }
+      if (type === 'OPEN') {
+        const nextOpen = !(applied && isOpen);
+        return {
+          ...b,
+          days: { ...b.days, [day]: nextOpen },
+          openShift: { ...b.openShift, [day]: nextOpen }
+        };
+      }
+      return b;
+    }));
+  };
+
+  const handleEditBatchApply = (blockId, scope, type) => {
+    const targetDays = scope === 'WEEKDAY' ? WEEKDAYS : scope === 'WEEKEND' ? WEEKENDS : DAYS_ORDER;
+    setEditBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      const nextDays = { ...b.days };
+      const nextOpen = { ...b.openShift };
+      targetDays.forEach(day => {
+        if (type === 'CLEAR') {
+          nextDays[day] = false;
+          nextOpen[day] = false;
+        } else if (type === 'OPEN') {
+          nextDays[day] = true;
+          nextOpen[day] = true;
+        } else {
+          nextDays[day] = true;
+          nextOpen[day] = false;
+        }
+      });
+      return { ...b, days: nextDays, openShift: nextOpen };
     }));
   };
 
@@ -419,7 +548,6 @@ const Requests = () => {
       const res = await updateWorkApply(startDateStr, endDateStr, requestData);
       setEditLoading(false);
       if (res.success) {
-        alert('근무 신청이 수정되었습니다.');
         setEditTarget(null);
         loadRequests(selectedMonth);
         refreshNextWeekApplied();
@@ -436,7 +564,7 @@ const Requests = () => {
     <Container className="py-4 py-md-5 mb-5">
       <PageHeader title="근무 신청" />
       <p className="text-muted small mb-3" style={{ marginTop: '-0.35rem' }}>
-        칸을 눌러 신청하고, 한 번 더 누르면 오픈입니다.
+        각 요일의 [신청] 또는 [오픈] 버튼을 탭하여 간편하게 근무를 신청하세요. (선택된 버튼을 다시 누르면 취소됩니다)
       </p>
 
       <Card className="req-apply-card mb-4">
@@ -444,12 +572,6 @@ const Requests = () => {
           <Form onSubmit={handleSubmit}>
             <div className="mb-3">
               <div className="req-apply-week-label">신청 주: {weekRangeLabel}</div>
-            </div>
-
-            <div className="req-legend mb-3" aria-hidden="true">
-              <span className="req-legend-item"><span className="req-legend-swatch off" />—</span>
-              <span className="req-legend-item"><span className="req-legend-swatch applied" />신청</span>
-              <span className="req-legend-item"><span className="req-legend-swatch open" />오픈</span>
             </div>
 
             {requestBlocks.map((block) => (
@@ -471,10 +593,14 @@ const Requests = () => {
                   onChange={(wpIdx) => updateBlock(block.id, 'workPlaceIdx', wpIdx)}
                 />
 
+                <BatchApplyBar
+                  onBatch={(scope, type) => handleBatchApply(block.id, scope, type)}
+                />
+
                 <ApplyWeekGrid
                   monday={nextMonday}
                   block={block}
-                  onCycleDay={(day) => cycleBlockDay(block.id, day)}
+                  onToggleType={(day, type) => handleToggleBlockDayType(block.id, day, type)}
                 />
               </div>
             ))}
@@ -675,11 +801,6 @@ const Requests = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-3 p-md-4">
-          <div className="req-legend mb-3" aria-hidden="true">
-            <span className="req-legend-item"><span className="req-legend-swatch off" />—</span>
-            <span className="req-legend-item"><span className="req-legend-swatch applied" />신청</span>
-            <span className="req-legend-item"><span className="req-legend-swatch open" />오픈</span>
-          </div>
           {editBlocks.map((block) => (
             <div key={block.id} className="req-apply-block mb-3">
               {editBlocks.length > 1 && (
@@ -698,11 +819,15 @@ const Requests = () => {
                 onChange={(wpIdx) => setEditBlocks(prev => prev.map(b => b.id === block.id ? { ...b, workPlaceIdx: wpIdx } : b))}
               />
 
+              <BatchApplyBar
+                onBatch={(scope, type) => handleEditBatchApply(block.id, scope, type)}
+              />
+
               {editTarget && (
                 <ApplyWeekGrid
                   monday={parseISO(editTarget.monDate)}
                   block={block}
-                  onCycleDay={(day) => cycleEditBlockDay(block.id, day)}
+                  onToggleType={(day, type) => handleToggleEditBlockDayType(block.id, day, type)}
                 />
               )}
             </div>

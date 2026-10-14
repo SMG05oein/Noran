@@ -513,29 +513,30 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     public void deleteWorkRecord(String requesterId, Long wrIdx) {
         User requester = getRequester(requesterId);
 
-        if (!isAdmin(requester)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "근무 기록은 관리자만 삭제할 수 있습니다.");
-        }
-
         WorkRecord record = workRecordRepository.findById(wrIdx)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "삭제할 근무 기록을 찾을 수 없습니다."));
 
-        if (isAdmin(requester)) {
-            WorkRecordHistory history = WorkRecordHistory.builder()
-                    .wrIdx(record.getWrIdx())
-                    .adminUser(requester)
-                    .targetUser(record.getUser())
-                    .wrDate(record.getWrDate())
-                    .beforeStartTime(record.getWrStartTime())
-                    .beforeEndTime(record.getWrEndTime())
-                    .beforeRestTime(record.getWrRestTime())
-                    .afterStartTime(null)
-                    .afterEndTime(null)
-                    .afterRestTime(null)
-                    .actionType(ACTION_DELETE)
-                    .build();
-            workRecordHistoryRepository.save(history);
+        boolean isOwner = record.getUser() != null
+                && java.util.Objects.equals(record.getUser().getUserIdx(), requester.getUserIdx());
+        if (!isAdmin(requester) && !isOwner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인의 근무 기록만 삭제할 수 있습니다.");
         }
+
+        // 관리자 삭제·본인 삭제 모두 감사 이력(스냅샷)을 남겨 복구 가능하게 한다.
+        WorkRecordHistory history = WorkRecordHistory.builder()
+                .wrIdx(record.getWrIdx())
+                .adminUser(requester)
+                .targetUser(record.getUser())
+                .wrDate(record.getWrDate())
+                .beforeStartTime(record.getWrStartTime())
+                .beforeEndTime(record.getWrEndTime())
+                .beforeRestTime(record.getWrRestTime())
+                .afterStartTime(null)
+                .afterEndTime(null)
+                .afterRestTime(null)
+                .actionType(ACTION_DELETE)
+                .build();
+        workRecordHistoryRepository.save(history);
 
         workRecordRepository.delete(record);
     }

@@ -7,9 +7,9 @@ import { isHoliday } from 'holiday-kr';
 import useAuthStore from '../store/useAuthStore';
 import { countPeak } from '../utils/shiftPeak';
 import { downloadWeeklyAssignExcel } from '../utils/weeklyAssignExcel';
-import AssignTimeInput, { BULK_LIST_OPTIONS } from '../components/AssignTimeInput';
+import AssignTimeInput, { TIME_OPTIONS, BULK_LIST_OPTIONS } from '../components/AssignTimeInput';
 import { openStartTimeForDate, toDateStr, normalizeScheduleStatus, resolveOriginFlags, resetShiftFields, withBaseline, isShiftDirty } from '../utils/shiftReset';
-import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine, RiQuestionLine } from 'react-icons/ri';
+import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine, RiQuestionLine, RiTimeLine } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 import StatusChip from '../components/ui/StatusChip';
 import SegmentedFilter from '../components/ui/SegmentedFilter';
@@ -23,6 +23,17 @@ const FILTERS = [
   { value: 'ALL', name: '전체' },
   { value: 'ATTENDING', name: '출근' },
   { value: 'NOT_ATTENDING', name: '미출근' }
+];
+
+const DAY_FILTER_OPTIONS = [
+  { value: 'ALL', name: '전체' },
+  { value: '0', name: '월' },
+  { value: '1', name: '화' },
+  { value: '2', name: '수' },
+  { value: '3', name: '목' },
+  { value: '4', name: '금' },
+  { value: '5', name: '토' },
+  { value: '6', name: '일' }
 ];
 
 const LEGEND = [
@@ -46,6 +57,7 @@ const createEmptyShift = (userIdx, dateStr, workPlaceIdx, status = null) => with
   wsdWorkPlaceIdx: workPlaceIdx,
   wsdIsConfirmed: false,
   wsdIsOpen: false,
+  wsdIsClose: false,
   openApplied: false,
   originHadApply: false,
   originOpenApplied: false
@@ -60,7 +72,7 @@ const displayShiftStatus = (shift) => {
 
 const getShiftTone = (shift) => {
   const st = shift.wsdStatus;
-  if (st === '출근' && (shift.wsdStartTime || shift.wsdIsOpen)) return 'assigned';
+  if (st === '출근' && (shift.wsdStartTime || shift.wsdIsOpen || shift.wsdIsClose)) return 'assigned';
   if (st === '신청') return 'applied';
   if (st === '미출근') return 'unassigned';
   return 'unapplied';
@@ -88,6 +100,7 @@ const AdminWeeklyAssign = () => {
   const [schedules, setSchedules] = useState([]);
 
   const [filterType, setFilterType] = useState('ALL');
+  const [dayFilter, setDayFilter] = useState('ALL');
   const [mobileDayIdx, setMobileDayIdx] = useState(0);
 
   const [addedWorkerUserIdxs, setAddedWorkerUserIdxs] = useState([]);
@@ -117,6 +130,7 @@ const AdminWeeklyAssign = () => {
         users: renderUsers,
         editSchedules,
         toUserIdx,
+        schedules,
       });
     } catch (err) {
       console.error(err);
@@ -176,7 +190,8 @@ const AdminWeeklyAssign = () => {
 
         const status = normalizeScheduleStatus(sch);
         const { openApplied, originHadApply, originOpenApplied } = resolveOriginFlags(sch, status);
-        const isOpen = !!sch.wsdIsOpen;
+        const isOpen = !!(sch.wsdIsOpen ?? sch.isOpen);
+        const isClose = !!(sch.wsdIsClose ?? sch.isClose);
         const startTime = sch.wsdStartTime || sch.startTime || '';
         initialEdits[uid][dt].push(withBaseline({
           ...sch,
@@ -189,6 +204,7 @@ const AdminWeeklyAssign = () => {
           wsdIsConfirmed: !!sch.wsdIsConfirmed,
           openApplied,
           wsdIsOpen: isOpen,
+          wsdIsClose: isClose,
           originHadApply,
           originOpenApplied
         }));
@@ -345,16 +361,30 @@ const AdminWeeklyAssign = () => {
       return isHome || hasScheduleForHome || isAdded;
     });
 
-    if (filterType !== 'ALL') {
+    if (filterType !== 'ALL' || dayFilter !== 'ALL') {
       usersToShow = usersToShow.filter(u => {
         const uid = toUserIdx(u.userIdx || u.id);
         const userSchs = editSchedules[uid] || {};
-        const allDaySchs = Object.values(userSchs).flat();
-        const hasAssignment = allDaySchs.some(s => s.wsdStatus === '출근' || s.status === '출근');
 
-        if (filterType === 'ATTENDING') return hasAssignment;
-        if (filterType === 'NOT_ATTENDING') return !hasAssignment;
-        return true;
+        if (dayFilter === 'ALL') {
+          const allDaySchs = Object.values(userSchs).flat();
+          const hasAssignment = allDaySchs.some(s => s.wsdStatus === '출근' || s.status === '출근');
+
+          if (filterType === 'ATTENDING') return hasAssignment;
+          if (filterType === 'NOT_ATTENDING') return !hasAssignment;
+          return true;
+        } else {
+          // 특정 요일 기준 (월: 0, 화: 1, ..., 일: 6)
+          const targetDate = weekDays[Number(dayFilter)];
+          if (!targetDate) return true;
+          const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+          const dayShifts = userSchs[targetDateStr] || [];
+          const isAttendingOnDay = dayShifts.some(s => s.wsdStatus === '출근' || s.status === '출근');
+
+          if (filterType === 'ATTENDING') return isAttendingOnDay;
+          if (filterType === 'NOT_ATTENDING') return !isAttendingOnDay;
+          return true;
+        }
       });
     }
 
@@ -372,7 +402,7 @@ const AdminWeeklyAssign = () => {
     });
 
     return usersToShow;
-  }, [allUsers, editSchedules, currentWorkPlaceIdx, addedWorkerUserIdxs, filterType, branches]);
+  }, [allUsers, editSchedules, currentWorkPlaceIdx, addedWorkerUserIdxs, filterType, dayFilter, weekDays, branches]);
 
   const otherBranchCandidates = useMemo(() => {
     const term = (workerSearchTerm || '').trim().toLowerCase();
@@ -500,6 +530,7 @@ const AdminWeeklyAssign = () => {
 
     const isOff = val === '미출근';
     const isOpen = val === '오픈';
+    const isClose = val === '마감';
     setEditSchedules((prev) => {
       const userDaysPrev = prev[uid];
       if (!userDaysPrev) return prev;
@@ -512,6 +543,7 @@ const AdminWeeklyAssign = () => {
               wsdStartTime: '',
               wsdStatus: '미출근',
               wsdIsOpen: false,
+              wsdIsClose: false,
               wsdIsConfirmed: false,
             };
           }
@@ -521,14 +553,27 @@ const AdminWeeklyAssign = () => {
               wsdStartTime: openStartTimeForDate(dt),
               wsdStatus: '출근',
               wsdIsOpen: true,
+              wsdIsClose: false,
               wsdIsConfirmed: false,
             };
           }
+          if (isClose) {
+            return {
+              ...s,
+              wsdStartTime: s.wsdStartTime || '',
+              wsdStatus: '출근',
+              wsdIsOpen: false,
+              wsdIsClose: true,
+              wsdIsConfirmed: false,
+            };
+          }
+          // 일반 시간 선택 시: 오픈 및 마감 모두 체크 해제
           return {
             ...s,
             wsdStartTime: val,
             wsdStatus: '출근',
             wsdIsOpen: false,
+            wsdIsClose: false,
             wsdIsConfirmed: false,
           };
         });
@@ -643,7 +688,10 @@ const AdminWeeklyAssign = () => {
             workPlaceIdx: wpIdx,
             // DRAFT: isConfirmed=false / PARTIAL,CONFIRM: 출근만 isConfirmed=true
             isConfirmed: (mode === 'PARTIAL' || mode === 'CONFIRM') && status === '출근',
-            isOpen: shift.wsdIsOpen || false
+            isOpen: shift.wsdIsOpen || false,
+            isClose: shift.wsdIsClose || false,
+            wsdIsOpen: shift.wsdIsOpen || false,
+            wsdIsClose: shift.wsdIsClose || false
           });
         });
       });
@@ -660,7 +708,10 @@ const AdminWeeklyAssign = () => {
           startTime: '',
           workPlaceIdx: item.workPlaceIdx,
           isConfirmed: false,
-          isOpen: false
+          isOpen: false,
+          isClose: false,
+          wsdIsOpen: false,
+          wsdIsClose: false
         });
       });
     }
@@ -681,44 +732,86 @@ const AdminWeeklyAssign = () => {
 
   const renderShiftBlock = (uid, dateStr, shift) => {
     const openHint = !!shift.originOpenApplied && !shift.wsdIsOpen;
+
     return (
       <div key={shift._id} className="wat-shift">
-        <div className="wat-shift-top" data-html2canvas-ignore="true">
-          <Form.Check
-            type="checkbox"
-            checked={!!shift.wsdIsOpen}
-            onChange={(e) => handleUpdateShift(uid, dateStr, shift._id, { wsdIsOpen: e.target.checked })}
-            label="오픈"
-            title={openHint ? '오픈으로 신청됨 — 체크하면 오픈 출근' : undefined}
-            className={`wat-open-check ${shift.wsdIsOpen ? 'is-on' : ''} ${openHint ? 'is-hint' : ''}`}
-          />
+        <div className="wat-shift-top d-flex align-items-center justify-content-between" data-html2canvas-ignore="true">
+          <div className="d-flex align-items-center gap-2">
+            <Form.Check
+              type="checkbox"
+              id={`open-${shift._id}`}
+              checked={!!shift.wsdIsOpen}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                handleUpdateShift(uid, dateStr, shift._id, {
+                  wsdIsOpen: checked,
+                  ...(checked ? {
+                    wsdStatus: '출근',
+                    wsdStartTime: shift.wsdStartTime || openStartTimeForDate(dateStr)
+                  } : {})
+                });
+              }}
+              label="오픈"
+              title={openHint ? '오픈으로 신청됨 — 체크하면 오픈 출근' : undefined}
+              className={`wat-open-check ${shift.wsdIsOpen ? 'is-on' : ''} ${openHint ? 'is-hint' : ''}`}
+            />
+            <Form.Check
+              type="checkbox"
+              id={`close-${shift._id}`}
+              checked={!!shift.wsdIsClose}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                handleUpdateShift(uid, dateStr, shift._id, {
+                  wsdIsClose: checked,
+                  ...(checked ? { wsdStatus: '출근' } : {})
+                });
+              }}
+              label="마감"
+              className={`wat-close-check ${shift.wsdIsClose ? 'is-on' : ''}`}
+            />
+          </div>
           {canResetShift(shift) && (
             <Button
               variant="link"
               size="sm"
-              className="wat-icon-btn"
+              className="wat-icon-btn p-0 text-muted ms-auto"
               title="되돌리기"
               aria-label="되돌리기"
               onClick={() => handleRemoveShift(uid, dateStr, shift._id)}
             >
-              <RiRefreshLine size={15} />
+              <RiRefreshLine size={13} />
             </Button>
           )}
         </div>
         <AssignTimeInput
           value={shift.wsdStartTime || ''}
           placeholder={displayShiftStatus(shift)}
-          disabled={!!shift.wsdIsOpen}
-          readOnly={!!shift.wsdIsOpen}
           className={`wat-shift-input assign-status-input ${getShiftTone(shift)}`}
           onPick={(val) => {
-            if (shift.wsdIsOpen) return;
             if (val === '미출근') {
-              handleUpdateShift(uid, dateStr, shift._id, { wsdStartTime: '', wsdStatus: '미출근', wsdIsOpen: false });
+              handleUpdateShift(uid, dateStr, shift._id, {
+                wsdStartTime: '',
+                wsdStatus: '미출근',
+                wsdIsOpen: false,
+                wsdIsClose: false
+              });
+            } else if (val === '오픈') {
+              handleUpdateShift(uid, dateStr, shift._id, {
+                wsdStartTime: openStartTimeForDate(dateStr),
+                wsdStatus: '출근',
+                wsdIsOpen: true
+              });
+            } else if (!val) {
+              handleUpdateShift(uid, dateStr, shift._id, {
+                wsdStartTime: '',
+                wsdStatus: null,
+                wsdIsOpen: false,
+                wsdIsClose: false
+              });
             } else {
               handleUpdateShift(uid, dateStr, shift._id, {
                 wsdStartTime: val,
-                ...(val ? { wsdStatus: '출근' } : { wsdStatus: null })
+                wsdStatus: '출근'
               });
             }
           }}
@@ -728,21 +821,13 @@ const AdminWeeklyAssign = () => {
   };
 
   const renderDayCell = (uid, dateStr) => {
-    const dayShifts = editSchedules[uid]?.[dateStr] || [];
+    let dayShifts = editSchedules[uid]?.[dateStr] || [];
+    if (dayShifts.length === 0) {
+      dayShifts = [createEmptyShift(uid, dateStr, currentWorkPlaceIdx, null)];
+    }
     return (
       <>
         {dayShifts.map(shift => renderShiftBlock(uid, dateStr, shift))}
-        {dayShifts.length === 0 && (
-          <div className="wat-shift">
-            <Form.Control
-              size="sm"
-              readOnly
-              value=""
-              placeholder="미신청"
-              className="wat-shift-input assign-status-input unapplied"
-            />
-          </div>
-        )}
       </>
     );
   };
@@ -801,11 +886,24 @@ const AdminWeeklyAssign = () => {
             onThisWeek={handleGoThisWeek}
           />
 
-          <SegmentedFilter
-            options={FILTERS.map(f => ({ value: f.value, label: f.name }))}
-            value={filterType}
-            onChange={setFilterType}
-          />
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <div className="d-flex align-items-center gap-1">
+              <span className="small fw-bold text-muted me-1">요일:</span>
+              <SegmentedFilter
+                options={DAY_FILTER_OPTIONS.map(f => ({ value: f.value, label: f.name }))}
+                value={dayFilter}
+                onChange={setDayFilter}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-1">
+              <span className="small fw-bold text-muted me-1">출퇴근:</span>
+              <SegmentedFilter
+                options={FILTERS.map(f => ({ value: f.value, label: f.name }))}
+                value={filterType}
+                onChange={setFilterType}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="ui-legend" data-html2canvas-ignore="true">
@@ -824,11 +922,12 @@ const AdminWeeklyAssign = () => {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 const { isHoly, isSat } = dayMeta(date);
                 const peak = peakByDate[dateStr] || 0;
+                const isDayFiltered = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                 return (
                   <button
                     key={dateStr}
                     type="button"
-                    className={`wat-day-tab ${mobileDayIdx === idx ? 'active' : ''} ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''}`}
+                    className={`wat-day-tab ${mobileDayIdx === idx ? 'active' : ''} ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''} ${isDayFiltered ? 'wat-tab-filtered' : ''}`}
                     onClick={() => setMobileDayIdx(idx)}
                   >
                     <div>{'월화수목금토일'[idx]}</div>
@@ -862,7 +961,6 @@ const AdminWeeklyAssign = () => {
                           {other && (
                             <Badge bg="secondary" className="me-1">{u.workPlaceName || '타 지점'}</Badge>
                           )}
-                          {userRemark && <span>비고: {userRemark}</span>}
                         </div>
                         {renderRowBulkInput(u)}
                       </div>
@@ -894,14 +992,15 @@ const AdminWeeklyAssign = () => {
                   <thead>
                     <tr>
                       <th className="wat-sticky-col">알바생</th>
-                      {weekDays.map(date => {
+                      {weekDays.map((date, idx) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
                         const { isHoly, isSat } = dayMeta(date);
                         const peak = peakByDate[dateStr] || 0;
+                        const isColHighlighted = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                         return (
                           <th
                             key={dateStr}
-                            className={`wat-day-head ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''}`}
+                            className={`wat-day-head ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''} ${isColHighlighted ? 'wat-col-highlighted' : ''}`}
                           >
                             <div>{format(date, 'MM/dd')}</div>
                             <div className="small fw-normal">{'일월화수목금토'[getDay(date)]}요일</div>
@@ -911,6 +1010,9 @@ const AdminWeeklyAssign = () => {
                           </th>
                         );
                       })}
+                      <th className="wat-remarks-head text-center" style={{ minWidth: '130px', verticalAlign: 'middle' }}>
+                        비고
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -937,9 +1039,6 @@ const AdminWeeklyAssign = () => {
                                   {other && (
                                     <Badge bg="secondary" className="mb-1">{u.workPlaceName || '타 지점'}</Badge>
                                   )}
-                                  {userRemark && (
-                                    <div><span className="fw-bold">비고:</span> {userRemark}</div>
-                                  )}
                                 </div>
                                 {renderRowBulkInput(u)}
                               </div>
@@ -957,20 +1056,40 @@ const AdminWeeklyAssign = () => {
                               )}
                             </div>
                           </td>
-                          {weekDays.map(date => {
+                          {weekDays.map((date, idx) => {
                             const dateStr = format(date, 'yyyy-MM-dd');
+                            const isColHighlighted = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                             return (
-                              <td key={dateStr} className="wat-cell">
+                              <td key={dateStr} className={`wat-cell ${isColHighlighted ? 'wat-col-highlighted' : ''}`}>
                                 {renderDayCell(uid, dateStr)}
                               </td>
                             );
                           })}
+                          <td className="wat-cell wat-cell-remarks" style={{ verticalAlign: 'middle', fontSize: '0.85rem' }}>
+                            {userRemark ? (
+                              <div
+                                className="p-1 px-2 rounded-2 text-wrap text-start"
+                                style={{
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid var(--color-border)',
+                                  maxHeight: '76px',
+                                  overflowY: 'auto',
+                                  lineHeight: 1.3
+                                }}
+                                title={userRemark}
+                              >
+                                {userRemark}
+                              </div>
+                            ) : (
+                              <span className="text-muted text-center d-block">-</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
                     {renderUsers.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="text-center text-muted py-5">
+                        <td colSpan={9} className="text-center text-muted py-5">
                           표시할 알바생이 없습니다.
                         </td>
                       </tr>

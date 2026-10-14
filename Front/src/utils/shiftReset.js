@@ -77,6 +77,7 @@ export const withBaseline = (shift) => ({
   baselineStatus: shift.wsdStatus ?? null,
   baselineStartTime: shift.wsdStartTime || '',
   baselineIsOpen: !!shift.wsdIsOpen,
+  baselineIsClose: !!shift.wsdIsClose,
   baselineIsConfirmed: !!shift.wsdIsConfirmed,
 });
 
@@ -90,6 +91,7 @@ export const isShiftDirty = (shift) => {
     (shift.wsdStatus ?? null) !== (shift.baselineStatus ?? null)
     || (shift.wsdStartTime || '') !== (shift.baselineStartTime || '')
     || !!shift.wsdIsOpen !== !!shift.baselineIsOpen
+    || !!shift.wsdIsClose !== !!shift.baselineIsClose
     || !!shift.wsdIsConfirmed !== !!shift.baselineIsConfirmed
   );
 };
@@ -105,6 +107,7 @@ export const resetShiftFields = (target) => {
       wsdStatus: target.baselineStatus,
       wsdStartTime: target.baselineStartTime || '',
       wsdIsOpen: !!target.baselineIsOpen,
+      wsdIsClose: !!target.baselineIsClose,
       wsdIsConfirmed: !!target.baselineIsConfirmed,
       openApplied: false,
     };
@@ -116,6 +119,7 @@ export const resetShiftFields = (target) => {
     wsdStatus: applied ? '신청' : null,
     wsdStartTime: '',
     wsdIsOpen: false,
+    wsdIsClose: false,
     wsdIsConfirmed: false,
     openApplied: false,
     originHadApply: applied,

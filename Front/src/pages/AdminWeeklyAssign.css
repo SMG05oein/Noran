@@ -244,8 +244,39 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 35%, transparent);
 }
 
+.wat-close-check {
+  margin: 0 !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.wat-close-check.is-on {
+  color: #c084fc;
+}
+
+.wat-close-check.is-on .form-check-input {
+  background-color: #a855f7;
+  border-color: #a855f7;
+}
+
 .wat-shift-top .form-check-label {
   padding-left: 0.15rem;
+}
+
+/* 요일 필터 선택 시 해당 요일 열 하이라이트 */
+.wat-table th.wat-col-highlighted {
+  background-color: color-mix(in srgb, var(--color-primary) 18%, var(--color-input-bg)) !important;
+  box-shadow: inset 2px 0 0 var(--color-primary), inset -2px 0 0 var(--color-primary);
+}
+
+.wat-table td.wat-col-highlighted {
+  background-color: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)) !important;
+  box-shadow: inset 2px 0 0 var(--color-primary), inset -2px 0 0 var(--color-primary);
+}
+
+.wat-tab-filtered {
+  box-shadow: 0 0 0 2px var(--color-primary) !important;
 }
 
 .wat-icon-btn {

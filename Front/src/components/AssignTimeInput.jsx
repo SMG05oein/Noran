@@ -10,7 +10,7 @@ for (let h = 10; h <= 23; h++) {
 }
 
 const LIST_OPTIONS = ['미출근', ...TIME_OPTIONS];
-const BULK_LIST_OPTIONS = ['오픈', '미출근', ...TIME_OPTIONS];
+const BULK_LIST_OPTIONS = ['오픈', '마감', '미출근', ...TIME_OPTIONS];
 
 /**
  * 직접 입력 + 클릭 시 10:00~23:30 전체 목록(필터 없음)

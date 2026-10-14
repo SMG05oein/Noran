@@ -304,7 +304,7 @@ const Signup = () => {
                 {/* 이름 */}
                 <Form.Group id="userName" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiUser3Line /> 이름
+                    <RiUser3Line /> 이름 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
@@ -339,7 +339,7 @@ const Signup = () => {
                   {/* 아이디 */}
                 <Form.Group id="userId" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiUser3Line /> 아이디
+                    <RiUser3Line /> 아이디 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
@@ -380,7 +380,7 @@ const Signup = () => {
                 {/* 비밀번호 */}
                 <Form.Group id="password" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiLockPasswordLine /> 비밀번호
+                    <RiLockPasswordLine /> 비밀번호 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="password"
@@ -395,7 +395,7 @@ const Signup = () => {
                 {/* 비밀번호 확인 */}
                 <Form.Group id="passwordConfirm" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiLockPasswordLine /> 비밀번호 확인
+                    <RiLockPasswordLine /> 비밀번호 확인 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="password"
@@ -421,7 +421,7 @@ const Signup = () => {
                 {/* 전화번호 */}
                 <Form.Group id="phone" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiPhoneLine /> 연락처
+                    <RiPhoneLine /> 연락처 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
@@ -446,7 +446,7 @@ const Signup = () => {
 
                 <Form.Group id="userBank" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 은행명
+                    <RiStore2Line /> 은행명 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Select 
                     value={userBank} 
@@ -465,7 +465,7 @@ const Signup = () => {
 
                 <Form.Group id="userAccountNumber" className="mb-3">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 계좌번호
+                    <RiStore2Line /> 계좌번호 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
@@ -479,7 +479,7 @@ const Signup = () => {
 
                 <Form.Group id="userAccountName" className="mb-4">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 예금주 성명
+                    <RiStore2Line /> 예금주 성명 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     type="text"
@@ -494,7 +494,7 @@ const Signup = () => {
                 {/* 소속 지점 */}
                 <Form.Group id="branch" className="mb-4">
                   <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 소속 지점
+                    <RiStore2Line /> 소속 지점 <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Select
                     value={branch}
@@ -572,7 +572,7 @@ const Signup = () => {
                           className="mb-0 small fw-semibold" 
                           style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
                         >
-                          [필수] 근태관리시스템 이용규정 동의
+                          [필수] 근태관리시스템 이용규정 동의 <span className="text-danger">*</span>
                         </span>
                       </div>
                       <button
@@ -617,7 +617,7 @@ const Signup = () => {
                           className="mb-0 small fw-semibold" 
                           style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
                         >
-                          [필수] 개인정보 수집 및 이용 동의
+                          [필수] 개인정보 수집 및 이용 동의 <span className="text-danger">*</span>
                         </span>
                       </div>
                       <button

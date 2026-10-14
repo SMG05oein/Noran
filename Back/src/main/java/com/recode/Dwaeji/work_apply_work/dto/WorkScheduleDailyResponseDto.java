@@ -28,6 +28,7 @@ public class WorkScheduleDailyResponseDto {
     private String wsdWorkPlaceName;
     private Boolean wsdIsConfirmed;
     private Boolean wsdIsOpen;
+    private Boolean wsdIsClose;
     private String wsdRemarks;
     private LocalDateTime wsdCreatedAt;
     private LocalDateTime wsdUpdatedAt;
@@ -60,6 +61,7 @@ public class WorkScheduleDailyResponseDto {
                 .wsdWorkPlaceName(schedule != null && schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpName() : null)
                 .wsdIsConfirmed(schedule != null && schedule.getWsdIsConfirmed())
                 .wsdIsOpen(schedule != null && schedule.getWsdIsOpen())
+                .wsdIsClose(schedule != null && Boolean.TRUE.equals(schedule.getWsdIsClose()))
                 .wsdRemarks(waRemarks)
                 .wsdCreatedAt(schedule != null ? schedule.getWsdCreatedAt() : null)
                 .wsdUpdatedAt(schedule != null ? schedule.getWsdUpdatedAt() : null)

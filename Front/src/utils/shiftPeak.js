@@ -20,7 +20,7 @@ export const isAssignmentShift = (shift, { requireConfirmed = false } = {}) => {
   return shift.wsdIsConfirmed === true || shift.isConfirmed === true;
 };
 
-/** 18:00 ≤ t < 20:00, excludes open shifts */
+/** 16:00 ≤ t < 20:00, excludes open shifts */
 export const isPeakShift = (shift, opts) => {
   if (!isAssignmentShift(shift, opts)) return false;
   if (isOpenShift(shift)) return false;
@@ -28,7 +28,7 @@ export const isPeakShift = (shift, opts) => {
   const m = raw.match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return false;
   const mins = Number(m[1]) * 60 + Number(m[2]);
-  return mins >= 18 * 60 && mins < 20 * 60;
+  return mins >= 16 * 60 && mins < 20 * 60;
 };
 
 export const countTotal = (shifts, opts) =>

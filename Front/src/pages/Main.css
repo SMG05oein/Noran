@@ -520,3 +520,133 @@
     font-size: 0.85rem !important;
   }
 }
+
+/* --- Shift Request Split-Button Grid (공식 UI) --- */
+.req-split-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.45rem;
+  min-width: 320px;
+}
+
+.req-split-col {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.25rem;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.req-split-col.has-applied {
+  border-color: rgba(112, 156, 196, 0.45);
+  background: rgba(112, 156, 196, 0.05);
+}
+
+.req-split-col.has-open {
+  border-color: rgba(222, 158, 75, 0.45);
+  background: rgba(222, 158, 75, 0.06);
+}
+
+.req-split-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.req-split-btn {
+  width: 100%;
+  padding: 0.42rem 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg, #222);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.req-split-btn:hover {
+  filter: brightness(1.08);
+  border-color: var(--color-text-light);
+}
+
+/* [신청] 활성화 - 톤다운된 차분한 소프트 블루 */
+.req-split-btn.active-normal {
+  background: rgba(91, 130, 166, 0.16);
+  border-color: #5B82A6;
+  color: #3E6385;
+  font-weight: 800;
+}
+
+[data-bs-theme="dark"] .req-split-btn.active-normal {
+  background: rgba(112, 156, 196, 0.22);
+  border-color: #709CC4;
+  color: #A6CEF2;
+}
+
+/* [오픈] 활성화 - 톤다운된 차분한 웜 앰버 */
+.req-split-btn.active-open {
+  background: rgba(201, 138, 61, 0.16);
+  border-color: #C98A3D;
+  color: #945F20;
+  font-weight: 800;
+}
+
+[data-bs-theme="dark"] .req-split-btn.active-open {
+  background: rgba(222, 158, 75, 0.22);
+  border-color: #DE9E4B;
+  color: #F7D09E;
+}
+
+/* Batch apply bar */
+.req-batch-bar {
+  padding: 0.15rem 0;
+}
+
+.req-batch-toggle {
+  padding: 0.22rem 0.6rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  border-color: var(--color-border) !important;
+  background: var(--color-input-bg, #222) !important;
+  color: var(--color-text-main) !important;
+}
+
+.req-batch-toggle:hover,
+.req-batch-toggle:focus {
+  border-color: var(--color-text-light) !important;
+  background: var(--color-surface-hover) !important;
+  color: var(--color-text-main) !important;
+}
+
+.req-batch-reset-btn {
+  padding: 0.2rem 0.55rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+
+.req-batch-menu {
+  font-size: 0.8rem;
+  min-width: 135px;
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-md);
+}
+
+.req-batch-menu .dropdown-item {
+  color: var(--color-text-main) !important;
+  padding: 0.4rem 0.75rem;
+  font-weight: 600;
+}
+
+.req-batch-menu .dropdown-item:hover {
+  background: var(--color-surface-hover) !important;
+}

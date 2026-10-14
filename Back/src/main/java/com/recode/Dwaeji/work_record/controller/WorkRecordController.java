@@ -168,7 +168,7 @@ public class WorkRecordController {
         return ResponseEntity.ok("근무 기록이 수정되었습니다.");
     }
 
-    @Operation(summary = "근무 기록 삭제", description = "특정 근무 기록을 삭제합니다. 관리자만 호출 가능합니다.")
+    @Operation(summary = "근무 기록 삭제", description = "특정 근무 기록을 삭제합니다. 관리자 또는 기록 소유자(본인)만 호출 가능하며, 삭제 시 감사 이력이 남아 관리자가 복구할 수 있습니다.")
     @DeleteMapping("/{wrIdx}")
     public ResponseEntity<String> deleteWorkRecord(
             @AuthenticationPrincipal UserDetails userDetails,

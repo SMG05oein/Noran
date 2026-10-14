@@ -200,6 +200,10 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                     OpenShiftRules.normalizeScheduleOpen(dto.getDate(), dto.getIsOpen(), dto.getStartTime());
             String resolvedStart = openNorm.startTime();
             boolean resolvedOpen = openNorm.isOpen();
+            // 일반/오픈/마감은 택일. 오픈이 우선하며 마감은 출근 상태일 때만 유효.
+            boolean resolvedClose = !resolvedOpen
+                    && Boolean.TRUE.equals(dto.getIsClose())
+                    && isAssignment(dto.getStatus());
 
             if (matched != null && (toDelete.contains(matched) || !assignMode.replacesWholeRange())) {
                 matched.setWsdStatus(dto.getStatus());
@@ -207,6 +211,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 matched.setWorkPlace(wp);
                 matched.setWsdIsConfirmed(confirmedFlag);
                 matched.setWsdIsOpen(resolvedOpen);
+                matched.setWsdIsClose(resolvedClose);
                 toSave.add(matched);
                 toDelete.remove(matched);
             } else if (matched == null) {
@@ -218,6 +223,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         .workPlace(wp)
                         .wsdIsConfirmed(confirmedFlag)
                         .wsdIsOpen(resolvedOpen)
+                        .wsdIsClose(resolvedClose)
                         .build();
                 toSave.add(newSchedule);
             } else {
@@ -226,6 +232,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 matched.setWorkPlace(wp);
                 matched.setWsdIsConfirmed(confirmedFlag);
                 matched.setWsdIsOpen(resolvedOpen);
+                matched.setWsdIsClose(resolvedClose);
                 toSave.add(matched);
                 toDelete.remove(matched);
             }
@@ -317,6 +324,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 existing.setWsdStartTime(null);
                 existing.setWsdIsConfirmed(true);
                 existing.setWsdIsOpen(false);
+                existing.setWsdIsClose(false);
                 if (existing.getWorkPlace() == null && resolvedWp != null) {
                     existing.setWorkPlace(resolvedWp);
                 }
@@ -640,7 +648,8 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
     }
 
     /**
-     * 피크: 18:00 <= t < 20:00 (요일 무관). 오픈은 제외.
+     * 피크: 16:00 <= t < 20:00 (요일 무관). 오픈조 제외.
+     * 마감조는 시각이 피크 구간 안이면 포함(피크+마감 겸임), 구간 밖(20시 이후)이면 자연히 제외.
      */
     private boolean isPeakAssignment(WorkScheduleDaily s) {
         if (Boolean.TRUE.equals(s.getWsdIsOpen())) {
@@ -655,7 +664,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         }
         try {
             java.time.LocalTime lt = java.time.LocalTime.parse(t.trim());
-            return !lt.isBefore(java.time.LocalTime.of(18, 0)) && lt.isBefore(java.time.LocalTime.of(20, 0));
+            return !lt.isBefore(java.time.LocalTime.of(16, 0)) && lt.isBefore(java.time.LocalTime.of(20, 0));
         } catch (Exception e) {
             return false;
         }

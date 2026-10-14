@@ -105,7 +105,7 @@ public class WorkScheduleDailyController {
     }
 
 
-    @Operation(summary = "캘린더 구간 배정 인원 조회", description = "날짜별 { total: 총출근, peak: 피크(18~20, 오픈제외) }. 임시 저장(미확정) 포함.")
+    @Operation(summary = "캘린더 구간 배정 인원 조회", description = "날짜별 { total: 총출근, peak: 피크(16~20, 오픈 제외) }. 임시 저장(미확정) 포함.")
     @GetMapping("/calendar-counts")
     public ResponseEntity<Map<String, Map<String, Integer>>> getCalendarCounts(
             @AuthenticationPrincipal UserDetails userDetails,

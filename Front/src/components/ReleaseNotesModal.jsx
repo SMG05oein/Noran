@@ -1,12 +1,35 @@
 import React from 'react';
 import { Modal, Button, Badge } from 'react-bootstrap';
 
-const releaseHistory = [
+export const releaseHistory = [
+  {
+    version: '0.9.15',
+    date: '2026-10-17',
+    features: [
+      '보안 강화를 위한 접속 IP 및 로그인 일시 수집 기능 도입'
+    ],
+    fixes: [
+    ]
+  },
+  {
+    version: '0.9.14',
+    date: '2026-10-14',
+    features: [
+      '알바생 근무 신청 요일별 분할 버튼 및 모두·평일·주말 일괄 설정 기능 추가',
+      '관리자 페이지 근무배정 요구사항 반영',
+      '주간 배정 요일별 필터 기능 추가',
+      '회원가입 필수 입력 항목 및 필수 약관 표시',
+      '마이페이지 생년월일 조회, 수정 기능 추가',
+      '알바생 근무기록 삭제 기능 연동'
+    ],
+    fixes: [
+      '네트워크 요청 과다 발생 시 비정상 로그아웃 오류 수정'
+    ]
+  },
   {
     version: '0.9.13',
     date: '2026-10-10',
     features: [
-      '보안 강화를 위한 접속 IP 및 로그인 일시 수집 기능 도입',
       '개인정보처리방침 및 시스템 이용규정 개정(v1.2) 반영',
       '약관 개정에 따른 필수 약관 재동의 기능 추가'
     ],
@@ -152,7 +175,27 @@ const releaseHistory = [
   }
 ];
 
+export const getTodayStr = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const getActiveReleases = () => {
+  const todayStr = getTodayStr();
+  return releaseHistory.filter((release) => !release.date || release.date <= todayStr);
+};
+
+export const getActiveVersion = () => {
+  const active = getActiveReleases();
+  return active.length > 0 && active[0].version ? `v${active[0].version}` : null;
+};
+
 const ReleaseNotesModal = ({ show, onHide }) => {
+  const visibleReleases = getActiveReleases();
+
   return (
     <Modal show={show} onHide={onHide} centered scrollable size="lg">
       <Modal.Header closeButton className="border-bottom">
@@ -161,7 +204,7 @@ const ReleaseNotesModal = ({ show, onHide }) => {
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="bg-light px-4 py-4">
-        {releaseHistory.map((release, idx) => (
+        {visibleReleases.map((release, idx) => (
           <div key={release.version} className="bg-white p-4 rounded-4 shadow-sm mb-4 border">
             <div className="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
               <div className="d-flex align-items-center gap-2">

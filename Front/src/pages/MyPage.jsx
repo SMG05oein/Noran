@@ -89,7 +89,17 @@ const MyPage = () => {
     if (res.success && res.data) {
       setUserInfo(res.data);
       setUserName(res.data.userName || '');
-      setUserBirth(res.data.userBirth || '');
+      let birthStr = '';
+      if (res.data.userBirth) {
+        if (Array.isArray(res.data.userBirth) && res.data.userBirth.length >= 3) {
+          birthStr = `${res.data.userBirth[0]}-${String(res.data.userBirth[1]).padStart(2, '0')}-${String(res.data.userBirth[2]).padStart(2, '0')}`;
+        } else if (typeof res.data.userBirth === 'string') {
+          birthStr = res.data.userBirth.split('T')[0];
+        } else {
+          birthStr = String(res.data.userBirth);
+        }
+      }
+      setUserBirth(birthStr);
       setUserEmail(res.data.userEmail || '');
       setUserPhone(res.data.userPhone || '');
       setEmailConsentAgreed(res.data.emailConsentAgreed === 1 || res.data.emailConsentAgreed === true);

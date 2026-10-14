@@ -62,6 +62,10 @@ public class WorkScheduleDaily {
     @Comment("오픈조 여부")
     private Boolean wsdIsOpen = false;
 
+    @Column(name = "wsd_is_close", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    @Comment("마감조 여부")
+    private Boolean wsdIsClose = false;
 
     @CreatedDate
     @Column(name = "wsd_created_at", nullable = false, updatable = false)

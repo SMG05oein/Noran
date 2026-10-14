@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { isHoliday } from 'korean-holidays';
 import useAuthStore from '../store/useAuthStore';
 import { getMonthlyWorkRecords, createWorkRecord, getMonthlyWorkApplyWorks } from '../api/workApi';
+import { globalApiClient } from '../api/apiClient';
 import { fetchWorkPlaces } from '../api/authApi';
 import Loading from '../components/Loading';
 import PaginationBar from '../components/PaginationBar';
@@ -110,6 +111,24 @@ const Records = () => {
       setRecords(merged);
     } finally {
       setDataLoading(false);
+    }
+  };
+
+  const handleDeleteRecord = async (wrIdx) => {
+    if (!window.confirm('근무 기록을 삭제하시겠습니까?')) return;
+    setLoading(true);
+    try {
+      await globalApiClient.delete(`/api/work-record/${wrIdx}`);
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('workRecordsCache_') || key.startsWith('workRecordsMonthlyCache_')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      loadRecords(selectedMonth);
+    } catch (err) {
+      alert(err.response?.data?.msg || err.message || '근무 기록 삭제에 실패했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -417,7 +436,18 @@ const Records = () => {
                                 </div>
                               )}
 
-                              <div className="d-flex justify-content-end mt-2">
+                              <div className="d-flex justify-content-end gap-2 mt-2">
+                                <Button 
+                                  variant="outline-danger" 
+                                  className="fw-bold px-3 py-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteRecord(record.wrIdx);
+                                  }}
+                                  style={{ fontSize: '0.85rem' }}
+                                >
+                                  삭제
+                                </Button>
                                 <Button 
                                   variant="light" 
                                   className="fw-bold px-4 py-2 border"

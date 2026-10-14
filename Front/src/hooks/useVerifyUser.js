@@ -27,6 +27,7 @@ const useVerifyUser = () => {
             userHourlyWage: infoRes.data.userHourlyWage,
             isAdmin: infoRes.data.is_admin,
             fkUtIdx: infoRes.data.fkUtIdx,
+            userBirth: infoRes.data.userBirth,
             needsPrivacyConsent: infoRes.data.needsPrivacyConsent,
             needsCollectionConsent: infoRes.data.needsCollectionConsent,
             needsTermsConsent: infoRes.data.needsTermsConsent
@@ -37,11 +38,11 @@ const useVerifyUser = () => {
         } else {
           // 정보 조회 실패 처리
           const status = infoRes.status;
-          // 서버 통신 장애(5xx 또는 undefined)일 때는 강제 로그아웃을 방지
-          if (!status || (status >= 500 && status <= 504)) {
-            console.warn("서버 통신 오류로 인해 내 정보 갱신을 건너뜁니다.");
-          } else {
-            // 그 외(예: 401, 403 리프레시 토큰 만료 등)는 강제 로그아웃
+          // 429(요청 과다) 또는 서버 통신 장애(5xx/네트워크 오류)일 때는 강제 로그아웃을 방지
+          if (!status || status === 429 || (status >= 500 && status <= 504)) {
+            console.warn("일시적 서버 통신 장애 또는 요청 과다(429)로 인해 내 정보 갱신을 건너뜁니다.");
+          } else if (status === 401 || status === 403) {
+            // 리프레시 토큰 만료 등 명시적 인증 실패일 때만 강제 로그아웃
             logout();
             navigate('/login');
           }

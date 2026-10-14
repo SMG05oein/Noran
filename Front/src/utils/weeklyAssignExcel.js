@@ -84,12 +84,13 @@ export const downloadWeeklyAssignExcel = async ({
   users,
   editSchedules,
   toUserIdx,
+  schedules = [],
 }) => {
   const XLSX = await import('xlsx-js-style');
   const xlsx = XLSX.default ?? XLSX;
   const dayHeaders = weekDays.map(dayHeaderLabel);
   const period = `${format(weekStart, 'yyyy-MM-dd')} ~ ${format(endOfWeek(weekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd')}`;
-  const colCount = 1 + dayHeaders.length;
+  const colCount = 1 + dayHeaders.length + 1;
 
   const aoa = [];
 
@@ -132,7 +133,7 @@ export const downloadWeeklyAssignExcel = async ({
     }))
   ));
 
-  // 요일 헤더 (주말·공휴 색)
+  // 요일 헤더 (주말·공휴 색) + 비고
   aoa.push([
     styledCell('알바생', cellStyle({ bg: BG_HEADER, bold: true, align: 'left', sz: 12 })),
     ...weekDays.map((date, idx) => {
@@ -145,6 +146,7 @@ export const downloadWeeklyAssignExcel = async ({
         color,
       }));
     }),
+    styledCell('비고', cellStyle({ bg: BG_HEADER, bold: true, sz: 11, color: TEXT })),
   ]);
 
   // 데이터: zebra striping
@@ -159,6 +161,7 @@ export const downloadWeeklyAssignExcel = async ({
       const dateStr = format(d, 'yyyy-MM-dd');
       return cellLabel(editSchedules[uid]?.[dateStr]);
     });
+    const userRemark = schedules.find((s) => toUserIdx(s.userIdx) === uid && s.wsdRemarks)?.wsdRemarks || '';
     aoa.push([
       styledCell(name, cellStyle({ bg, bold: true, align: 'left' })),
       ...dayCells.map((v) =>
@@ -167,11 +170,12 @@ export const downloadWeeklyAssignExcel = async ({
           color: v ? TEXT : TEXT_MUTED,
         }))
       ),
+      styledCell(userRemark, cellStyle({ bg, align: 'left', sz: 10, color: userRemark ? TEXT : TEXT_MUTED })),
     ]);
   });
 
   const ws = xlsx.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{ wch: 14 }, ...dayHeaders.map(() => ({ wch: 11 }))];
+  ws['!cols'] = [{ wch: 14 }, ...dayHeaders.map(() => ({ wch: 11 })), { wch: 22 }];
   ws['!rows'] = aoa.map((_, idx) => ({
     hpt: idx === 3 ? 32 : 26,
   }));

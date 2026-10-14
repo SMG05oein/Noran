@@ -404,7 +404,7 @@ export const saveWorkApply = async (startDate, endDate, applyDataArray) => {
 // 알바생 근무 신청 수정 - PUT /api/work-schedule/apply
 export const updateWorkApply = async (startDate, endDate, applyDataArray) => {
   try {
-    const response = await globalApiClient.post(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}` + '?_method=PUT', applyDataArray);
+    const response = await globalApiClient.post(`/api/work-schedule/apply?startDate=${startDate}&endDate=${endDate}&_method=PUT`, applyDataArray);
     clearWorkApplyCache();
     return { success: true, data: response.data };
   } catch (error) {

@@ -19,4 +19,5 @@ public class WorkScheduleDailyRequestDto {
     private Long workPlaceIdx;
     private Boolean isConfirmed;
     private Boolean isOpen;
+    private Boolean isClose;
 }

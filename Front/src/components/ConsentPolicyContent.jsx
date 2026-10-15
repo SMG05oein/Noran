@@ -26,19 +26,19 @@ const ConsentPolicyContent = () => {
               <td className="text-center fw-bold text-danger">필수</td>
               <td><strong>서비스 회원가입 및 관리, 본인 식별, 불량회원 부정이용 방지</strong></td>
               <td>아이디, 이름, 비밀번호, 생년월일, 휴대전화번호, 사용자 유형/권한, 소속 근무지</td>
-              <td><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 보존 목적을 위해 최대 5년간 보관한 후 파기합니다.</strong></td>
+              <td><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 보존 목적을 위해 5년간 보관한 후 파기합니다.</strong></td>
             </tr>
             <tr>
               <td className="text-center fw-bold text-danger">필수</td>
               <td><strong>근태관리 및 근무 스케줄 배정</strong></td>
               <td>근무일, 출퇴근 시각, 휴게시간, 해당 근무지, 주간/일별 신청일</td>
-              <td><strong>관계 법령(국세기본법 등)에 따라 최대 5년간 보관한 후 파기합니다.</strong></td>
+              <td><strong>근로계약 이행 및 관계 법령(국세기본법, 근로기준법 등)에 따라 5년간 보관한 후 파기합니다.</strong></td>
             </tr>
             <tr>
               <td className="text-center fw-bold text-danger">필수</td>
               <td><strong>급여 정산 및 지급, 세무 신고</strong></td>
               <td>은행명, 예금주명, 계좌번호</td>
-              <td><strong>관계 법령(국세기본법 등)에 따라 최대 5년간 보관한 후 파기합니다.</strong></td>
+              <td><strong>관계 법령(국세기본법, 근로기준법 등)에 따라 5년간 보관한 후 파기합니다.</strong></td>
             </tr>
             <tr>
               <td className="text-center text-primary fw-bold">선택</td>
@@ -50,7 +50,7 @@ const ConsentPolicyContent = () => {
               <td className="text-center fw-bold text-danger">필수</td>
               <td><strong>서비스 부정이용 방지 및 보안 관리</strong></td>
               <td>접속 IP 주소, 최근 로그인 일시</td>
-              <td><strong>회원 탈퇴 후 최대 5년간 보관한 후 파기합니다.</strong></td>
+              <td><strong>회원 탈퇴 후 서비스 운영 및 부정이용 방지를 위해 5년간 보관한 후 파기합니다.</strong></td>
             </tr>
           </tbody>
         </table>
@@ -76,35 +76,11 @@ const ConsentPolicyContent = () => {
         <RevisionHistory 
           histories={[
             {
-              version: 'v1.2',
-              date: '2026-10-17',
-              content: (
-                <ul className="mb-0 ps-3 mt-1">
-                  <li>보안 강화 및 부정이용 방지를 위한 수집 항목(IP 주소, 로그인 일시) 추가</li>
-                </ul>
-              )
-            },
-            {
-              version: 'v1.1',
-              date: '2026-10-03',
-              content: (
-                <>
-                  <ul className="mb-2 ps-3 mt-1">
-                    <li>약관 시스템 공통화 및 전문 노출 방식 개선 반영</li>
-                    <li>문서 하단 개정 이력 항목 신설</li>
-                  </ul>
-                  <p className="mb-0" style={{ color: '#d97706' }}>
-                    ※ (알파 테스트 기간 운영 안내) 본 개정은 현재 시스템이 알파 테스트 기간임에 따라, 원활한 테스트 진행 및 즉각적인 피드백 반영을 위해 사전 공지 기간 예외를 적용하여 즉시 시행되었습니다.
-                  </p>
-                </>
-              )
-            },
-            {
               version: 'v1.0',
               date: '2026-09-26',
               content: (
                 <ul className="mb-0 ps-3 mt-1">
-                  <li>개인정보 수집 및 이용 동의서 최초 제정</li>
+                  <li>개인정보 수집 및 이용 동의서 제정 및 시행</li>
                 </ul>
               )
             }
@@ -117,13 +93,13 @@ const ConsentPolicyContent = () => {
           <strong>최초 시행일:</strong> 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          <strong>공고일:</strong> 2026년 10월 10일
+          <strong>공고일:</strong> 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          <strong>시행일:</strong> 2026년 10월 17일
+          <strong>시행일:</strong> 2026년 09월 26일
         </p>
         <p className="small text-muted mb-0">
-          <strong>버전:</strong> v1.2
+          <strong>버전:</strong> v1.0
         </p>
       </div>
     </div>

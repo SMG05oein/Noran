@@ -114,37 +114,11 @@ const SystemUsagePolicyContent = () => {
         <RevisionHistory 
           histories={[
             {
-              version: 'v1.2',
-              date: '2026-10-17',
-              content: (
-                <ul className="mb-0 ps-3 mt-1">
-                  <li>보안 관리 및 부정이용 방지 관련 제9조 항목 신설</li>
-                </ul>
-              )
-            },
-            {
-              version: 'v1.1',
-              date: '2026-10-03',
-              content: (
-                <>
-                  <ul className="mb-2 ps-3 mt-1">
-                    <li>일부 오탈자 수정 및 문맥 교정</li>
-                    <li>퇴사자 마스킹 및 영구 삭제 정책 보완 적용</li>
-                    <li>약관 팝업 전문 노출을 위한 시스템 공통화</li>
-                    <li>문서 하단 개정 이력 항목 신설</li>
-                  </ul>
-                  <p className="mb-0" style={{ color: '#d97706' }}>
-                    ※ (알파 테스트 기간 운영 안내) 본 개정은 현재 시스템이 알파 테스트 기간임에 따라, 원활한 테스트 진행 및 즉각적인 피드백 반영을 위해 사전 공지 기간 예외를 적용하여 즉시 시행되었습니다.
-                  </p>
-                </>
-              )
-            },
-            {
               version: 'v1.0',
               date: '2026-09-26',
               content: (
                 <ul className="mb-0 ps-3 mt-1">
-                  <li>근태관리시스템 이용규정 최초 제정</li>
+                  <li>근태관리시스템 이용규정 제정 및 시행</li>
                 </ul>
               )
             }
@@ -156,13 +130,13 @@ const SystemUsagePolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 10월 10일
+          공고일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 10월 17일
+          시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.2
+          버전: v1.0
         </p>
       </div>
     </div>

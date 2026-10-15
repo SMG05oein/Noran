@@ -27,23 +27,27 @@ const PrivacyPolicyContent = () => {
               <tr>
                 <td><strong>회원 가입 및 관리</strong><br />(본인 식별, 권한 관리, 불량회원 부정이용 방지 등)</td>
                 <td><strong>(필수)</strong> 아이디, 이름, 비밀번호, 생년월일, 휴대전화번호, 사용자 유형/권한, 소속 근무지<br /><strong>(선택)</strong> 이메일, 시급(관리자용)</td>
-                <td className="text-center"><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 증빙 보존을 위해 최대 5년간 보관 후 파기합니다.</strong></td>
+                <td className="text-center"><strong>회원 탈퇴 후 부정이용 방지 및 관계 법령에 따른 증빙 보존을 위해 5년간 보관 후 파기합니다.</strong></td>
                 <td className="text-center">
                   정보주체의 동의 (개인정보보호법 제15조 제1항 제1호)<br /><br />
-                  법령상 의무 준수 및 증빙 보관: <strong>최대 5년</strong> (국세기본법 제85조의3, 근로기준법 제42조)
+                  법령상 의무 준수 및 증빙 보관: <strong>5년</strong> (국세기본법 제85조의3, 근로기준법 제42조 등 관계 법령상 보존의무 중 가장 긴 기간 기준)
                 </td>
               </tr>
               <tr>
                 <td><strong>근태관리 및 근무 스케줄 배정</strong><br />(출퇴근 기록, 근무 신청 및 배정 관리)</td>
                 <td><strong>(필수)</strong> 근무일, 출퇴근 시각, 휴게시간, 해당 근무지, 주간/일별 신청일<br /><strong>(선택)</strong> 근무 비고, 오픈조 지원 여부, 신청 비고</td>
-                <td className="text-center"><strong>최대 5년간 보관 후 파기</strong></td>
-                <td className="text-center">근로계약 이행 (개인정보보호법 제15조 제1항 제4호)</td>
+                <td className="text-center"><strong>5년간 보관 후 파기</strong></td>
+                <td className="text-center">
+                  근로계약 이행 및 법령상 의무 준수: <strong>5년</strong> (국세기본법 제85조의3, 근로기준법 제42조 등 관계 법령상 보존의무 중 가장 긴 기간 기준)
+                </td>
               </tr>
               <tr>
                 <td><strong>급여 지급 및 정산</strong><br />(주간 스케줄 기반 급여 정산 및 이체)</td>
                 <td><strong>(필수)</strong> 은행명, 예금주명, 계좌번호</td>
-                <td className="text-center"><strong>근로관계 종료 후 관계 법령에 따라 보존 후 파기</strong></td>
-                <td className="text-center">관련 법령(국세기본법, 근로기준법 등)에 따라 <strong>최대 5년</strong> 보존</td>
+                <td className="text-center"><strong>5년간 보관 후 파기</strong></td>
+                <td className="text-center">
+                  법령상 의무 준수 및 증빙 보관: <strong>5년</strong> (국세기본법 제85조의3, 근로기준법 제42조 등 관계 법령상 보존의무 중 가장 긴 기간 기준)
+                </td>
               </tr>
               <tr>
                 <td><strong>서비스 이용 편의 및 맞춤 설정</strong><br />(로컬/세션 스토리지 활용)</td>
@@ -54,8 +58,11 @@ const PrivacyPolicyContent = () => {
               <tr>
                 <td><strong>서비스 부정이용 방지 및 보안 관리</strong><br />(비정상 접근 차단 및 계정 보호)</td>
                 <td><strong>(필수)</strong> 접속 IP 주소, 최근 로그인 일시</td>
-                <td className="text-center"><strong>회원 탈퇴 후 최대 5년간 보관 후 파기</strong></td>
-                <td className="text-center">법령상 의무 준수 및 증빙 (국세기본법 제85조의3)</td>
+                <td className="text-center"><strong>회원 탈퇴 후 5년간 보관 후 파기</strong></td>
+                <td className="text-center">
+                  「개인정보 보호법」 제29조(안전조치의무)에 따른 접속기록 보관 의무 준수<br />
+                  <span className="small text-muted">(※ 법정 최소 보관기간 1년 이상 준수하며, 서비스 부정이용 방지 및 보안 분쟁 대비를 위해 5년간 보관)</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -77,29 +84,9 @@ const PrivacyPolicyContent = () => {
 
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">3. 개인정보 처리업무의 위탁</h5>
-        <p className="small text-muted mb-3">
-          회사는 원활한 서비스 제공 및 급여 정산(세무 신고)을 위해 아래와 같이 개인정보 처리업무를 위탁하고 있습니다.
+        <p className="small text-muted">
+          회사는 정보주체의 개인정보 처리업무를 외부에 위탁하고 있지 않습니다.<br />
         </p>
-        <div className="table-responsive">
-          <table className="table table-bordered align-middle text-sm" style={{ fontSize: '0.85rem' }}>
-            <thead className="table-light text-center">
-              <tr>
-                <th style={{ width: '25%' }}>수탁자(위탁받는 자)</th>
-                <th style={{ width: '30%' }}>위탁하는 업무의 내용(목적)</th>
-                <th style={{ width: '25%' }}>제공 항목</th>
-                <th style={{ width: '20%' }}>보유 및 이용기간</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-center text-primary fw-bold">[세무대리인 업체명 기재 요망]</td>
-                <td className="text-center"><strong>급여 정산 및 세무/원천세 신고 대행</strong></td>
-                <td className="text-center">이름, 은행명, 예금주명, 계좌번호, 출퇴근 날짜와 시간, 총 근로 시간</td>
-                <td className="text-center"><strong>위탁계약 종료 시 또는 관련 세법상 의무 보존기간까지</strong></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
 
       <div className="mb-4">
@@ -114,6 +101,7 @@ const PrivacyPolicyContent = () => {
           정보주체의 퇴사 또는 회원 탈퇴 후 일정 기간이 경과하였으나, 근로기준법 및 국세기본법 등 관련 법령에 따라 근태 및 급여 기록 보존을 위해 개인정보를 계속 보존하여야 하는 경우, 회사는 접근 권한을 엄격히 통제한 상태로 원본 데이터베이스에 최대 5년간 보관합니다. 이때 개인정보 보호를 위해 <strong>퇴사 후 1년이 경과한 직원의 신상 정보는 내부 시스템 상에서 자동으로 마스킹 처리되며, 원본은 최고 관리자 및 권한이 있는 자만 제한적으로 조회</strong>할 수 있습니다. 보관 중인 개인정보는 법령 준수 및 부정이용 방지 외의 다른 용도로 이용되지 않습니다.<br /><br />
 
           <strong>③ 퇴사자 영구 삭제(Hard Delete) 및 자동 백업 정책</strong><br />
+          - 회사는 원칙적으로 관계 법령에 따른 법정 보존기간(5년)이 경과한 후에 한하여 퇴사자의 개인정보 및 근태 기록을 영구 삭제합니다.<br />
           - 퇴사자의 개인정보 및 근태 기록을 영구 삭제할 경우, 관계 법령(근로기준법 및 국세기본법 등)에 따른 분쟁 대비 및 증빙 의무 준수를 위해 삭제 직전 <strong>해당 직원의 인적사항 및 전체 출퇴근 기록을 암호화된 백업 파일(.zip)로 생성하여 안전한 서버에 1년간 보관</strong>한 후 파기하며, 데이터베이스에서는 즉시 영구 파기합니다.
         </div>
       </div>
@@ -149,8 +137,8 @@ const PrivacyPolicyContent = () => {
         <h5 className="fw-bold mb-3 text-dark">8. 개인정보의 안전성 확보 조치</h5>
         <p className="small text-muted">
           회사는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다.<br /><br />
-          * <strong>관리적 조치:</strong> 내부관리계획 수립·시행, 전담 직원 배정 및 정기적 개인정보 보호 교육<br />
-          * <strong>기술적 조치:</strong> 개인정보처리시스템 등의 접근권한 관리, 보안 프로그램 설치 및 주기적 점검, <strong>민감정보 등의 암호화</strong><br />
+          * <strong>관리적 조치:</strong> 내부관리계획 수립·시행<br />
+          * <strong>기술적 조치:</strong> 개인정보처리시스템 등의 접근권한 관리(역할 및 권한별 조회·다운로드 제한), 네트워크 전송구간 암호화(HTTPS/SSL 적용), 보안 프로그램 설치 및 주기적 점검, <strong>민감정보 등의 암호화</strong><br />
           &nbsp;&nbsp; - <strong>[암호화 저장 항목]</strong><br />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; · <strong>비밀번호:</strong> 복호화가 불가능한 일방향 암호화(해시) 적용<br />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; · <strong>계좌번호:</strong> 안전한 암호화 알고리즘을 이용한 양방향 암호화 저장<br />
@@ -170,7 +158,7 @@ const PrivacyPolicyContent = () => {
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">10. 개인정보 보호책임자 및 담당 부서</h5>
         <div className="p-3 rounded-3 small text-muted" style={{ background: 'var(--color-input-bg)', border: '1px solid var(--color-border)' }}>
-          <strong className="d-block mb-2 text-dark">개인정보 보호책임자 (개인정보처리자 겸임)</strong>
+          <strong className="d-block mb-2 text-dark">개인정보 보호책임자</strong>
           <ul className="mb-0" style={{ listStyleType: 'none', paddingLeft: 0 }}>
             <li><strong>성명:</strong> 김민규</li>
             <li><strong>소속/직책:</strong> 약산돼지 / 점장</li>
@@ -193,51 +181,25 @@ const PrivacyPolicyContent = () => {
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">12. 개인정보 처리방침의 변경 및 고지</h5>
         <p className="small text-muted">
-          이 개인정보 처리방침은 <strong>2026년 10월 17일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
+          이 개인정보 처리방침은 <strong>2026년 09월 26일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
           <br />또한 버전의 의미는 앞 자리는 핵심 내용의 변경 및 추가, 삭제가 있을 시며 뒷 자리는 경미한 내용 수정을 의미합니다.
         </p>
       </div>
 
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">13. 개정 이력</h5>
-        <RevisionHistory 
+        <RevisionHistory
           histories={[
-            {
-              version: 'v1.2',
-              date: '2026-10-17',
-              content: (
-                <ul className="mb-0 ps-3 mt-1">
-                  <li>보안 강화 및 부정이용 방지를 위한 수집 항목(IP 주소, 로그인 일시) 추가</li>
-                </ul>
-              )
-            },
-            {
-              version: 'v1.1',
-              date: '2026-10-03',
-              content: (
-                <>
-                  <ul className="mb-2 ps-3 mt-1">
-                    <li>퇴사자 개인정보 보존 시 1년 경과 후 자동 마스킹 처리 정책 명시</li>
-                    <li>정보주체 권리 행사 시 본인 확인 절차 문구 세분화 (신분증명서 요구 가능 명시)</li>
-                    <li>약관 시스템 공통화 및 전문 노출 개선</li>
-                    <li>문서 하단 개정 이력 항목 신설</li>
-                  </ul>
-                  <p className="mb-0" style={{ color: '#d97706' }}>
-                    ※ (알파 테스트 기간 운영 안내) 본 개정은 현재 시스템이 알파 테스트 기간임에 따라, 원활한 테스트 진행 및 즉각적인 피드백 반영을 위해 사전 공지 기간 예외를 적용하여 즉시 시행되었습니다.
-                  </p>
-                </>
-              )
-            },
             {
               version: 'v1.0',
               date: '2026-09-26',
               content: (
                 <ul className="mb-0 ps-3 mt-1">
-                  <li>개인정보 처리방침 최초 제정</li>
+                  <li>개인정보 처리방침 제정 및 시행</li>
                 </ul>
               )
             }
-          ]} 
+          ]}
         />
       </div>
 
@@ -246,13 +208,13 @@ const PrivacyPolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 10월 10일
+          공고일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 10월 17일
+          시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.2
+          버전: v1.0
         </p>
       </div>
     </div>

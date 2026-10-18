@@ -98,6 +98,22 @@
   background: var(--color-input-bg);
 }
 
+/* 행 교차 배경색 (위아래 붙은 행 구분) */
+.wat-table tbody tr:nth-child(odd) td,
+.wat-table tbody tr:nth-child(odd) .wat-sticky-col {
+  background-color: var(--color-surface);
+}
+
+.wat-table tbody tr:nth-child(even) td,
+.wat-table tbody tr:nth-child(even) .wat-sticky-col {
+  background-color: color-mix(in srgb, var(--color-primary) 4.5%, var(--color-surface));
+}
+
+.wat-table tbody tr:hover td,
+.wat-table tbody tr:hover .wat-sticky-col {
+  background-color: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
+}
+
 .wat-day-head {
   min-width: 128px;
 }
@@ -319,6 +335,14 @@
   box-shadow: inset 2px 0 0 var(--color-primary), inset -2px 0 0 var(--color-primary);
 }
 
+.wat-table tbody tr:nth-child(even) td.wat-col-highlighted {
+  background-color: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface)) !important;
+}
+
+.wat-table tbody tr:hover td.wat-col-highlighted {
+  background-color: color-mix(in srgb, var(--color-primary) 17%, var(--color-surface)) !important;
+}
+
 .wat-tab-filtered {
   box-shadow: 0 0 0 2px var(--color-primary) !important;
 }
@@ -403,6 +427,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 0.7rem 0.8rem;
+}
+
+.wat-mobile-card:nth-child(even) {
+  background-color: color-mix(in srgb, var(--color-primary) 4.5%, var(--color-surface));
 }
 
 .wat-mobile-card-head {

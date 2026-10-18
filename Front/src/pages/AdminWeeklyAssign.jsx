@@ -906,7 +906,7 @@ const AdminWeeklyAssign = () => {
           />
 
           <div className="d-flex flex-wrap align-items-center gap-2">
-            <div className="d-flex align-items-center gap-1">
+            <div className="wat-toolbar-day-filter align-items-center gap-1">
               <span className="small fw-bold text-muted me-1">요일:</span>
               <SegmentedFilter
                 options={DAY_FILTER_OPTIONS.map(f => ({ value: f.value, label: f.name }))}
@@ -950,8 +950,8 @@ const AdminWeeklyAssign = () => {
                     className={`wat-day-tab ${mobileDayIdx === idx ? 'active' : ''} ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''} ${isDayFiltered ? 'wat-tab-filtered' : ''}`}
                     onClick={() => setMobileDayIdx(idx)}
                   >
-                    <div>{'월화수목금토일'[idx]}</div>
-                    <div className="small fw-normal">{format(date, 'MM/dd')}</div>
+                    <div className="wat-tab-day-name">{'월화수목금토일'[idx]}</div>
+                    <div className="wat-tab-date">{format(date, 'MM/dd')}</div>
                     <div className="wat-tab-chips">
                       <span className={`wat-apply-chip ${applied === 0 ? 'is-zero' : ''}`}>신{applied}</span>
                       <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`}>P{peak}</span>
@@ -967,40 +967,53 @@ const AdminWeeklyAssign = () => {
                 const userRemark = schedules.find(s => toUserIdx(s.userIdx) === uid && s.wsdRemarks)?.wsdRemarks || '';
                 const other = isOtherBranchWorker(u);
                 const onLeave = isOnLeave(u);
+                const dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
+                const firstShift = dayShifts[0];
+                const hadApply = firstShift ? !!(firstShift.originHadApply || firstShift.wsdStatus === '신청') : false;
+                const openApply = firstShift ? !!firstShift.originOpenApplied : false;
                 return (
                   <div key={uid} className={`wat-mobile-card${onLeave ? ' is-leave' : ''}`}>
                     <div className="wat-mobile-card-head">
                       <div className="wat-worker-info">
-                        <div className="wat-worker-name">
-                          {u.userName}
+                        <div className="wat-worker-title-row">
+                          <span className="wat-worker-name">{u.userName}</span>
                           {Number(u.nameSeq) > 1 && u.userIdx != null && (
-                            <Badge bg="secondary" className="ms-1 align-middle">#{u.userIdx}</Badge>
+                            <Badge bg="secondary" className="align-middle">#{u.userIdx}</Badge>
                           )}
                           {onLeave && (
-                            <Badge bg="warning" text="dark" className="ms-1 align-middle">휴직</Badge>
+                            <Badge bg="warning" text="dark" className="align-middle">휴직</Badge>
                           )}
-                        </div>
-                        <div className="wat-worker-meta">
                           {other && (
-                            <Badge bg="secondary" className="me-1">{u.workPlaceName || '타 지점'}</Badge>
+                            <Badge bg="secondary" className="align-middle">{u.workPlaceName || '타 지점'}</Badge>
+                          )}
+                          {openApply ? (
+                            <span className="wat-badge-applied-open">오픈 신청</span>
+                          ) : hadApply ? (
+                            <span className="wat-badge-applied">신청</span>
+                          ) : (
+                            <span className="wat-badge-unapplied">미신청</span>
                           )}
                         </div>
-                        {renderRowBulkInput(u)}
                       </div>
-                      {other && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="wat-icon-btn"
-                          title="타지점 알바생 제거"
-                          aria-label="타지점 알바생 제거"
-                          onClick={() => handleRemoveOtherWorker(u)}
-                        >
-                          <RiCloseLine size={16} />
-                        </Button>
-                      )}
+                      <div className="wat-mobile-card-actions">
+                        {renderRowBulkInput(u)}
+                        {other && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="wat-icon-btn"
+                            title="타지점 알바생 제거"
+                            aria-label="타지점 알바생 제거"
+                            onClick={() => handleRemoveOtherWorker(u)}
+                          >
+                            <RiCloseLine size={16} />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    {renderDayCell(uid, mobileDateStr)}
+                    <div className="wat-mobile-card-body">
+                      {renderDayCell(uid, mobileDateStr)}
+                    </div>
                   </div>
                 );
               })}

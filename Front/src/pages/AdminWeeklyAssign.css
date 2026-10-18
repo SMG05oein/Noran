@@ -375,58 +375,87 @@
 
 .wat-day-tabs {
   display: none;
-  gap: 0.3rem;
+  gap: 0.35rem;
   overflow-x: auto;
-  padding-bottom: 0.3rem;
-  margin-bottom: 0.55rem;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.wat-day-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .wat-day-tab {
-  flex: 0 0 auto;
-  min-width: 60px;
-  border: 1px solid var(--color-border);
+  flex: 1 1 0;
+  min-width: 52px;
+  max-width: 80px;
+  border: 1.5px solid var(--color-border);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
-  padding: 0.4rem 0.5rem;
+  padding: 0.5rem 0.25rem;
   text-align: center;
-  font-weight: 700;
-  font-size: 0.75rem;
   color: var(--color-text-main);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.wat-tab-day-name {
+  font-weight: 800;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.wat-tab-date {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 2px;
 }
 
 .wat-day-tab.active {
   border-color: var(--color-primary);
-  background: var(--color-primary-light);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
   color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.2);
 }
 
-.wat-day-tab.is-holy {
+.wat-day-tab.active .wat-tab-date {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.wat-day-tab.is-holy .wat-tab-day-name,
+.wat-day-tab.is-holy .wat-tab-date {
   color: var(--color-danger);
 }
 
-.wat-day-tab.is-sat {
+.wat-day-tab.is-sat .wat-tab-day-name,
+.wat-day-tab.is-sat .wat-tab-date {
   color: var(--color-info);
 }
 
 .wat-day-tab .wat-peak-chip,
 .wat-day-tab .wat-apply-chip {
-  margin-top: 0.2rem;
-  font-size: 0.62rem;
-  padding: 0.08rem 0.35rem;
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  padding: 0.08rem 0.3rem;
 }
 
 .wat-mobile-list {
   display: none;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
 }
 
 .wat-mobile-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0.7rem 0.8rem;
+  padding: 0.85rem 1rem;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .wat-mobile-card:nth-child(even) {
@@ -436,19 +465,150 @@
 .wat-mobile-card-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed var(--color-border);
 }
 
-@media (max-width: 575.98px) {
+.wat-worker-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.wat-mobile-card .wat-worker-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+}
+
+.wat-badge-applied {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-info) 14%, var(--color-surface));
+  color: var(--color-info);
+  border: 1px solid color-mix(in srgb, var(--color-info) 35%, transparent);
+}
+
+.wat-badge-applied-open {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-surface));
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+}
+
+.wat-badge-unapplied {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.wat-mobile-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.wat-mobile-card-body .wat-shift {
+  padding: 0;
+}
+
+.wat-mobile-card .wat-shift-top {
+  margin-bottom: 0.55rem;
+}
+
+.wat-mobile-card .wat-open-check,
+.wat-mobile-card .wat-close-check {
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wat-mobile-card .wat-open-check .form-check-input,
+.wat-mobile-card .wat-close-check .form-check-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.05rem;
+  cursor: pointer;
+}
+
+.wat-mobile-card .wat-shift-input {
+  min-height: 44px;
+  font-size: 0.96rem !important;
+  font-weight: 700;
+  padding: 0.55rem 0.85rem !important;
+}
+
+.wat-mobile-card .wat-icon-btn {
+  width: 30px;
+  height: 30px;
+}
+
+/* 426px 이하 (핸드폰 세로 등): 하루씩 확인하는 모바일 카드 뷰 */
+@media (max-width: 426px) {
   .wat-desktop-grid {
     display: none !important;
   }
 
+  .wat-day-tabs {
+    display: flex !important;
+  }
+
+  .wat-mobile-list {
+    display: flex !important;
+  }
+
+  .ui-toolbar-card {
+    padding: 0.75rem;
+    gap: 0.65rem;
+  }
+
+  .wat-branch-select {
+    width: 100%;
+  }
+
+  .ui-week-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .wat-toolbar-day-filter {
+    display: none !important;
+  }
+}
+
+/* 427px 이상 (Z플립/폴드 펼침, 태블릿, PC 등): 전체 주간 테이블 그리드 */
+@media (min-width: 427px) {
+  .wat-desktop-grid {
+    display: block !important;
+  }
+
   .wat-day-tabs,
   .wat-mobile-list {
-    display: flex;
+    display: none !important;
+  }
+
+  .wat-toolbar-day-filter {
+    display: flex !important;
   }
 }
 

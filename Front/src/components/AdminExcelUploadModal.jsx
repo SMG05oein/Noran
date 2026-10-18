@@ -87,6 +87,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
   // 2단계 완료 결과
   const [uploadResult, setUploadResult] = useState(null);
+  const [invalidRowsList, setInvalidRowsList] = useState([]);
 
   // 모달 닫힐 때 초기화 및 메인 테이블 최신화
   const handleClose = () => {
@@ -96,6 +97,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     setUniqueNames([]);
     setDetectedSheetNames([]);
     setErrorMsg('');
+    setInvalidRowsList([]);
     setValidationResult(null);
     setUploadResult(null);
     setLoading(false);
@@ -111,6 +113,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     if (!selectedFile) return;
 
     setErrorMsg('');
+    setInvalidRowsList([]);
 
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -178,18 +181,22 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
             const endTime = formatToHHmm(rawEnd);
             const breakTime = formatToHHmm(rawBreak);
 
-            if (!userName || !workDate || !startTime || !endTime) continue;
+            // 엑셀 파일 상의 1-indexed 행 번호 (헤더 및 데이터 위치 반영)
+            const excelRowNumber = i + 1;
 
             allRecords.push({
-              workDate,
-              userName,
-              startTime,
-              endTime,
+              row: excelRowNumber,
+              workDate: workDate || '',
+              userName: userName || '',
+              startTime: startTime || '',
+              endTime: endTime || '',
               breakTime: breakTime || '00:00',
               workPlaceName: trimmedSheetName
             });
 
-            namesSet.add(userName);
+            if (userName) {
+              namesSet.add(userName);
+            }
             sheetRecordCount++;
           }
 
@@ -233,34 +240,62 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     const res = await validateExcelWorkRecords(payload);
     setLoading(false);
 
+    const data = res.data || {};
+    const {
+      duplicateNames = [],
+      invalidWorkPlaces = [],
+      existingRecords = [],
+      invalidRows = [],
+      unregisteredUsers = [],
+      newUsers = []
+    } = data;
+
+    // 1) 행 단위 데이터 오류(invalidRows) 존재 시 업로드 차단 및 상세 목록 표시
+    if (invalidRows && invalidRows.length > 0) {
+      setInvalidRowsList(invalidRows);
+      setErrorMsg(`엑셀 데이터 중 ${invalidRows.length}건의 오류가 발견되었습니다. 아래 오류 상세 내역을 확인해 주세요.`);
+      return;
+    }
+
     if (!res.success) {
       setErrorMsg(res.error || '엑셀 데이터 사전 검증에 실패했습니다.');
       return;
     }
 
-    const { duplicateNames = [], invalidWorkPlaces = [], existingRecords = [] } = res.data;
-
-    // 1) 동명이인 존재 시 업로드 차단
+    // 2) 동명이인 존재 시 업로드 차단
     if (duplicateNames.length > 0) {
       setErrorMsg(
         `동일한 이름의 사용자가 여러 명 존재하여 식별할 수 없습니다. 업로드 전 직원 관리에서 동명이인의 이름을 구분(예: 이름#1)해 주세요. (대상자: ${duplicateNames.join(', ')})`
       );
+      setInvalidRowsList([]);
       return;
     }
 
-    // 2) 미등록 근무지 시트명 존재 시 업로드 차단
+    // 3) 미등록 근무지 시트명 존재 시 업로드 차단
     if (invalidWorkPlaces.length > 0) {
       setErrorMsg(
         `시스템에 등록되지 않은 근무지 시트가 포함되어 있습니다: [${invalidWorkPlaces.join(', ')}]. 시트명을 실제 등록된 근무지명과 일치시켜 주세요.`
       );
+      setInvalidRowsList([]);
       return;
     }
 
-    setValidationResult(res.data);
+    setValidationResult(data);
+    setInvalidRowsList([]);
 
-    // 3) 기존 동일 날짜 기록이 존재하는 경우 -> 덮어쓰기 확인 팝업 단계로 이동
+    const unreg = (unregisteredUsers && unregisteredUsers.length > 0) ? unregisteredUsers : (newUsers || []);
+
+    // 4) 기존 동일 날짜 기록이 존재하는 경우 -> 덮어쓰기 확인 팝업 단계로 이동
     if (existingRecords.length > 0) {
       setStep('overwrite_confirm');
+    } else if (unreg.length > 0) {
+      // 신규 임시 직원 등록 확인 후 진행
+      const proceed = window.confirm(
+        `다음 직원은 시스템에 등록되지 않아 '신규 임시 직원'으로 자동 등록됩니다:\n[${unreg.join(', ')}]\n\n계속 진행하시겠습니까?`
+      );
+      if (proceed) {
+        executeUpload(false);
+      }
     } else {
       // 중복 없음 -> 바로 최종 등록 실행
       executeUpload(false);
@@ -371,6 +406,39 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
               />
             </Form.Group>
 
+            {/* 행 단위 데이터 오류 상세 테이블 */}
+            {invalidRowsList.length > 0 && (
+              <div className="border border-danger rounded-3 p-3 mb-3 bg-danger-subtle">
+                <div className="fw-bold text-danger mb-1 d-flex align-items-center gap-1">
+                  <RiAlertLine size={18} /> 엑셀 데이터 오류 ({invalidRowsList.length}건)
+                </div>
+                <div className="text-muted small mb-2">
+                  아래 항목의 오류를 엑셀 파일에서 수정한 후 다시 업로드해 주세요.<br />
+                  <span className="text-danger fw-semibold">※ 야간 근무의 경우 퇴근 시각은 익일 04:59를 넘을 수 없습니다. (18:00 ~ 03:00 허용, 18:00 ~ 05:00 불가)</span>
+                </div>
+                <div className="table-responsive border rounded bg-white" style={{ maxHeight: '200px' }}>
+                  <Table size="sm" hover className="mb-0 text-center align-middle" style={{ fontSize: '0.82rem' }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: '80px' }}>행 번호</th>
+                        <th style={{ width: '100px' }}>이름</th>
+                        <th className="text-start">오류 사유</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invalidRowsList.map((err, idx) => (
+                        <tr key={idx}>
+                          <td className="fw-bold text-danger">{err.row ? `${err.row}행` : `${idx + 1}`}</td>
+                          <td className="fw-bold">{err.userName || '(미입력)'}</td>
+                          <td className="text-start text-danger">{err.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
             {parsedRecords.length > 0 && (
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-2">
@@ -424,6 +492,21 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
         {/* 2단계: 기존 동일 날짜 기록 중복 확인 (덮어쓰기 or 건너뛰기) */}
         {!loading && step === 'overwrite_confirm' && validationResult && (
           <div>
+            {(() => {
+              const unreg = validationResult.unregisteredUsers?.length > 0
+                ? validationResult.unregisteredUsers
+                : (validationResult.newUsers || []);
+              if (unreg.length === 0) return null;
+              return (
+                <Alert variant="info" className="py-2 mb-3 d-flex align-items-center gap-2" style={{ fontSize: '0.86rem' }}>
+                  <RiInformationLine size={20} className="text-info flex-shrink-0" />
+                  <div>
+                    신규 임시 직원으로 자동 등록됩니다: <strong>{unreg.join(', ')}</strong> ({unreg.length}명)
+                  </div>
+                </Alert>
+              );
+            })()}
+
             <Alert variant="warning" className="d-flex align-items-start gap-2 py-2 mb-3">
               <RiInformationLine size={20} className="mt-1 flex-shrink-0 text-warning" />
               <div style={{ fontSize: '0.88rem' }}>
@@ -463,7 +546,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
               </Table>
             </div>
             <div className="text-end text-muted small">
-              ※ 신규 추가 예정 인원: <strong>{validationResult.newUsers?.length || 0}명</strong>, 기존 사원: <strong>{validationResult.existingUsers?.length || 0}명</strong>
+              ※ 신규 추가 예정 인원: <strong>{(validationResult.unregisteredUsers?.length ?? validationResult.newUsers?.length) || 0}명</strong>, 기존 사원: <strong>{validationResult.existingUsers?.length || 0}명</strong>
             </div>
           </div>
         )}

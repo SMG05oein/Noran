@@ -268,6 +268,25 @@ const AdminWeeklyAssign = () => {
     return map;
   }, [editSchedules, weekDays, currentWorkPlaceIdx]);
 
+  const appliedCountByDate = useMemo(() => {
+    const map = {};
+    weekDays.forEach(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      let count = 0;
+      Object.entries(editSchedules).forEach(([uid, userDays]) => {
+        const dayShifts = userDays[dateStr] || [];
+        const hasApplied = dayShifts.some(s => {
+          const wpIdx = s.wsdWorkPlaceIdx || s.applyWorkPlaceIdx || currentWorkPlaceIdx;
+          if (Number(wpIdx) !== Number(currentWorkPlaceIdx)) return false;
+          return !!(s.originHadApply || s.originOpenApplied || s.wsdStatus === '신청');
+        });
+        if (hasApplied) count++;
+      });
+      map[dateStr] = count;
+    });
+    return map;
+  }, [editSchedules, weekDays, currentWorkPlaceIdx]);
+
   /**
    * 주간 배정 상태:
    *   'unset'     - 배정된 출근 없음
@@ -922,6 +941,7 @@ const AdminWeeklyAssign = () => {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 const { isHoly, isSat } = dayMeta(date);
                 const peak = peakByDate[dateStr] || 0;
+                const applied = appliedCountByDate[dateStr] || 0;
                 const isDayFiltered = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                 return (
                   <button
@@ -932,7 +952,10 @@ const AdminWeeklyAssign = () => {
                   >
                     <div>{'월화수목금토일'[idx]}</div>
                     <div className="small fw-normal">{format(date, 'MM/dd')}</div>
-                    <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`}>P{peak}</span>
+                    <div className="wat-tab-chips">
+                      <span className={`wat-apply-chip ${applied === 0 ? 'is-zero' : ''}`}>신{applied}</span>
+                      <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`}>P{peak}</span>
+                    </div>
                   </button>
                 );
               })}
@@ -996,6 +1019,7 @@ const AdminWeeklyAssign = () => {
                         const dateStr = format(date, 'yyyy-MM-dd');
                         const { isHoly, isSat } = dayMeta(date);
                         const peak = peakByDate[dateStr] || 0;
+                        const applied = appliedCountByDate[dateStr] || 0;
                         const isColHighlighted = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                         return (
                           <th
@@ -1004,9 +1028,14 @@ const AdminWeeklyAssign = () => {
                           >
                             <div>{format(date, 'MM/dd')}</div>
                             <div className="small fw-normal">{'일월화수목금토'[getDay(date)]}요일</div>
-                            <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`}>
-                              피크 {peak}
-                            </span>
+                            <div className="wat-head-chips">
+                              <span className={`wat-apply-chip ${applied === 0 ? 'is-zero' : ''}`} title="해당 요일 신청 인원">
+                                신청 {applied}
+                              </span>
+                              <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`} title="해당 요일 피크 동시 근무자 수">
+                                피크 {peak}
+                              </span>
+                            </div>
                           </th>
                         );
                       })}

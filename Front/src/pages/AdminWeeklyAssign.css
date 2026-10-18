@@ -110,6 +110,50 @@
   color: var(--color-info);
 }
 
+.wat-head-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+
+.wat-tab-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+}
+
+.wat-head-chips .wat-peak-chip,
+.wat-head-chips .wat-apply-chip,
+.wat-tab-chips .wat-peak-chip,
+.wat-tab-chips .wat-apply-chip {
+  margin-top: 0;
+}
+
+.wat-apply-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.3rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--color-info-bg, rgba(13, 202, 240, 0.1));
+  color: var(--color-info, #0dcaf0);
+  border: 1px solid color-mix(in srgb, var(--color-info, #0dcaf0) 35%, transparent);
+}
+
+.wat-apply-chip.is-zero {
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  font-weight: 600;
+}
+
 .wat-peak-chip {
   display: inline-flex;
   align-items: center;
@@ -341,7 +385,8 @@
   color: var(--color-info);
 }
 
-.wat-day-tab .wat-peak-chip {
+.wat-day-tab .wat-peak-chip,
+.wat-day-tab .wat-apply-chip {
   margin-top: 0.2rem;
   font-size: 0.62rem;
   padding: 0.08rem 0.35rem;

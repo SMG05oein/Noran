@@ -42,6 +42,9 @@ public class AdminWorkRecordExcelUploadRequestDto {
     @Setter
     @NoArgsConstructor
     public static class ExcelRecordItemDto {
+        @Schema(description = "엑셀 원본 행 번호 (선택, 오류 안내용)", example = "5")
+        private Integer row;
+
         @NotBlank(message = "근무일은 필수입니다.")
         @Schema(description = "근무일 (YYYY-MM-DD)", example = "2026-09-26")
         private String workDate;

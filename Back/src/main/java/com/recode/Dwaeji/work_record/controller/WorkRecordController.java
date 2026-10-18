@@ -18,7 +18,7 @@ import java.util.List;
 
 @Tag(name = "근무 기록 API", description = "근무 기록(출퇴근) 생성, 조회, 수정, 삭제 API")
 @RestController
-@RequestMapping("/api/work-record")
+@RequestMapping({"/api/work-record", "/api/work-records"})
 @RequiredArgsConstructor
 public class WorkRecordController {
 
@@ -203,7 +203,7 @@ public class WorkRecordController {
     }
 
     @Operation(summary = "관리자 근무기록 엑셀 업로드 전 인원 사전 검증", description = "엑셀에 포함된 유저명 목록으로 동명이인, 기존 등록 유저, 지점 지정이 필요한 신규 유저를 사전 분류합니다. 관리자 전용.")
-    @PostMapping("/admin/excel-validate")
+    @PostMapping({"/admin/excel-validate", "/excel/validate"})
     public ResponseEntity<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto> validateExcelUsers(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto) {
@@ -214,7 +214,7 @@ public class WorkRecordController {
     }
 
     @Operation(summary = "관리자 근무기록 엑셀 일괄 등록", description = "사전 검증 후 지점이 매핑된 신규 임시 유저(is_temp_user=1)를 자동 생성하고 근무기록을 일괄 등록/수정합니다. 관리자 전용.")
-    @PostMapping("/admin/excel-upload")
+    @PostMapping({"/admin/excel-upload", "/excel/upload"})
     public ResponseEntity<com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto> uploadWorkRecordsFromExcel(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto) {

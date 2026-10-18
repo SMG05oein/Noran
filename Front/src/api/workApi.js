@@ -444,7 +444,7 @@ export const validateExcelWorkRecords = async (payload) => {
       error.response?.data?.message ||
       (typeof error.response?.data === 'string' ? error.response.data : null) ||
       '엑셀 데이터 검증 중 오류가 발생했습니다.';
-    return { success: false, error: errMsg, status: error.response?.status };
+    return { success: false, error: errMsg, data: error.response?.data, status: error.response?.status };
   }
 };
 

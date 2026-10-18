@@ -933,13 +933,81 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             }
         }
 
+        // 4. 행 단위 유효성 검증 (날짜/시간 형식, 시간 논리, 야간 종료 한도)
+        List<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.InvalidRowDto> invalidRows = new ArrayList<>();
+        if (requestDto.getRecords() != null) {
+            DateTimeFormatter fmt1 = DateTimeFormatter.ofPattern("H:mm");
+            DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern("HH:mm");
+            int seq = 0;
+            for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+                seq++;
+                String reason = findExcelRowError(item, fmt1, fmt2);
+                if (reason != null) {
+                    invalidRows.add(com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.InvalidRowDto.builder()
+                            .row(item.getRow() != null ? item.getRow() : seq)
+                            .userName(item.getUserName() != null ? item.getUserName().trim() : "")
+                            .reason(reason)
+                            .build());
+                }
+            }
+        }
+
         return com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.builder()
+                .unregisteredUsers(new ArrayList<>(newUsers))
+                .invalidRows(invalidRows)
                 .duplicateNames(duplicateNames)
                 .invalidWorkPlaces(invalidWorkPlaces)
                 .existingUsers(existingUsers)
                 .newUsers(newUsers)
                 .existingRecords(existingRecords)
                 .build();
+    }
+
+    /** 야간 근무(익일 퇴근) 허용 최대 퇴근 시각: 04:59 */
+    private static final LocalTime MAX_OVERNIGHT_END = LocalTime.of(4, 59);
+
+    /**
+     * 엑셀 한 행의 날짜/시간 유효성을 검사하여 실패 사유를 반환한다. 정상이면 null.
+     */
+    private String findExcelRowError(
+            com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item,
+            DateTimeFormatter fmt1, DateTimeFormatter fmt2) {
+        if (item.getUserName() == null || item.getUserName().trim().isEmpty()) {
+            return "근무자 이름이 비어 있습니다.";
+        }
+        try {
+            LocalDate.parse(item.getWorkDate() == null ? "" : item.getWorkDate().trim());
+        } catch (Exception e) {
+            return "근무일 날짜 형식(YYYY-MM-DD) 오류: " + item.getWorkDate();
+        }
+        LocalTime start;
+        LocalTime end;
+        LocalTime rest;
+        try {
+            start = parseTimeString(item.getStartTime(), fmt1, fmt2, "출근 시각");
+            end = parseTimeString(item.getEndTime(), fmt1, fmt2, "퇴근 시각");
+            rest = parseTimeString(item.getBreakTime(), fmt1, fmt2, "휴게 시간");
+        } catch (ResponseStatusException e) {
+            return e.getReason();
+        }
+        if (start == null) {
+            return "출근 시각이 비어 있습니다.";
+        }
+        if (end == null) {
+            return "퇴근 시각이 비어 있습니다.";
+        }
+        if (toMinutes(start) == toMinutes(end)) {
+            return "출근 시간과 퇴근 시간이 같습니다.";
+        }
+        if (toMinutes(end) < toMinutes(start) && end.isAfter(MAX_OVERNIGHT_END)) {
+            return String.format("익일 퇴근 시각은 새벽 04:59까지만 허용됩니다. (출근 %s ~ 퇴근 %s)",
+                    item.getStartTime(), item.getEndTime());
+        }
+        long[] iv = toInterval(start, end);
+        if (rest != null && toMinutes(rest) >= iv[1] - iv[0]) {
+            return "휴게 시간은 근무 시간보다 짧아야 합니다.";
+        }
+        return null;
     }
 
     @Override
@@ -1069,7 +1137,16 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         int skippedRecordsCount = 0;
         boolean shouldOverwrite = Boolean.TRUE.equals(requestDto.getOverwriteExisting());
 
+        int rowSeq = 0;
         for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+            rowSeq++;
+            String rowReason = findExcelRowError(item, timeFmt, timeFmtHh);
+            if (rowReason != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        String.format("%d번째 행(%s) 오류: %s",
+                                item.getRow() != null ? item.getRow() : rowSeq,
+                                item.getUserName() != null ? item.getUserName().trim() : "", rowReason));
+            }
             String name = item.getUserName() != null ? item.getUserName().trim() : "";
             User user = resolvedUsers.get(name);
             if (user == null) {

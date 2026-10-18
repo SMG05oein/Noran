@@ -3,6 +3,15 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 export const releaseHistory = [
   {
+    version: '0.9.16',
+    date: '2026-10-19',
+    features: [
+      '관리자 페이지 요구사항 반영'
+    ],
+    fixes: [
+    ]
+  },
+  {
     version: '0.9.15',
     date: '2026-10-17',
     features: [
@@ -30,7 +39,7 @@ export const releaseHistory = [
     version: '0.9.13',
     date: '2026-10-10',
     features: [
-      '개인정보처리방침 및 시스템 이용규정 개정(v1.2) 반영',
+      '개인정보처리방침 및 시스템 이용규정 개정 반영',
       '약관 개정에 따른 필수 약관 재동의 기능 추가'
     ],
     fixes: []

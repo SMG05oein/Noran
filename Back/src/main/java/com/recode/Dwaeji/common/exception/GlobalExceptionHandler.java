@@ -185,6 +185,55 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    // DB 제약조건 위반 (중복 / FK / NOT NULL 등) → 구체적인 사유와 함께 409
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolation(
+            org.springframework.dao.DataIntegrityViolationException ex, HttpServletRequest request) {
+        Throwable root = ex.getMostSpecificCause();
+        String raw = root != null && root.getMessage() != null ? root.getMessage() : "";
+        String lower = raw.toLowerCase();
+        String message;
+        if (lower.contains("duplicate")) {
+            message = "이미 등록된 데이터와 중복되어 저장할 수 없습니다. (중복 근무기록 또는 중복 사용자 정보) 엑셀 내용을 확인해 주세요.";
+        } else if (lower.contains("foreign key") || lower.contains("cannot add or update a child row")
+                || lower.contains("cannot delete or update a parent row")) {
+            message = "연결된 데이터(직원/근무지)가 존재하지 않아 저장할 수 없습니다. 직원 및 근무지 등록 상태를 확인해 주세요.";
+        } else if (lower.contains("cannot be null") || lower.contains("not-null") || lower.contains("doesn't have a default value")) {
+            message = "필수 값이 누락되어 저장할 수 없습니다. 엑셀의 비어 있는 항목을 확인해 주세요.";
+        } else if (lower.contains("data too long")) {
+            message = "입력 값이 허용 길이를 초과하여 저장할 수 없습니다. 엑셀 내용을 확인해 주세요.";
+        } else {
+            message = "데이터 제약조건 위반으로 저장에 실패했습니다. 엑셀 내용을 확인해 주세요.";
+        }
+
+        systemMonitorService.addErrorLog(
+                raw,
+                "DataIntegrityViolationException",
+                request.getRequestURL().toString(),
+                request.getRequestURI(),
+                getAuthIdentifier(),
+                HttpStatus.CONFLICT.value(),
+                getReferer(request),
+                getClientIp(request)
+        );
+        log.warn("[409 DataIntegrity] {}", raw);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponseDto(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT.getReasonPhrase(), message));
+    }
+
+    // 트랜잭션 커밋 단계에서 감싸져 올라온 제약조건 위반 처리
+    @ExceptionHandler(org.springframework.transaction.TransactionSystemException.class)
+    public ResponseEntity<ErrorResponseDto> handleTransactionSystemException(
+            org.springframework.transaction.TransactionSystemException ex, HttpServletRequest request) {
+        Throwable root = ex.getMostSpecificCause();
+        if (root instanceof java.sql.SQLIntegrityConstraintViolationException) {
+            return handleDataIntegrityViolation(
+                    new org.springframework.dao.DataIntegrityViolationException(root.getMessage(), root), request);
+        }
+        return handleAllExceptions(ex, request);
+    }
+
     // 예측하지 못한 서버 내부 오류 (500)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleAllExceptions(Exception ex, HttpServletRequest request) {

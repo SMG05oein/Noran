@@ -680,3 +680,66 @@
   background: var(--color-surface-hover);
   color: var(--color-text-muted);
 }
+
+/* 비고 셀 (오버플로우 표시 및 팝업 모달) */
+.wat-remark-box {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.wat-remark-box.is-overflow {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.wat-remark-box.is-overflow:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.wat-remark-text {
+  max-height: 76px;
+  overflow: hidden;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.wat-remark-corner-mark {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.wat-remark-box.is-overflow:hover .wat-remark-corner-mark {
+  color: var(--color-primary);
+  opacity: 1;
+}
+
+.wat-remark-modal-body {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  max-height: 380px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.55;
+  font-size: 0.92rem;
+  color: var(--color-text-main, inherit);
+}
+

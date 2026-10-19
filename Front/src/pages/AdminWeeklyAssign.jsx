@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Container, Button, Spinner, Form, Modal, Badge } from 'react-bootstrap';
 import { fetchWorkRequests, saveWorkSchedules } from '../api/workApi';
 import { fetchWorkPlaces, fetchAllUsers } from '../api/authApi';
@@ -89,6 +89,69 @@ const dayMeta = (date) => {
   return { isHoly, isSat };
 };
 
+const RemarkCell = ({ text, userName, onOpen }) => {
+  const contentRef = useRef(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  useEffect(() => {
+    if (!text) {
+      setHasOverflow(false);
+      return;
+    }
+    const el = contentRef.current;
+    if (!el) return;
+
+    const checkOverflow = () => {
+      setHasOverflow(el.scrollHeight > el.clientHeight + 2);
+    };
+    checkOverflow();
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(checkOverflow);
+      resizeObserver.observe(el);
+    }
+    window.addEventListener('resize', checkOverflow);
+
+    return () => {
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', checkOverflow);
+    };
+  }, [text]);
+
+  if (!text) {
+    return <span className="text-muted text-center d-block">-</span>;
+  }
+
+  return (
+    <div
+      className={`wat-remark-box ${hasOverflow ? 'is-overflow' : ''}`}
+      onClick={hasOverflow ? () => onOpen(userName, text) : undefined}
+      title={hasOverflow ? '클릭하여 전체 비고 보기' : text}
+      role={hasOverflow ? 'button' : undefined}
+      tabIndex={hasOverflow ? 0 : undefined}
+      onKeyDown={hasOverflow ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(userName, text);
+        }
+      } : undefined}
+    >
+      <div ref={contentRef} className="wat-remark-text">
+        {text}
+      </div>
+      {hasOverflow && (
+        <span className="wat-remark-corner-mark" aria-hidden="true">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <line x1="2.5" y1="8.5" x2="8.5" y2="2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <line x1="6" y1="9" x2="9" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </span>
+      )}
+    </div>
+  );
+};
+
 const AdminWeeklyAssign = () => {
   const { user } = useAuthStore();
 
@@ -106,6 +169,7 @@ const AdminWeeklyAssign = () => {
   const [addedWorkerUserIdxs, setAddedWorkerUserIdxs] = useState([]);
   const [showAddWorkerModal, setShowAddWorkerModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [remarkModal, setRemarkModal] = useState({ show: false, userName: '', text: '' });
   const [selectedOtherUserIdx, setSelectedOtherUserIdx] = useState('');
   const [workerSearchTerm, setWorkerSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -159,8 +223,8 @@ const AdminWeeklyAssign = () => {
 
     const resolveUserWpIdx = (u) => (
       u.workPlaceIdx || u.branchIdx || u.fkWorkPlaceIdx
-        || loadedBranches.find(b => b.wpName === u.workPlaceName)?.wpIdx
-        || null
+      || loadedBranches.find(b => b.wpName === u.workPlaceName)?.wpIdx
+      || null
     );
 
     let workerList = [];
@@ -327,8 +391,8 @@ const AdminWeeklyAssign = () => {
 
   const resolveUserHomeWpIdx = (u) => (
     u.workPlaceIdx ?? u.branchIdx ?? u.fkWorkPlaceIdx
-      ?? branches.find(b => b.wpName === u.workPlaceName)?.wpIdx
-      ?? null
+    ?? branches.find(b => b.wpName === u.workPlaceName)?.wpIdx
+    ?? null
   );
 
   const isActiveWorker = (u) => {
@@ -639,7 +703,7 @@ const AdminWeeklyAssign = () => {
    */
   const handleSaveAll = async (mode = 'CONFIRM') => {
     const MSG = {
-      DRAFT:   { confirm: "임시 저장하시겠습니까?\n(아직 알바생들에게 공개되지 않습니다)", done: "임시 저장이 완료되었습니다." },
+      DRAFT: { confirm: "임시 저장하시겠습니까?\n(아직 알바생들에게 공개되지 않습니다)", done: "임시 저장이 완료되었습니다." },
       PARTIAL: { confirm: "임시 배정하시겠습니까?\n(배정된 날은 알바생에게 공개되고, 미배정 날은 신청 상태로 유지됩니다)", done: "임시 배정이 완료되었습니다." },
       CONFIRM: { confirm: "배정을 확정하시겠습니까?\n(알바생들에게 최종 결과가 공개됩니다)", done: "배정이 확정되었습니다." },
     };
@@ -1108,23 +1172,11 @@ const AdminWeeklyAssign = () => {
                             );
                           })}
                           <td className="wat-cell wat-cell-remarks" style={{ verticalAlign: 'middle', fontSize: '0.85rem' }}>
-                            {userRemark ? (
-                              <div
-                                className="p-1 px-2 rounded-2 text-wrap text-start"
-                                style={{
-                                  background: 'var(--color-surface)',
-                                  border: '1px solid var(--color-border)',
-                                  maxHeight: '76px',
-                                  overflowY: 'auto',
-                                  lineHeight: 1.3
-                                }}
-                                title={userRemark}
-                              >
-                                {userRemark}
-                              </div>
-                            ) : (
-                              <span className="text-muted text-center d-block">-</span>
-                            )}
+                            <RemarkCell
+                              text={userRemark}
+                              userName={u.userName}
+                              onOpen={(name, text) => setRemarkModal({ show: true, userName: name, text })}
+                            />
                           </td>
                         </tr>
                       );
@@ -1332,6 +1384,35 @@ const AdminWeeklyAssign = () => {
               onClick={() => setShowGuideModal(false)}
             >
               확인
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* 비고 전문 확인 모달 */}
+        <Modal
+          show={remarkModal.show}
+          onHide={() => setRemarkModal({ show: false, userName: '', text: '' })}
+          centered
+          className="wat-remark-modal"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title className="fs-6 fw-bold">
+              {remarkModal.userName}님 비고
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="wat-remark-modal-body">
+              {remarkModal.text}
+            </div>
+          </Modal.Body>
+          <Modal.Footer className="border-0 pt-0">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-pill px-3"
+              onClick={() => setRemarkModal({ show: false, userName: '', text: '' })}
+            >
+              닫기
             </Button>
           </Modal.Footer>
         </Modal>

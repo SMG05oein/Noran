@@ -110,6 +110,7 @@ public class User {
     @Comment("이메일 수신 동의 일시")
     private LocalDateTime emailConsentDate;
 
+    @Builder.Default
     @Column(name = "privacy_consent_agreed", nullable = false)
     @ColumnDefault("false")
     private Boolean privacyConsentAgreed = false;
@@ -117,6 +118,7 @@ public class User {
     @Column(name = "privacy_consent_date")
     private LocalDateTime privacyConsentDate;
 
+    @Builder.Default
     @Column(name = "collection_consent_agreed", nullable = false)
     @ColumnDefault("false")
     private Boolean collectionConsentAgreed = false;
@@ -124,6 +126,7 @@ public class User {
     @Column(name = "collection_consent_date")
     private LocalDateTime collectionConsentDate;
 
+    @Builder.Default
     @Column(name = "terms_consent_agreed", nullable = false)
     @ColumnDefault("false")
     private Boolean termsConsentAgreed = false;

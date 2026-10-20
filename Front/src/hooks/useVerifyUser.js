@@ -38,13 +38,13 @@ const useVerifyUser = () => {
         } else {
           // 정보 조회 실패 처리
           const status = infoRes.status;
-          // 429(요청 과다) 또는 서버 통신 장애(5xx/네트워크 오류)일 때는 강제 로그아웃을 방지
-          if (!status || status === 429 || (status >= 500 && status <= 504)) {
-            console.warn("일시적 서버 통신 장애 또는 요청 과다(429)로 인해 내 정보 갱신을 건너뜁니다.");
-          } else if (status === 401 || status === 403) {
+          if (status === 401 || status === 403) {
             // 리프레시 토큰 만료 등 명시적 인증 실패일 때만 강제 로그아웃
             logout();
             navigate('/login');
+          } else {
+            // 일시적 통신 장애(5xx, 네트워크 오류 등)나 요청 과다(429)일 때는 토큰을 유지하고 강제 로그아웃 차단
+            console.warn("일시적 서버 통신 장애 또는 응답 지연으로 인해 내 정보 갱신을 건너뜁니다 (토큰 유지).", status);
           }
         }
       }
@@ -55,7 +55,9 @@ const useVerifyUser = () => {
     if (location.pathname !== '/login' && location.pathname !== '/signup') {
       verifyUser();
     } else {
-      setIsInitializing(false);
+      queueMicrotask(() => {
+        setIsInitializing(false);
+      });
     }
   }, [location.pathname, isAuthenticated, login, logout, navigate]);
 

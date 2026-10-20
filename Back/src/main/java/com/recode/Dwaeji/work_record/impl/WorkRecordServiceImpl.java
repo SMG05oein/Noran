@@ -1276,4 +1276,86 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " 형식 오류 (HH:mm 권장): " + raw);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto> getUnrecordedWorkSchedules(String requesterId, int year, int month, Long workPlaceIdx) {
+        User requester = getRequester(requesterId);
+        if (!isAdmin(requester)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 미작성 근무 인원을 조회할 수 있습니다.");
+        }
+
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+        LocalDate today = LocalDate.now();
+
+        // 배정일 당일 23:59까지 작성 기한이 있으므로, 배정일이 오늘 이전(wsdDate < today)인 배정만 대상
+        LocalDate effectiveEndDate = endDate.isBefore(today) ? endDate : today.minusDays(1);
+        if (effectiveEndDate.isBefore(startDate)) {
+            return Collections.emptyList();
+        }
+
+        // 1. 해당 기간 배정 조회
+        List<WorkScheduleDaily> schedules;
+        if (workPlaceIdx != null) {
+            schedules = workScheduleDailyRepository.findByWorkPlaceIdxAndWsdDateBetweenFetch(workPlaceIdx, startDate, effectiveEndDate);
+        } else {
+            schedules = workScheduleDailyRepository.findByWsdDateBetweenFetch(startDate, effectiveEndDate);
+        }
+
+        // 2. 해당 기간 실제 등록된 근무 기록 조회
+        List<WorkRecord> records;
+        if (workPlaceIdx != null) {
+            records = workRecordRepository.findByWorkPlace_WpIdxAndWrDateBetween(workPlaceIdx, startDate, effectiveEndDate);
+        } else {
+            records = workRecordRepository.findByWrDateBetween(startDate, effectiveEndDate);
+        }
+
+        // 3. 기록 매핑 키 셋 (userIdx_wrDate_wpIdx)
+        Set<String> recordKeys = new HashSet<>();
+        for (WorkRecord record : records) {
+            if (record.getUser() != null && record.getUser().getUserIdx() != null && record.getWrDate() != null) {
+                Long wpIdx = record.getWorkPlace() != null ? record.getWorkPlace().getWpIdx() : null;
+                recordKeys.add(record.getUser().getUserIdx() + "_" + record.getWrDate() + "_" + (wpIdx != null ? wpIdx : "null"));
+            }
+        }
+
+        // 4. 배정(출근) 대비 기록 없는 인원 추출
+        List<com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto> result = new ArrayList<>();
+        for (WorkScheduleDaily schedule : schedules) {
+            if (schedule.getWsdStatus() != ApplyStatus.출근) {
+                continue;
+            }
+            if (schedule.getUser() == null || schedule.getWsdDate() == null) {
+                continue;
+            }
+
+            Long wpIdx = schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpIdx() : null;
+            String key = schedule.getUser().getUserIdx() + "_" + schedule.getWsdDate() + "_" + (wpIdx != null ? wpIdx : "null");
+
+            if (!recordKeys.contains(key)) {
+                User worker = schedule.getUser();
+                String wpName = schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpName() : null;
+                result.add(com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto.builder()
+                        .wsdIdx(schedule.getWsdIdx())
+                        .userIdx(worker.getUserIdx())
+                        .userName(worker.getUserName())
+                        .userPhone(worker.getUserPhone())
+                        .workPlaceIdx(wpIdx)
+                        .workPlaceName(wpName)
+                        .workDate(schedule.getWsdDate())
+                        .startTime(schedule.getWsdStartTime())
+                        .isConfirmed(schedule.getWsdIsConfirmed())
+                        .isOpen(schedule.getWsdIsOpen())
+                        .isClose(schedule.getWsdIsClose())
+                        .build());
+            }
+        }
+
+        // 정렬: 날짜 오름차순, 이름 오름차순
+        result.sort(Comparator.comparing(com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto::getWorkDate)
+                .thenComparing(dto -> dto.getUserName() != null ? dto.getUserName() : ""));
+
+        return result;
+    }
 }

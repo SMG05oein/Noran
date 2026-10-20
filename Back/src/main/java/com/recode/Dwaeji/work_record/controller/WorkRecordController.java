@@ -49,6 +49,19 @@ public class WorkRecordController {
         return ResponseEntity.ok(workRecordService.getAllWorkRecords(userDetails.getUsername(), workPlaceIdx, userName, year, month, page, size, sortBy, sortDir));
     }
 
+    @Operation(summary = "미작성 근무 배정 목록 조회", description = "특정 년/월의 배정 중 기한(해당일 23:59)이 지났으나 근무 기록이 작성되지 않은 인원 목록을 조회합니다. 관리자 전용.")
+    @GetMapping("/unrecorded")
+    public ResponseEntity<List<UnrecordedWorkDto>> getUnrecordedWorkRecords(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam(required = false) Long workPlaceIdx) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(workRecordService.getUnrecordedWorkSchedules(userDetails.getUsername(), year, month, workPlaceIdx));
+    }
+
     @Operation(summary = "알바생 월별 근무 기록 조회", description = "알바생(일반 유저)이 캘린더에서 특정 구간의 본인 근무 기록을 리스트로 조회합니다.")
     @GetMapping("/monthly")
     public ResponseEntity<List<WorkRecordResponseDto>> getMonthlyWorkRecords(

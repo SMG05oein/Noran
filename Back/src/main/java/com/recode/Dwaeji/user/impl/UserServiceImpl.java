@@ -744,8 +744,13 @@ public class UserServiceImpl implements UserService {
 
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.");
+        } catch (io.jsonwebtoken.JwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다.");
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰 검증에 실패했습니다.");
+            log.error("토큰 재발급 중 서버 오류 발생: {}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "토큰 재발급 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
         }
     }
 

@@ -464,3 +464,30 @@ export const uploadExcelWorkRecords = async (payload) => {
   }
 };
 
+// 특정 년/월의 기한 지난 미작성 알바생 목록 조회 (관리자 전용)
+export const fetchUnrecordedWorkList = async ({ year, month, workPlaceIdx }) => {
+  try {
+    const params = { year, month };
+    if (workPlaceIdx) params.workPlaceIdx = workPlaceIdx;
+
+    try {
+      const response = await globalApiClient.get('/api/work-records/unrecorded', { params });
+      return { success: true, data: Array.isArray(response.data) ? response.data : [] };
+    } catch (err) {
+      if (err.response?.status === 404) {
+        const fallbackRes = await globalApiClient.get('/api/work-record/unrecorded', { params });
+        return { success: true, data: Array.isArray(fallbackRes.data) ? fallbackRes.data : [] };
+      }
+      throw err;
+    }
+  } catch (error) {
+    const errMsg =
+      error.response?.data?.msg ||
+      error.response?.data?.message ||
+      (typeof error.response?.data === 'string' ? error.response.data : null) ||
+      '미작성 알바생 목록을 불러오는데 실패했습니다.';
+    return { success: false, error: errMsg, data: [] };
+  }
+};
+
+

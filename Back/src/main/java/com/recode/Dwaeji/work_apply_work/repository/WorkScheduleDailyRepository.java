@@ -16,6 +16,9 @@ public interface WorkScheduleDailyRepository extends JpaRepository<WorkScheduleD
     @Query("SELECT w FROM WorkScheduleDaily w JOIN FETCH w.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH w.workPlace WHERE w.wsdDate BETWEEN :startDate AND :endDate")
     List<WorkScheduleDaily> findByWsdDateBetweenFetch(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
+    @Query("SELECT w FROM WorkScheduleDaily w JOIN FETCH w.user u LEFT JOIN FETCH u.workPlace LEFT JOIN FETCH w.workPlace WHERE w.workPlace.wpIdx = :wpIdx AND w.wsdDate BETWEEN :startDate AND :endDate")
+    List<WorkScheduleDaily> findByWorkPlaceIdxAndWsdDateBetweenFetch(@Param("wpIdx") Long wpIdx, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
     boolean existsByUser_UserIdxAndWsdDate(Long userIdx, LocalDate date);
 
     List<WorkScheduleDaily> findByUser_UserIdxInAndWsdDate(List<Long> userIdxes, LocalDate date);

@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Container, Dropdown, Card, Table, Button, Spinner, Modal, Form, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, deleteWorkRecord, restoreWorkRecord } from '../api/workApi';
+import { fetchWorkRecords, updateWorkRecord, downloadWorkRecordExcel, fetchWorkRecordHistory, deleteWorkRecord, restoreWorkRecord, fetchUnrecordedWorkList } from '../api/workApi';
 import { fetchWorkPlaces } from '../api/authApi';
 import { format } from 'date-fns';
-import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiRefreshLine, RiArrowRightSLine, RiFileExcel2Line, RiAddLine, RiUpload2Line } from 'react-icons/ri';
+import { RiSearchLine, RiDownload2Line, RiHistoryLine, RiRefreshLine, RiArrowRightSLine, RiFileExcel2Line, RiAddLine, RiUpload2Line, RiAlertLine } from 'react-icons/ri';
 import PaginationBar from '../components/PaginationBar';
 import Loading from '../components/Loading';
 import AdminCreateRecordModal from '../components/AdminCreateRecordModal';
 import AdminExcelUploadModal from '../components/AdminExcelUploadModal';
+import AdminUnrecordedModal from '../components/AdminUnrecordedModal';
 import './AdminMain.css';
 
 const AdminRecords = () => {
@@ -50,6 +51,9 @@ const AdminRecords = () => {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showExcelModal, setShowExcelModal] = useState(false);
+  const [unrecordedList, setUnrecordedList] = useState([]);
+  const [unrecordedLoading, setUnrecordedLoading] = useState(false);
+  const [showUnrecordedModal, setShowUnrecordedModal] = useState(false);
 
   const loadBranches = async () => {
     const branchRes = await fetchWorkPlaces();
@@ -90,11 +94,43 @@ const AdminRecords = () => {
     setLoading(false);
   };
 
-  useEffect(() => { loadBranches(); }, []);
+  const loadUnrecorded = async () => {
+    if (!selectedMonth) return;
+    setUnrecordedLoading(true);
+    const [yStr, mStr] = selectedMonth.split('-');
+    const res = await fetchUnrecordedWorkList({
+      year: parseInt(yStr, 10),
+      month: parseInt(mStr, 10),
+      workPlaceIdx: selectedWpIdx || undefined,
+    });
+    if (res.success && Array.isArray(res.data)) {
+      setUnrecordedList(res.data);
+    } else {
+      setUnrecordedList([]);
+    }
+    setUnrecordedLoading(false);
+  };
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      loadBranches();
+    });
+  }, []);
+
   useEffect(() => { 
-    loadData(); 
-    setPageInput((page + 1).toString());
+    queueMicrotask(() => {
+      loadData(); 
+      setPageInput((page + 1).toString());
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, sortBy, sortDir, searchTerm, selectedWpIdx, selectedMonth]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      loadUnrecorded();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWpIdx, selectedMonth]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -358,6 +394,35 @@ const AdminRecords = () => {
                 onClick={() => setShowCreateModal(true)}
               >
                 <RiAddLine size={18} /> 새 기록 추가
+              </Button>
+
+              <Button 
+                variant={unrecordedList.length > 0 ? "danger" : "outline-secondary"}
+                className="fw-bold d-inline-flex align-items-center gap-1 rounded-pill px-3 py-2 shadow-xs text-nowrap" 
+                onClick={() => setShowUnrecordedModal(true)}
+                title="배정되었으나 출퇴근 기록을 남기지 않은 알바생 조회"
+              >
+                <RiAlertLine size={16} />
+                <span>미작성 알바생</span>
+                <span 
+                  className={`ms-1 px-2 py-0 rounded-pill fw-bold ${
+                    unrecordedList.length > 0
+                      ? 'shadow-xs'
+                      : 'bg-secondary text-white'
+                  }`}
+                  style={{ 
+                    fontSize: '0.8rem', 
+                    lineHeight: '1.4',
+                    backgroundColor: unrecordedList.length > 0 ? '#fff8f0' : undefined,
+                    color: unrecordedList.length > 0 ? '#63391b' : undefined
+                  }}
+                >
+                  {unrecordedLoading ? (
+                    <Spinner animation="border" size="sm" style={{ width: '0.7rem', height: '0.7rem' }} />
+                  ) : (
+                    unrecordedList.length
+                  )}
+                </span>
               </Button>
 
               <Button 
@@ -715,6 +780,16 @@ const AdminRecords = () => {
         onSuccess={() => {
           loadData(true);
         }}
+      />
+
+      <AdminUnrecordedModal
+        show={showUnrecordedModal}
+        onHide={() => setShowUnrecordedModal(false)}
+        unrecordedList={unrecordedList}
+        loading={unrecordedLoading}
+        onRefresh={loadUnrecorded}
+        selectedMonth={selectedMonth}
+        selectedBranchName={branches.find(b => b.wpIdx === selectedWpIdx)?.wpName || '전체'}
       />
 
     </div>

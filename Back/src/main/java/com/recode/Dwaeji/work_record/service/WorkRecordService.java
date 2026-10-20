@@ -27,4 +27,6 @@ public interface WorkRecordService {
     com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto validateExcelUsers(String requesterId, com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto);
 
     com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(String requesterId, com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto);
+
+    java.util.List<com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto> getUnrecordedWorkSchedules(String requesterId, int year, int month, Long workPlaceIdx);
 }

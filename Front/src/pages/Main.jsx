@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Container, Row, Col, Badge, Button } from 'react-bootstrap';
-import { parseISO, addDays, isSameDay, isBefore, startOfDay, format, subMonths, addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { parseISO, isSameDay, isBefore, startOfDay, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import WorkCalendar from '../components/WorkCalendar';
 import Loading from '../components/Loading';
+import BirthdayBanner from '../components/BirthdayBanner';
 import { getMonthlyWorkRecords, getMonthlyWorkApplyWorks } from '../api/workApi';
 import useAuthStore from '../store/useAuthStore';
+import { isBirthdayToday } from '../utils/birthUtils';
 import { RiCalendarCheckLine, RiTimeLine, RiAddLine, RiStore2Line } from 'react-icons/ri';
 import './Main.css';
 
@@ -50,7 +52,10 @@ const Main = () => {
   };
 
   useEffect(() => {
-    loadData();
+    queueMicrotask(() => {
+      loadData();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const parseLocalTime = (time) => {
@@ -155,11 +160,13 @@ const Main = () => {
   }, [workRecords, workRequests]);
 
   const actualBranchName = user?.workPlaceName || user?.branch || '소속 지점';
+  const isBirthday = useMemo(() => isBirthdayToday(user?.userBirth), [user?.userBirth]);
 
   return (
     <div className="main-container">
       <Container className="py-4 py-md-5">
         {loading ? <Loading /> : <>
+          {isBirthday && <BirthdayBanner userName={user?.name} />}
           <div className="worker-hero-card">
             <div className="d-flex justify-content-between align-items-end gap-3">
               <div style={{ flex: '1 1 0%', minWidth: 0 }}>

@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { Container, Card, Table, Button, Spinner, Badge } from 'react-bootstrap';
-import { fetchWorkRecords, fetchDailySchedule } from '../api/workApi';
+import { fetchDailySchedule } from '../api/workApi';
 import { fetchWorkPlaces } from '../api/authApi';
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import { RiCalendarCheckLine, RiStore2Line, RiUserStarLine, RiGroupLine, RiTimeLine } from 'react-icons/ri';
 import AdminCalendar from '../components/AdminCalendar';
 import Loading from '../components/Loading';
+import BirthdayBanner from '../components/BirthdayBanner';
 import { countTotal, countPeak } from '../utils/shiftPeak';
+import { isBirthdayToday } from '../utils/birthUtils';
 import './AdminMain.css';
 
 const AdminMain = () => {
@@ -16,8 +18,6 @@ const AdminMain = () => {
   const navigate = useNavigate();
   const [selectedWpIdx, setSelectedWpIdx] = useState(user?.workPlaceIdx || null);
   const [branches, setBranches] = useState([]);
-
-  const [workRecords, setWorkRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -61,7 +61,10 @@ const AdminMain = () => {
   };
 
   useEffect(() => {
-    loadData();
+    queueMicrotask(() => {
+      loadData();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -75,12 +78,18 @@ const AdminMain = () => {
       }
       setDailyLoading(false);
     };
-    loadDaily();
+
+    queueMicrotask(() => {
+      loadDaily();
+    });
   }, [selectedDate, selectedBranchIdx]);
+
+  const isBirthday = useMemo(() => isBirthdayToday(user?.userBirth), [user?.userBirth]);
 
   return (
     <div className="admin-container">
       <Container className="py-4 py-md-5">
+        {isBirthday && <BirthdayBanner userName={user?.name} />}
         {/* 상단 관리자 대시보드 헤더 */}
         <div className="admin-header-card">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">

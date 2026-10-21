@@ -28,7 +28,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Noran Dwaeji API Documentation")
-                        .description("노란돼지 백엔드 API 명세서")
+                        .description("노란돼지 백엔드 API")
                         .version(version))
                 .addSecurityItem(securityRequirement)
                 .components(components);

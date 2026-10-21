@@ -84,9 +84,27 @@ const PrivacyPolicyContent = () => {
 
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">3. 개인정보 처리업무의 위탁</h5>
-        <p className="small text-muted">
-          회사는 정보주체의 개인정보 처리업무를 외부에 위탁하고 있지 않습니다.<br />
+        <p className="small text-muted mb-3">
+          회사는 원활한 서비스 제공을 위해 다음과 같이 개인정보 처리업무를 외부에 위탁하고 있습니다. 위탁 계약 시 개인정보가 안전하게 관리될 수 있도록 필요한 사항을 규정하고, 수탁자가 개인정보를 안전하게 처리하는지를 감독합니다.
         </p>
+        <div className="table-responsive">
+          <table className="table table-bordered align-middle text-sm" style={{ fontSize: '0.85rem' }}>
+            <thead className="table-light text-center">
+              <tr>
+                <th style={{ width: '35%' }}>수탁자</th>
+                <th style={{ width: '40%' }}>위탁 업무 내용</th>
+                <th style={{ width: '25%' }}>개인정보 보유 및 이용기간</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="text-center">Oracle Cloud Infrastructure (Oracle Corporation)</td>
+                <td>클라우드 서버 호스팅, 데이터 보관 및 서비스 운영 인프라 제공</td>
+                <td className="text-center">회원 탈퇴 시 또는 위탁 계약 종료 시까지<br />(단, 관계 법령에 따른 보존기간이 있는 경우 해당 기간)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="mb-4">
@@ -108,9 +126,49 @@ const PrivacyPolicyContent = () => {
 
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">5. 개인정보의 국외 이전</h5>
-        <p className="small text-muted">
-          회사는 정보주체의 개인정보를 국외로 이전(제공, 위탁, 보관)하지 않습니다.
+        <p className="small text-muted mb-3">
+          회사는 서비스 제공을 위한 클라우드 인프라 이용에 따라 「개인정보 보호법」 제28조의8에 따라 다음과 같이 개인정보를 국외로 이전합니다. 정보주체는 국외 이전에 대한 동의를 거부할 수 있으나, 동의 거부 시 서비스 이용이 제한될 수 있습니다.
         </p>
+        <div className="table-responsive">
+          <table className="table table-bordered align-middle text-sm" style={{ fontSize: '0.85rem' }}>
+            <thead className="table-light text-center">
+              <tr>
+                <th style={{ width: '22%' }}>이전 항목</th>
+                <th style={{ width: '18%' }}>이전 국가</th>
+                <th style={{ width: '20%' }}>이전 받는 자</th>
+                <th style={{ width: '20%' }}>이전 목적·시기·방법</th>
+                <th style={{ width: '20%' }}>보유·이용기간</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  제1조에 따라 수집·처리하는 개인정보 전부<br />
+                  <span className="small text-muted">
+                    (아이디, 이름, 비밀번호, 생년월일, 휴대전화번호, 소속 근무지, 근태·스케줄 정보, 계좌정보, 접속 IP 및 로그인 일시 등)
+                  </span>
+                </td>
+                <td className="text-center">
+                  <strong>일본</strong><br />
+                  <span className="small text-muted">(오사카 리전)</span>
+                </td>
+                <td className="text-center">
+                  Oracle Cloud Infrastructure<br />
+                  <span className="small text-muted">(Oracle Corporation)</span>
+                </td>
+                <td>
+                  <strong>목적:</strong> 클라우드 서버 호스팅·보관 및 서비스 제공<br />
+                  <strong>시기:</strong> 서비스 이용 과정에서 수시<br />
+                  <strong>방법:</strong> 전용 네트워크 또는 암호화된 통신을 통한 전송·저장
+                </td>
+                <td className="text-center">
+                  회원 탈퇴 및 관계 법령상 보존기간까지<br />
+                  <span className="small text-muted">(제1조 보유기간과 동일)</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="mb-4">
@@ -181,7 +239,7 @@ const PrivacyPolicyContent = () => {
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">12. 개인정보 처리방침의 변경 및 고지</h5>
         <p className="small text-muted">
-          이 개인정보 처리방침은 <strong>2026년 09월 26일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
+          이 개인정보 처리방침은 <strong>2026년 10월 22일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
           <br />또한 버전의 의미는 앞 자리는 핵심 내용의 변경 및 추가, 삭제가 있을 시며 뒷 자리는 경미한 내용 수정을 의미합니다.
         </p>
       </div>
@@ -190,6 +248,15 @@ const PrivacyPolicyContent = () => {
         <h5 className="fw-bold mb-3 text-dark">13. 개정 이력</h5>
         <RevisionHistory
           histories={[
+            {
+              version: 'v1.1',
+              date: '2026-10-22',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>Oracle Cloud Infrastructure(일본 오사카 리전) 이용에 따른 개인정보 처리위탁 및 국외 이전 고지 반영</li>
+                </ul>
+              )
+            },
             {
               version: 'v1.0',
               date: '2026-09-26',
@@ -208,13 +275,13 @@ const PrivacyPolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 09월 26일
+          공고일: 2026년 10월 22일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 09월 26일
+          시행일: 2026년 10월 22일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.0
+          버전: v1.1
         </p>
       </div>
     </div>

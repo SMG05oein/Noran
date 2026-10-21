@@ -56,11 +56,13 @@ public class UserInfoDto {
         Integer adminFlag = (user.getUserType() != null && user.getUserType().getUtIsAdmin() != null) ? user.getUserType().getUtIsAdmin() : 0;
         Integer emailConsent = (user.getEmailConsentAgreed() != null && user.getEmailConsentAgreed()) ? 1 : 0;
         
-        // 약관 개정일 설정 (2026-10-17)
-        java.time.LocalDateTime revisionDate = java.time.LocalDateTime.of(2026, 10, 17, 0, 0);
-        Integer privacyConsent = (user.getPrivacyConsentDate() != null && !user.getPrivacyConsentDate().isBefore(revisionDate)) ? 1 : 0;
-        Integer collectionConsent = (user.getCollectionConsentDate() != null && !user.getCollectionConsentDate().isBefore(revisionDate)) ? 1 : 0;
-        Integer termsConsent = (user.getTermsConsentDate() != null && !user.getTermsConsentDate().isBefore(revisionDate)) ? 1 : 0;
+        // 약관별 개정일 (이 날짜 이후 동의한 경우만 유효)
+        java.time.LocalDateTime privacyRevisionDate = java.time.LocalDateTime.of(2026, 10, 22, 0, 0);      // 개인정보처리방침
+        java.time.LocalDateTime collectionRevisionDate = java.time.LocalDateTime.of(2026, 10, 22, 0, 0);   // 개인정보 수집·이용
+        java.time.LocalDateTime termsRevisionDate = java.time.LocalDateTime.of(2026, 9, 26, 0, 0);        // 이용약관
+        Integer privacyConsent = (user.getPrivacyConsentDate() != null && !user.getPrivacyConsentDate().isBefore(privacyRevisionDate)) ? 1 : 0;
+        Integer collectionConsent = (user.getCollectionConsentDate() != null && !user.getCollectionConsentDate().isBefore(collectionRevisionDate)) ? 1 : 0;
+        Integer termsConsent = (user.getTermsConsentDate() != null && !user.getTermsConsentDate().isBefore(termsRevisionDate)) ? 1 : 0;
 
         var ut = user.getUserType();
 

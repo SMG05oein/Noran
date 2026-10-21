@@ -617,7 +617,7 @@ const Signup = () => {
                           className="mb-0 small fw-semibold" 
                           style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
                         >
-                          [필수] 개인정보 수집 및 이용 동의 <span className="text-danger">*</span>
+                          [필수] 개인정보 수집·이용 및 국외 이전 동의 <span className="text-danger">*</span>
                         </span>
                       </div>
                       <button
@@ -633,9 +633,9 @@ const Signup = () => {
                       className="border rounded p-2 small text-muted" 
                       style={{ cursor: 'pointer', height: '65px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
-                      <strong>개인정보 수집 및 이용 동의</strong><br/>
+                      <strong>개인정보 수집·이용 및 국외 이전 동의</strong><br/>
                       1. 수집 항목: 이름, 아이디, 비밀번호, 생년월일, 연락처, 지점, 은행, 계좌 등<br/>
-                      2. 수집 목적: 회원 관리, 스케줄 배정, 급여 지급 및 정산 (클릭하여 전문 확인 및 동의)
+                      2. 국외 이전: 일본(오사카) Oracle Cloud에 서비스 운영 목적 보관 (클릭하여 전문 확인 및 동의)
                     </div>
                   </div>
 

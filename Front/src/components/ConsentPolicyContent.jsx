@@ -64,17 +64,57 @@ const ConsentPolicyContent = () => {
         </p>
       </div>
 
-      <h5 className="fw-bold mt-4 mb-3 text-dark">2. 동의를 거부할 권리 및 불이익</h5>
+      <h5 className="fw-bold mt-4 mb-3 text-dark">2. 개인정보의 국외 이전 (필수)</h5>
+      <p className="small text-muted mb-3">
+        회사는 서비스 제공을 위한 클라우드 인프라 이용에 따라 아래와 같이 개인정보를 국외로 이전합니다. 본 동의는 서비스 이용을 위한 <strong>필수 동의</strong>입니다.
+      </p>
+      <div className="table-responsive mb-4">
+        <table className="table table-bordered align-middle text-sm" style={{ fontSize: '0.9rem' }}>
+          <thead className="table-light text-center">
+            <tr>
+              <th>이전 항목</th>
+              <th>이전 국가</th>
+              <th>이전 받는 자</th>
+              <th>이전 목적·시기·방법</th>
+              <th>보유·이용기간</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>본 동의서 제1조에 따라 수집·이용하는 개인정보 전부</td>
+              <td className="text-center"><strong>일본</strong><br /><span className="small text-muted">(오사카 리전)</span></td>
+              <td className="text-center">Oracle Cloud Infrastructure<br /><span className="small text-muted">(Oracle Corporation)</span></td>
+              <td>
+                <strong>목적:</strong> 클라우드 서버 호스팅·보관 및 서비스 제공<br />
+                <strong>시기:</strong> 서비스 이용 과정에서 수시<br />
+                <strong>방법:</strong> 암호화된 통신을 통한 전송·저장
+              </td>
+              <td>회원 탈퇴 및 관계 법령상 보존기간까지 (제1조와 동일)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h5 className="fw-bold mt-4 mb-3 text-dark">3. 동의를 거부할 권리 및 불이익</h5>
       <p className="small text-muted mb-4">
-        귀하는 위 개인정보 수집·이용에 대한 동의를 거부할 권리가 있습니다.<br />
-        * <strong>필수 항목 동의 거부 시:</strong> 서비스의 본질적인 기능(회원가입, 스케줄 관리, 급여 정산 등) 제공이 불가능하므로 <strong>회원가입 및 서비스 이용이 제한</strong>됩니다.<br />
+        귀하는 위 개인정보 수집·이용 및 국외 이전에 대한 동의를 거부할 권리가 있습니다.<br />
+        * <strong>필수 항목(국외 이전 포함) 동의 거부 시:</strong> 서비스의 본질적인 기능(회원가입, 스케줄 관리, 급여 정산 등) 제공이 불가능하므로 <strong>회원가입 및 서비스 이용이 제한</strong>됩니다.<br />
         * <strong>선택 항목 동의 거부 시:</strong> 동의하지 않으셔도 기본적인 서비스 이용에는 불이익이 없으나, 이메일 공지 등의 <strong>일부 부가 기능 이용이 제한</strong>될 수 있습니다.
       </p>
 
-      <h5 className="fw-bold mt-4 mb-3 text-dark">3. 개정 이력</h5>
+      <h5 className="fw-bold mt-4 mb-3 text-dark">4. 개정 이력</h5>
       <div className="mb-4">
         <RevisionHistory 
           histories={[
+            {
+              version: 'v1.1',
+              date: '2026-10-22',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>Oracle Cloud Infrastructure(일본 오사카 리전) 국외 이전 고지 및 필수 동의 항목 추가</li>
+                </ul>
+              )
+            },
             {
               version: 'v1.0',
               date: '2026-09-26',
@@ -93,13 +133,13 @@ const ConsentPolicyContent = () => {
           <strong>최초 시행일:</strong> 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          <strong>공고일:</strong> 2026년 09월 26일
+          <strong>공고일:</strong> 2026년 10월 22일
         </p>
         <p className="small text-muted mb-1">
-          <strong>시행일:</strong> 2026년 09월 26일
+          <strong>시행일:</strong> 2026년 10월 22일
         </p>
         <p className="small text-muted mb-0">
-          <strong>버전:</strong> v1.0
+          <strong>버전:</strong> v1.1
         </p>
       </div>
     </div>

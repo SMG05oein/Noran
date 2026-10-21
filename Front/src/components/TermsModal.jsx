@@ -1,76 +1,109 @@
+import { useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
-import { RiCheckLine, RiCloseLine } from 'react-icons/ri';
+import { RiCheckLine, RiCloseLine, RiFileTextLine } from 'react-icons/ri';
 import PrivacyPolicyContent from './PrivacyPolicyContent';
 import SystemUsagePolicyContent from './SystemUsagePolicyContent';
 import ConsentPolicyContent from './ConsentPolicyContent';
+import ConsentChangeSummary from './ConsentChangeSummary';
 import useAuthStore from '../store/useAuthStore';
 import { updateTermsConsent } from '../api/authApi';
 
-const TermsModal = ({ show, onHide, type, onAgree, agreed = false }) => {
+const TermsModal = ({
+  show,
+  onHide,
+  type,
+  onAgree,
+  agreed = false,
+  forceReconsent = false,
+}) => {
   const { user } = useAuthStore();
-  
-  // type: 'terms' | 'consent' | 'privacy'
+  const [showFull, setShowFull] = useState(!forceReconsent);
+
   let title = '';
-  let content = null;
+  let fullContent = null;
 
   if (type === 'terms') {
-    title = '근태관리시스템 이용규정';
-    content = <SystemUsagePolicyContent />;
+    title = forceReconsent ? '이용규정 재동의' : '근태관리시스템 이용규정';
+    fullContent = <SystemUsagePolicyContent />;
   } else if (type === 'consent') {
-    title = '개인정보 수집 및 이용 동의';
-    content = <ConsentPolicyContent />;
+    title = forceReconsent ? '수집·이용 동의 재동의' : '개인정보 수집·이용 및 국외 이전 동의';
+    fullContent = <ConsentPolicyContent />;
   } else if (type === 'privacy') {
-    title = '개인정보처리방침 전문';
-    content = <PrivacyPolicyContent />;
+    title = forceReconsent ? '개인정보처리방침 재동의' : '개인정보처리방침 전문';
+    fullContent = <PrivacyPolicyContent />;
   }
 
+  const handleCloseAttempt = () => {
+    if (forceReconsent) {
+      window.alert(
+        '약관 재동의는 필수입니다.\n닫으셔도 서비스를 계속 이용하려면 동의가 필요합니다.'
+      );
+      return;
+    }
+    onHide?.();
+  };
+
   const handleAgree = async () => {
-    // 이미 동의한 상태라면 API 중복 호출 없이 닫기
     if (agreed) {
       if (onAgree) onAgree();
-      onHide();
+      onHide?.();
       return;
     }
 
     if (user) {
-      // 로그인된 사용자면 API를 통해 재동의 처리
       let apiType = type;
-      if (type === 'consent') apiType = 'collection'; // DB/API 규격에 맞게 매핑
+      if (type === 'consent') apiType = 'collection';
 
       const res = await updateTermsConsent(apiType);
       if (res.success) {
-        if (onAgree) onAgree();
-        onHide();
+        if (onAgree) await onAgree();
+        onHide?.();
       } else {
         alert(res.error || '약관 동의 처리에 실패했습니다.');
       }
     } else {
-      // 비로그인 상태 (회원가입 중 등)
       if (onAgree) onAgree();
-      onHide();
+      onHide?.();
     }
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered size="lg">
+    <Modal show={show} onHide={handleCloseAttempt} centered size="lg" backdrop={forceReconsent ? 'static' : true}>
       <Modal.Header closeButton className="border-0 pb-0">
         <Modal.Title className="fw-bold fs-5">{title}</Modal.Title>
       </Modal.Header>
       <Modal.Body className="py-3" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-        {content}
+        {forceReconsent && (
+          <div className="mb-3">
+            <ConsentChangeSummary type={type} />
+            <Button
+              variant="link"
+              className="px-0 mt-3 small fw-semibold d-inline-flex align-items-center gap-1"
+              onClick={() => setShowFull((v) => !v)}
+            >
+              <RiFileTextLine size={16} />
+              {showFull ? '전문 접기' : '전문 보기'}
+            </Button>
+          </div>
+        )}
+        {(!forceReconsent || showFull) && (
+          <div className={forceReconsent ? 'pt-2 border-top' : undefined}>
+            {fullContent}
+          </div>
+        )}
       </Modal.Body>
       <Modal.Footer className="border-0 pt-0">
-        <Button variant="secondary" onClick={onHide} className="rounded-3 px-3">
+        <Button variant="secondary" onClick={handleCloseAttempt} className="rounded-3 px-3">
           <RiCloseLine size={16} /> 닫기
         </Button>
         {onAgree && (
           <Button
-            variant={agreed ? "success" : "primary"}
+            variant={agreed ? 'success' : 'primary'}
             onClick={handleAgree}
             className="fw-bold rounded-3 px-4 d-flex align-items-center gap-1"
           >
             <RiCheckLine size={18} />
-            {agreed ? '이미 동의함 (확인)' : '확인 및 동의 (재동의)'}
+            {agreed ? '이미 동의함 (확인)' : forceReconsent ? '확인 및 동의' : '확인 및 동의 (재동의)'}
           </Button>
         )}
       </Modal.Footer>

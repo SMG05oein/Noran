@@ -33,7 +33,6 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
 	
-	implementation 'com.jcraft:jsch:0.1.55'
 
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -46,6 +45,8 @@ dependencies {
     implementation 'com.github.pjfanning:excel-streaming-reader:4.0.5'
 
     implementation 'com.google.firebase:firebase-admin:9.2.0'
+
+    implementation 'com.github.mwiede:jsch:0.2.23'
 }
 
 tasks.named('test') {

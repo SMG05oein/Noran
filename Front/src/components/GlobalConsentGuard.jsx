@@ -1,42 +1,52 @@
-import React from 'react';
 import useAuthStore from '../store/useAuthStore';
 import TermsModal from './TermsModal';
+import { fetchMyInfo } from '../api/authApi';
+import { agreedFieldForModalType, mapConsentFlags, needsReconsent } from '../utils/consentFlags';
 
 const GlobalConsentGuard = () => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, login } = useAuthStore();
 
-  // 로그인되지 않았거나 유저 정보가 없으면 렌더링 안 함
   if (!isAuthenticated || !user) return null;
 
-  // 세 가지 약관 중 재동의가 필요한 첫 번째 항목을 찾음
-  // 백엔드에서 user 객체 안에 이 boolean 값들을 줘야 함
-  const needsPrivacy = user.needsPrivacyConsent;
-  const needsCollection = user.needsCollectionConsent;
-  const needsTerms = user.needsTermsConsent;
+  // *ConsentAgreed === 0 만 재동의. 1이면 스킵. 관리자도 동일.
+  const needsPrivacy = needsReconsent(user.privacyConsentAgreed);
+  const needsCollection = needsReconsent(user.collectionConsentAgreed);
+  const needsTerms = needsReconsent(user.termsConsentAgreed);
 
-  // 띄워야 할 모달 타입 결정
   let modalType = null;
   if (needsPrivacy) modalType = 'privacy';
-  else if (needsCollection) modalType = 'consent'; // 프론트엔드에서는 'consent'로 사용됨
+  else if (needsCollection) modalType = 'consent';
   else if (needsTerms) modalType = 'terms';
 
-  const handleAgree = () => {
-    // 동의 처리가 완료되면 백엔드 DB가 업데이트됩니다.
-    // 프론트엔드에서는 새로고침하여 /me API를 다시 호출해 user.needs*** 상태를 최신화합니다.
-    window.location.reload();
+  const afterAgree = async (agreedModalType) => {
+    const field = agreedFieldForModalType(agreedModalType);
+    const current = useAuthStore.getState().user;
+    // PUT 직후 /me 지연 대비: 동의한 항목은 즉시 1로 올려 다음 팝업만 남김
+    if (field && current) {
+      login({ ...current, [field]: 1 });
+    }
+
+    const infoRes = await fetchMyInfo();
+    if (infoRes.success && infoRes.data) {
+      const latest = useAuthStore.getState().user;
+      login({
+        ...latest,
+        ...mapConsentFlags(infoRes.data),
+        isAdmin: infoRes.data.is_admin ?? infoRes.data.isAdmin ?? latest?.isAdmin,
+      });
+    }
   };
 
-  // 띄울 모달이 있다면 (모달을 닫지 못하도록 강제함)
   if (modalType) {
     return (
       <TermsModal
+        key={modalType}
         show={true}
-        onHide={() => {
-          // 강제 모달이므로 onHide 시 아무 동작도 하지 않아 모달이 닫히지 않게 함
-        }}
+        onHide={() => {}}
         type={modalType}
-        onAgree={handleAgree}
+        onAgree={() => afterAgree(modalType)}
         agreed={false}
+        forceReconsent
       />
     );
   }

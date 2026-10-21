@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { fetchMyInfo } from '../api/authApi';
+import { mapConsentFlags } from '../utils/consentFlags';
 
 const useVerifyUser = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -25,12 +26,14 @@ const useVerifyUser = () => {
             workPlaceIdx: infoRes.data.workPlaceIdx,
             userType: infoRes.data.userTypeName,
             userHourlyWage: infoRes.data.userHourlyWage,
-            isAdmin: infoRes.data.is_admin,
+            isAdmin: infoRes.data.is_admin ?? infoRes.data.isAdmin,
             fkUtIdx: infoRes.data.fkUtIdx,
             userBirth: infoRes.data.userBirth,
-            needsPrivacyConsent: infoRes.data.needsPrivacyConsent,
-            needsCollectionConsent: infoRes.data.needsCollectionConsent,
-            needsTermsConsent: infoRes.data.needsTermsConsent
+            ...mapConsentFlags(infoRes.data),
+            // 레거시 needs* 잔존 시 오판 방지
+            needsPrivacyConsent: undefined,
+            needsCollectionConsent: undefined,
+            needsTermsConsent: undefined,
           };
           // 최신 정보로 스토어 업데이트 (토큰은 인터셉터 갱신 로직을 타기 때문에 상태 유지)
           const currentTokens = useAuthStore.getState().user?.tokens;

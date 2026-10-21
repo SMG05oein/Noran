@@ -4,6 +4,7 @@ import useAuthStore from '../store/useAuthStore';
 import { authLogin, fetchMyInfo } from '../api/authApi';
 import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
 import { RiUser3Line, RiLockPasswordLine, RiRestaurantLine } from 'react-icons/ri';
+import { mapConsentFlags } from '../utils/consentFlags';
 import './Auth.css';
 
 const Login = () => {
@@ -58,8 +59,12 @@ const Login = () => {
             workPlaceIdx: infoRes.data.workPlaceIdx,
             userType: infoRes.data.userTypeName,
             userHourlyWage: infoRes.data.userHourlyWage,
-            isAdmin: infoRes.data.is_admin,
-            fkUtIdx: infoRes.data.fkUtIdx
+            isAdmin: infoRes.data.is_admin ?? infoRes.data.isAdmin,
+            fkUtIdx: infoRes.data.fkUtIdx,
+            ...mapConsentFlags(infoRes.data),
+            needsPrivacyConsent: undefined,
+            needsCollectionConsent: undefined,
+            needsTermsConsent: undefined,
           };
         }
 

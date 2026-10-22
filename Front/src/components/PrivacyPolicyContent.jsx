@@ -98,7 +98,14 @@ const PrivacyPolicyContent = () => {
             </thead>
             <tbody>
               <tr>
-                <td className="text-center">Oracle Cloud Infrastructure (Oracle Corporation)</td>
+                <td>
+                  <strong>Oracle Corporation</strong><br />
+                  <span className="small text-muted">
+                    (Oracle Cloud Infrastructure 제공)<br />
+                    연락처: privacy_ww@oracle.com<br />
+                    주소: 2300 Oracle Way, Austin, TX 78741, USA
+                  </span>
+                </td>
                 <td>클라우드 서버 호스팅, 데이터 보관 및 서비스 운영 인프라 제공</td>
                 <td className="text-center">회원 탈퇴 시 또는 위탁 계약 종료 시까지<br />(단, 관계 법령에 따른 보존기간이 있는 경우 해당 기간)</td>
               </tr>
@@ -127,16 +134,18 @@ const PrivacyPolicyContent = () => {
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">5. 개인정보의 국외 이전</h5>
         <p className="small text-muted mb-3">
-          회사는 서비스 제공을 위한 클라우드 인프라 이용에 따라 「개인정보 보호법」 제28조의8에 따라 다음과 같이 개인정보를 국외로 이전합니다. 정보주체는 국외 이전에 대한 동의를 거부할 수 있으나, 동의 거부 시 서비스 이용이 제한될 수 있습니다.
+          회사는 서비스 제공을 위한 클라우드 인프라 이용에 따라
+          <strong> 「개인정보 보호법」 제28조의8 제1항 제3호 가목 및 제1호</strong>
+          에 근거하여 정보주체의 동의를 받아 다음과 같이 개인정보를 국외로 이전합니다.
         </p>
-        <div className="table-responsive">
+        <div className="table-responsive mb-3">
           <table className="table table-bordered align-middle text-sm" style={{ fontSize: '0.85rem' }}>
             <thead className="table-light text-center">
               <tr>
                 <th style={{ width: '22%' }}>이전 항목</th>
-                <th style={{ width: '18%' }}>이전 국가</th>
-                <th style={{ width: '20%' }}>이전 받는 자</th>
-                <th style={{ width: '20%' }}>이전 목적·시기·방법</th>
+                <th style={{ width: '14%' }}>이전 국가</th>
+                <th style={{ width: '22%' }}>이전 받는 자</th>
+                <th style={{ width: '22%' }}>이전 목적·시기·방법</th>
                 <th style={{ width: '20%' }}>보유·이용기간</th>
               </tr>
             </thead>
@@ -152,14 +161,18 @@ const PrivacyPolicyContent = () => {
                   <strong>일본</strong><br />
                   <span className="small text-muted">(오사카 리전)</span>
                 </td>
-                <td className="text-center">
-                  Oracle Cloud Infrastructure<br />
-                  <span className="small text-muted">(Oracle Corporation)</span>
+                <td>
+                  <strong>Oracle Corporation</strong><br />
+                  <span className="small text-muted">
+                    (Oracle Cloud Infrastructure)<br />
+                    연락처: privacy_ww@oracle.com<br />
+                    주소: 2300 Oracle Way, Austin, TX 78741, USA
+                  </span>
                 </td>
                 <td>
                   <strong>목적:</strong> 클라우드 서버 호스팅·보관 및 서비스 제공<br />
-                  <strong>시기:</strong> 서비스 이용 과정에서 수시<br />
-                  <strong>방법:</strong> 전용 네트워크 또는 암호화된 통신을 통한 전송·저장
+                  <strong>시기:</strong> 최초 이전일 2026년 10월 22일, 이후 서비스 이용 시 수시 전송<br />
+                  <strong>방법:</strong> HTTPS 등 암호화된 통신을 통한 전송·저장
                 </td>
                 <td className="text-center">
                   회원 탈퇴 및 관계 법령상 보존기간까지<br />
@@ -168,6 +181,11 @@ const PrivacyPolicyContent = () => {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div className="small text-muted">
+          <strong>국외 이전 동의 거부 방법·절차 및 효과</strong><br />
+          * <strong>거부 방법·절차:</strong> 정보주체는 개인정보 보호책임자(제10조)에게 전화 또는 서면·전자우편 등으로 국외 이전 동의를 거부할 수 있습니다. 회원가입 단계에서는 동의 화면에서 동의하지 않음으로써 거부할 수 있습니다.<br />
+          * <strong>거부의 효과:</strong> 국외 이전 동의는 서비스 제공에 필수적이므로, 동의를 거부하는 경우 회원가입이 제한되거나 기존 회원의 경우 회원 탈퇴 및 개인정보 삭제 절차가 진행됩니다. (단, 관계 법령에 따른 보존 의무가 있는 정보는 해당 기간 동안 보관 후 파기합니다.)
         </div>
       </div>
 
@@ -200,7 +218,7 @@ const PrivacyPolicyContent = () => {
           &nbsp;&nbsp; - <strong>[암호화 저장 항목]</strong><br />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; · <strong>비밀번호:</strong> 복호화가 불가능한 일방향 암호화(해시) 적용<br />
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; · <strong>계좌번호:</strong> 안전한 암호화 알고리즘을 이용한 양방향 암호화 저장<br />
-          * <strong>물리적 조치:</strong> 데이터 보관 서버에 대한 접근 통제
+          * <strong>물리적·환경적 조치(클라우드):</strong> 클라우드 계정 및 접근키(API 키·SSH 키 등) 관리, 관리자 권한 최소화, 네트워크 접근 제한(방화벽·보안그룹 등), 클라우드 제공자의 데이터센터 물리적 보안 통제에 대한 계약상 보장 확인
         </p>
       </div>
 
@@ -240,6 +258,7 @@ const PrivacyPolicyContent = () => {
         <h5 className="fw-bold mb-3 text-dark">12. 개인정보 처리방침의 변경 및 고지</h5>
         <p className="small text-muted">
           이 개인정보 처리방침은 <strong>2026년 10월 22일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
+          <br />다만, 긴급한 서버 이전, 보안 사고 대응 등 불가피한 사유가 있는 경우에는 시행 후 지체 없이 공지할 수 있습니다.
           <br />또한 버전의 의미는 앞 자리는 핵심 내용의 변경 및 추가, 삭제가 있을 시며 뒷 자리는 경미한 내용 수정을 의미합니다.
         </p>
       </div>
@@ -249,11 +268,13 @@ const PrivacyPolicyContent = () => {
         <RevisionHistory
           histories={[
             {
-              version: 'v1.1',
+              version: 'v2.0',
               date: '2026-10-22',
               content: (
                 <ul className="mb-0 ps-3 mt-1">
-                  <li>Oracle Cloud Infrastructure(일본 오사카 리전) 이용에 따른 개인정보 처리위탁 및 국외 이전 고지 반영</li>
+                  <li>
+                    <strong>개정 사유:</strong> 서비스 서버를 Oracle Cloud Infrastructure(일본 오사카 리전)로 이전함에 따라, 개인정보의 국외 보관·처리가 발생하여 관련 고지·동의가 필요해짐
+                  </li>
                 </ul>
               )
             },
@@ -281,7 +302,7 @@ const PrivacyPolicyContent = () => {
           시행일: 2026년 10월 22일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.1
+          버전: v2.0
         </p>
       </div>
     </div>

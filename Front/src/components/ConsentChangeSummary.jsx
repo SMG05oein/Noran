@@ -2,22 +2,21 @@
 
 const SUMMARIES = {
   privacy: {
-    version: 'v1.1',
+    version: 'v2.0',
     date: '2026-10-22',
     title: '개인정보처리방침 변경 요약',
     bullets: [
-      '서버를 Oracle Cloud Infrastructure(일본 오사카 리전)로 이전함에 따라, 개인정보 처리위탁(3조)을 추가했습니다.',
-      '개인정보의 국외 이전(5조)을 “이전하지 않음”에서 일본(오사카) OCI 보관·호스팅으로 변경했습니다.',
-      '이전 항목은 서비스에서 수집·처리하는 개인정보 전부이며, 보유기간은 기존과 동일합니다.',
+      '개정 사유: 서버를 일본(오사카) Oracle Cloud로 이전하면서 개인정보가 국외에 보관·처리됩니다.',
+      '안전조치(8조)를 클라우드 기준(계정·접근키 관리, 네트워크 접근 제한 등)으로 수정했습니다.',
     ],
   },
   consent: {
-    version: 'v1.1',
+    version: 'v2.0',
     date: '2026-10-22',
     title: '개인정보 수집·이용 동의 변경 요약',
     bullets: [
-      '국외 이전(일본 오사카, Oracle Cloud) 고지를 필수 동의 항목으로 추가했습니다.',
-      '동의 거부 시 회원가입 및 서비스 이용이 제한될 수 있습니다.',
+      '개정 사유: 일본(오사카) Oracle Cloud 이전으로 국외 이전이 발생하여 필수 동의로 고지합니다.',
+      '재동의 사유: 국외 이전은 동의 사항이므로 기존 회원에게도 동의를 다시 받습니다.',
     ],
   },
   terms: {
@@ -25,7 +24,7 @@ const SUMMARIES = {
     date: '2026-09-26',
     title: '이용규정',
     bullets: [
-      '',
+      '이번 서버 이전으로 이용규정 본문은 변경되지 않았습니다. 재동의가 필요한 경우 전문을 확인해 주세요.',
     ],
   },
 };
@@ -43,7 +42,7 @@ const ConsentChangeSummary = ({ type }) => {
         이번에 바뀐 내용만 정리했습니다. 아래 <strong>전문 보기</strong>에서 전체 문서를 확인할 수 있습니다.
       </p>
       <ul className="small mb-0 ps-3" style={{ lineHeight: 1.7 }}>
-        {summary.bullets.map((item) => (
+        {summary.bullets.filter(Boolean).map((item) => (
           <li key={item} className="mb-2">{item}</li>
         ))}
       </ul>

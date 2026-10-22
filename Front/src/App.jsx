@@ -127,7 +127,7 @@ function App() {
       <NoticeModal />
       <ServerDownOverlay />
       <GlobalConsentGuard />
-      {!location.pathname.startsWith('/dev/dashboard') && <DevIpOtpGate />}
+      <DevIpOtpGate />
       <Suspense fallback={PageFallback}>
         <Routes>
           <Route path="/login" element={<Login />} />

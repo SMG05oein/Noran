@@ -1,6 +1,7 @@
 import axios from 'axios';
 import useAuthStore from '../store/useAuthStore';
 import useServerStateStore from '../store/useServerStateStore';
+import { applyClientPageHeader, getClientPageHeader } from './clientPageHeader';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -23,6 +24,7 @@ globalApiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    applyClientPageHeader(config.headers);
     return config;
   },
   (error) => Promise.reject(error)
@@ -47,7 +49,10 @@ const processQueue = (error, token = null) => {
 const requestRefreshTokenWithRetry = async (retries = 2, delayMs = 1000) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await axios.post(`${API_BASE_URL}/api/user/refresh`, {}, { withCredentials: true });
+      return await axios.post(`${API_BASE_URL}/api/user/refresh`, {}, {
+        withCredentials: true,
+        headers: getClientPageHeader(),
+      });
     } catch (err) {
       const status = err.response?.status;
       // 401이나 403이면 리프레시 토큰 자체가 만료/위조된 것이므로 즉시 에러 발생 (재시도 불필요)

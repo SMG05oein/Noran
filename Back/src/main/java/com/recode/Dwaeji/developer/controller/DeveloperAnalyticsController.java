@@ -54,7 +54,7 @@ public class DeveloperAnalyticsController {
     @PreAuthorize("hasRole('DEVELOPER')")
     public ResponseEntity<Map<String, Object>> getStatusBreakdown(
             @RequestParam(defaultValue = "24") int hours) {
-        // Additive: previous/delta for period compare; flat 2xx..total kept for Front compat
+        // Additive: previous/delta for period compare; lifetime = all-time Redis totals; flat 2xx..total = window
         return ResponseEntity.ok(systemMonitorService.getStatusBreakdownCompared(normalizeHours(hours)));
     }
 

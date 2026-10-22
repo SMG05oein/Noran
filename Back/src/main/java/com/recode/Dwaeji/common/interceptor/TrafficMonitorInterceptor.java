@@ -1,5 +1,6 @@
 package com.recode.Dwaeji.common.interceptor;
 
+import com.recode.Dwaeji.common.util.ClientPageResolver;
 import com.recode.Dwaeji.developer.service.SystemMonitorService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -81,13 +82,7 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
                 who = request.getUserPrincipal().getName();
             }
 
-            String referer = request.getHeader("Referer");
-            if (referer == null || referer.isEmpty()) {
-                referer = request.getHeader("Origin");
-            }
-            if (referer == null || referer.isEmpty()) {
-                referer = "알 수 없음";
-            }
+            String referer = ClientPageResolver.resolve(request);
 
             String clientIp = request.getHeader("X-Forwarded-For");
             if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {

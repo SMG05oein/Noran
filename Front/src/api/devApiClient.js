@@ -6,6 +6,7 @@ import {
   waitForDevIpOtp,
   isDevIpOtpRequiredError,
 } from './devIpToken';
+import { applyClientPageHeader } from './clientPageHeader';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -26,8 +27,13 @@ devApiClient.interceptors.request.use(
     }
     const ipToken = getDevIpToken();
     if (ipToken && !config.headers[DEV_IP_OTP_HEADER]) {
-      config.headers[DEV_IP_OTP_HEADER] = ipToken;
+      if (typeof config.headers.set === 'function') {
+        config.headers.set(DEV_IP_OTP_HEADER, ipToken);
+      } else {
+        config.headers[DEV_IP_OTP_HEADER] = ipToken;
+      }
     }
+    applyClientPageHeader(config.headers);
     return config;
   },
   (error) => Promise.reject(error)
@@ -60,11 +66,14 @@ devApiClient.interceptors.response.use(
         const ipToken = await waitForDevIpOtp();
         config.__ipOtpRetried = true;
         config.headers = config.headers || {};
-        if (ipToken) {
-          config.headers[DEV_IP_OTP_HEADER] = ipToken;
+        const nextIp = ipToken || getDevIpToken();
+        if (typeof config.headers.set === 'function') {
+          config.headers.set(DEV_IP_OTP_HEADER, nextIp);
         } else {
-          config.headers[DEV_IP_OTP_HEADER] = getDevIpToken();
+          config.headers[DEV_IP_OTP_HEADER] = nextIp;
         }
+        // OTP 모달 후 재시도 — 현재 페이지(대시보드 등) URL 다시 주입
+        applyClientPageHeader(config.headers);
         return devApiClient(config);
       } catch {
         return Promise.reject(error);

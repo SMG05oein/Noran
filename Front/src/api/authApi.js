@@ -1,6 +1,7 @@
 import { globalApiClient as apiClient } from './apiClient';
 import axios from 'axios';
 import { extractAxiosErrorMessage } from '../utils/syncApiProgress';
+import { getClientPageHeader } from './clientPageHeader';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const addUrl = '/api/user';
@@ -31,7 +32,10 @@ export const authSignup = async (userData) => {
 
 export const refreshAccessToken = async () => {
   try {
-    const response = await axios.post(`${API_BASE_URL}${addUrl}/refresh`, {}, { withCredentials: true });
+    const response = await axios.post(`${API_BASE_URL}${addUrl}/refresh`, {}, {
+      withCredentials: true,
+      headers: getClientPageHeader(),
+    });
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: '토큰 갱신에 실패했습니다.' };

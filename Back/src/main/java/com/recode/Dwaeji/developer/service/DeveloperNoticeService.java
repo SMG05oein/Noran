@@ -7,6 +7,7 @@ import com.recode.Dwaeji.developer.dto.AnnouncementListResponseDto;
 import com.recode.Dwaeji.developer.dto.AnnouncementResponseDto;
 import com.recode.Dwaeji.developer.dto.MaintenanceToggleRequestDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,20 +18,20 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class DeveloperNoticeService {
 
-    private final AnnouncementRepository announcementRepository;
+    static final String REDIS_MAINTENANCE = "ops:maintenance";
+    private static final String F_IMMEDIATE = "immediate";
+    private static final String F_MESSAGE = "message";
+    private static final String F_START = "scheduledStart";
+    private static final String F_END = "scheduledEnd";
 
-    private final AtomicBoolean immediateMaintenance = new AtomicBoolean(false);
-    private final AtomicReference<String> maintenanceMessage = new AtomicReference<>(null);
-    private final AtomicReference<Instant> scheduledStart = new AtomicReference<>(null);
-    private final AtomicReference<Instant> scheduledEnd = new AtomicReference<>(null);
+    private final AnnouncementRepository announcementRepository;
+    private final StringRedisTemplate redis;
 
     private static Instant parseInstant(String iso) {
         if (iso == null || iso.isBlank()) return null;
@@ -77,11 +78,11 @@ public class DeveloperNoticeService {
     public Map<String, Object> maintenanceStatusMap() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("maintenanceMode", computeActive());
-        m.put("message", maintenanceMessage.get());
-        Instant s = scheduledStart.get();
-        Instant e = scheduledEnd.get();
-        m.put("scheduledStart", s != null ? s.toString() : null);
-        m.put("scheduledEnd", e != null ? e.toString() : null);
+        m.put("message", blankToNull(hget(F_MESSAGE)));
+        String s = blankToNull(hget(F_START));
+        String e = blankToNull(hget(F_END));
+        m.put("scheduledStart", s);
+        m.put("scheduledEnd", e);
         return m;
     }
 
@@ -130,24 +131,32 @@ public class DeveloperNoticeService {
 
     public Map<String, Object> setMaintenanceMode(MaintenanceToggleRequestDto request) {
         boolean enabled = request.getEnabled() != null && request.getEnabled();
-        immediateMaintenance.set(enabled);
+        hset(F_IMMEDIATE, enabled ? "true" : "false");
         if (request.getMessage() != null) {
-            maintenanceMessage.set(request.getMessage().isBlank() ? null : request.getMessage());
-        } else if (!enabled) {
-            // keep message unless clearing schedule entirely
+            if (request.getMessage().isBlank()) {
+                redis.opsForHash().delete(REDIS_MAINTENANCE, F_MESSAGE);
+            } else {
+                hset(F_MESSAGE, request.getMessage());
+            }
         }
 
         Instant start = parseInstant(request.getScheduledStart());
         Instant end = parseInstant(request.getScheduledEnd());
         if (start != null || end != null) {
-            scheduledStart.set(start);
-            scheduledEnd.set(end);
+            if (start != null) {
+                hset(F_START, start.toString());
+            } else {
+                redis.opsForHash().delete(REDIS_MAINTENANCE, F_START);
+            }
+            if (end != null) {
+                hset(F_END, end.toString());
+            } else {
+                redis.opsForHash().delete(REDIS_MAINTENANCE, F_END);
+            }
         } else if (!enabled) {
-            // immediate off without schedule fields → clear schedule
-            scheduledStart.set(null);
-            scheduledEnd.set(null);
+            redis.opsForHash().delete(REDIS_MAINTENANCE, F_START, F_END);
             if (request.getMessage() == null || request.getMessage().isBlank()) {
-                maintenanceMessage.set(null);
+                redis.opsForHash().delete(REDIS_MAINTENANCE, F_MESSAGE);
             }
         }
 
@@ -159,24 +168,22 @@ public class DeveloperNoticeService {
      */
     @Scheduled(fixedDelayString = "${alert.check-ms:60000}")
     public void refreshScheduleFlag() {
-        // no-op side effects; computeActive() reads schedule live.
-        // Kept so scheduling is warm; could clear immediate after window ends if desired.
-        Instant end = scheduledEnd.get();
-        Instant start = scheduledStart.get();
+        Instant end = parseStoredInstant(hget(F_END));
+        Instant start = parseStoredInstant(hget(F_START));
         if (start != null && end != null) {
             Instant now = Instant.now();
-            if (now.isAfter(end) && immediateMaintenance.get()) {
+            if (now.isAfter(end) && "true".equals(hget(F_IMMEDIATE))) {
                 // scheduled window ended — do not auto-clear immediate intentional ON
             }
         }
     }
 
     private boolean computeActive() {
-        if (immediateMaintenance.get()) {
+        if ("true".equals(hget(F_IMMEDIATE))) {
             return true;
         }
-        Instant start = scheduledStart.get();
-        Instant end = scheduledEnd.get();
+        Instant start = parseStoredInstant(hget(F_START));
+        Instant end = parseStoredInstant(hget(F_END));
         if (start == null && end == null) {
             return false;
         }
@@ -184,5 +191,27 @@ public class DeveloperNoticeService {
         boolean afterStart = start == null || !now.isBefore(start);
         boolean beforeEnd = end == null || !now.isAfter(end);
         return afterStart && beforeEnd;
+    }
+
+    private String hget(String field) {
+        Object v = redis.opsForHash().get(REDIS_MAINTENANCE, field);
+        return v != null ? v.toString() : null;
+    }
+
+    private void hset(String field, String value) {
+        redis.opsForHash().put(REDIS_MAINTENANCE, field, value);
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
+    }
+
+    private static Instant parseStoredInstant(String iso) {
+        if (iso == null || iso.isBlank()) return null;
+        try {
+            return Instant.parse(iso);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

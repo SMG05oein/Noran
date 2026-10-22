@@ -27,6 +27,18 @@ const formatUptime = (seconds = 0) => {
   return `${h}시간 ${m}분 ${sec}초`;
 };
 
+/** recent_errors.requestPage 만 표시 (없으면 알 수 없음). 스킴 없으면 https:// 보정 */
+const formatRequestPage = (err) => {
+  const page = (err?.requestPage || '').trim();
+  if (!page) return '알 수 없음';
+  if (/^https?:\/\//i.test(page)) return page;
+  // BE 표시용 `dwaeji.jp/dev/dashboard` → `https://dwaeji.jp/dev/dashboard`
+  if (/^[a-z0-9.-]+\.[a-z]{2,}([/?#]|$)/i.test(page)) {
+    return `https://${page}`;
+  }
+  return page;
+};
+
 const StatusPill = ({ ok, label, unknown, tone }) => {
   if (unknown) return <span className="dc-pill dc-pill-muted">{label || '없음'}</span>;
   const resolved = tone || (ok ? 'ok' : 'bad');
@@ -405,9 +417,9 @@ const DevMain = () => {
             <div className="dc-grid-2">
               <div className="dc-panel">
                 <div className="dc-panel-head">
-                  <h2 className="dc-panel-title">트래픽 (프로세스 기동 이후)</h2>
+                  <h2 className="dc-panel-title">트래픽 (Redis 누적)</h2>
                   <span className="dc-mono" style={{ color: 'var(--dc-muted)', fontSize: '0.75rem' }}>
-                    합계 {sysInfo.traffic?.total ?? 0}
+                    합계 {sysInfo.traffic?.total ?? 0} · 배포 후에도 유지
                   </span>
                 </div>
                 <div className="dc-panel-body">
@@ -485,7 +497,7 @@ const DevMain = () => {
               <div className="dc-panel-head">
                 <h2 className="dc-panel-title">최근 오류</h2>
                 <span className="dc-mono" style={{ color: 'var(--dc-muted)', fontSize: '0.72rem' }}>
-                  행 클릭 → 로그 탭
+                  최대 100건 · 행 클릭 → 로그 탭
                 </span>
               </div>
               <div className="dc-panel-body tight">
@@ -500,6 +512,7 @@ const DevMain = () => {
                           <th>요청자</th>
                           <th>코드</th>
                           <th>경로</th>
+                          <th>요청 페이지</th>
                           <th>메시지</th>
                         </tr>
                       </thead>
@@ -517,6 +530,9 @@ const DevMain = () => {
                             <td>{err.who}</td>
                             <td style={{ color: 'var(--dc-warn)' }}>{err.httpCode}</td>
                             <td className="dc-mono" style={{ color: 'var(--dc-info)' }}>{err.apiPath}</td>
+                            <td className="dc-mono" style={{ color: 'var(--dc-muted)', maxWidth: 220 }}>
+                              {formatRequestPage(err)}
+                            </td>
                             <td style={{ color: 'var(--dc-danger)' }}>{err.message}</td>
                           </tr>
                         ))}

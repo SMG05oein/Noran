@@ -350,6 +350,46 @@
   font-family: var(--dc-mono);
 }
 
+.dev-console .dc-seg {
+  display: inline-flex;
+  border: 1px solid var(--dc-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--dc-bg);
+}
+
+.dev-console .dc-seg-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--dc-muted);
+  font-family: var(--dc-mono);
+  font-size: 0.72rem;
+  font-weight: 550;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.dev-console .dc-seg-btn + .dc-seg-btn {
+  border-left: 1px solid var(--dc-border);
+}
+
+.dev-console .dc-seg-btn:hover:not(:disabled) {
+  color: var(--dc-fg, #e6edf3);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dev-console .dc-seg-btn.active {
+  color: #e6edf3;
+  background: rgba(88, 166, 255, 0.18);
+}
+
+.dev-console .dc-seg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .dev-console .dc-pill {
   display: inline-flex;
   align-items: center;

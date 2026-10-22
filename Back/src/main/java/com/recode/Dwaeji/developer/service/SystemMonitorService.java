@@ -3,61 +3,64 @@ package com.recode.Dwaeji.developer.service;
 import com.recode.Dwaeji.developer.dto.TopEndpointDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
 public class SystemMonitorService {
 
-    private static final int MAX_ERRORS = 50;
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    /**
-     * Ring buffer of recent calls for time-window analytics.
-     */
-    private static final int MAX_CALL_SAMPLES = 20_000;
-    private final AtomicLong successCount = new AtomicLong(0);
-    private final AtomicLong redirectionCount = new AtomicLong(0);
-    private final AtomicLong notFoundCount = new AtomicLong(0);
-    private final AtomicLong clientErrorCount = new AtomicLong(0);
-    private final AtomicLong serverErrorCount = new AtomicLong(0);
-    private final AtomicLong rateLimitedCount = new AtomicLong(0);
-    private final AtomicLong totalCount = new AtomicLong(0);
+    static final String REDIS_TRAFFIC = "ops:traffic";
+    static final String REDIS_ERRORS = "ops:errors";
+    static final String REDIS_ERROR_SEQ = "ops:error:seq";
+    static final String REDIS_CALLS = "ops:calls";
+    static final String REDIS_EP_KEYS = "ops:ep:keys";
+    private static final String EP_PREFIX = "ops:ep:";
 
-    private final ConcurrentLinkedDeque<Map<String, Object>> recentErrors = new ConcurrentLinkedDeque<>();
-    private final AtomicLong errorNoGenerator = new AtomicLong(1);
-    private final ConcurrentHashMap<String, EndpointMetrics> endpointMetricsMap = new ConcurrentHashMap<>();
-    private final ConcurrentLinkedDeque<CallSample> callSamples = new ConcurrentLinkedDeque<>();
+    private static final int MAX_ERRORS = 100;
+    private static final int MAX_CALL_SAMPLES = 20_000;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final StringRedisTemplate redis;
+    private final JsonMapper jsonMapper;
+
     @Autowired(required = false)
     private JavaMailSender mailSender;
     @Value("${spring.mail.username:}")
     private String alertEmailTo;
+    /** Per-JVM previous snapshot for alert delta (not shared). */
     private long lastServerErrorCount = 0;
 
+    public SystemMonitorService(StringRedisTemplate redis, JsonMapper jsonMapper) {
+        this.redis = redis;
+        this.jsonMapper = jsonMapper;
+    }
+
     public void recordTraffic(int statusCode) {
-        totalCount.incrementAndGet();
+        redis.opsForHash().increment(REDIS_TRAFFIC, "total", 1);
         if (statusCode >= 200 && statusCode < 300) {
-            successCount.incrementAndGet();
+            redis.opsForHash().increment(REDIS_TRAFFIC, "success", 1);
         } else if (statusCode >= 300 && statusCode < 400) {
-            redirectionCount.incrementAndGet();
+            redis.opsForHash().increment(REDIS_TRAFFIC, "redirection", 1);
         } else if (statusCode == 404) {
-            notFoundCount.incrementAndGet();
+            redis.opsForHash().increment(REDIS_TRAFFIC, "notFound", 1);
         } else if (statusCode == 429) {
-            rateLimitedCount.incrementAndGet();
+            redis.opsForHash().increment(REDIS_TRAFFIC, "rateLimited", 1);
         } else if (statusCode >= 400 && statusCode < 500) {
-            clientErrorCount.incrementAndGet();
+            redis.opsForHash().increment(REDIS_TRAFFIC, "clientError", 1);
         } else if (statusCode >= 500) {
-            serverErrorCount.incrementAndGet();
+            redis.opsForHash().increment(REDIS_TRAFFIC, "serverError", 1);
         }
     }
 
@@ -72,13 +75,25 @@ public class SystemMonitorService {
         if (path == null || method == null || path.startsWith("/api/dev/")) {
             return;
         }
-        String key = method.toUpperCase() + " " + path;
-        endpointMetricsMap.computeIfAbsent(key, k -> new EndpointMetrics(path, method.toUpperCase()))
-                .record(responseTimeMs);
+        String m = method.toUpperCase();
+        String key = m + " " + path;
+        redis.opsForSet().add(REDIS_EP_KEYS, key);
+        String epKey = EP_PREFIX + key;
+        redis.opsForHash().increment(epKey, "count", 1);
+        redis.opsForHash().increment(epKey, "totalMs", responseTimeMs);
+        redis.opsForHash().put(epKey, "path", path);
+        redis.opsForHash().put(epKey, "method", m);
+        long prevMax = parseLong(redis.opsForHash().get(epKey, "maxMs"));
+        if (responseTimeMs > prevMax) {
+            redis.opsForHash().put(epKey, "maxMs", String.valueOf(responseTimeMs));
+        }
 
-        callSamples.addFirst(new CallSample(Instant.now(), path, method.toUpperCase(), responseTimeMs, statusCode));
-        while (callSamples.size() > MAX_CALL_SAMPLES) {
-            callSamples.removeLast();
+        CallSample sample = new CallSample(Instant.now().toEpochMilli(), path, m, responseTimeMs, statusCode);
+        try {
+            redis.opsForList().leftPush(REDIS_CALLS, jsonMapper.writeValueAsString(sample));
+            redis.opsForList().trim(REDIS_CALLS, 0, MAX_CALL_SAMPLES - 1);
+        } catch (JacksonException ignored) {
+            // skip sample on serialize failure
         }
     }
 
@@ -132,7 +147,30 @@ public class SystemMonitorService {
         out.put("total", current.get("total"));
         out.put("previous", previous);
         out.put("delta", delta);
+        // All-time counters from Redis (not limited to call-sample window)
+        out.put("lifetime", getLifetimeStatusBreakdown());
         return out;
+    }
+
+    /**
+     * Lifetime status totals from {@code ops:traffic} (survives deploy; not time-windowed).
+     */
+    public Map<String, Long> getLifetimeStatusBreakdown() {
+        Map<String, Long> traffic = getTrafficStats();
+        long s2 = traffic.getOrDefault("success", 0L);
+        long s3 = traffic.getOrDefault("redirection", 0L);
+        long s4 = traffic.getOrDefault("notFound", 0L) + traffic.getOrDefault("clientError", 0L);
+        long s5 = traffic.getOrDefault("serverError", 0L);
+        long s429 = traffic.getOrDefault("rateLimited", 0L);
+        long total = traffic.getOrDefault("total", 0L);
+        Map<String, Long> m = new LinkedHashMap<>();
+        m.put("2xx", s2);
+        m.put("3xx", s3);
+        m.put("4xx", s4);
+        m.put("5xx", s5);
+        m.put("429", s429);
+        m.put("total", total);
+        return m;
     }
 
     /**
@@ -143,15 +181,15 @@ public class SystemMonitorService {
         Instant now = Instant.now();
         Instant cutoff = now.minusSeconds(h * 3600L);
 
-        // bucket index 0 = oldest hour in window
         long[] total = new long[h];
         long[] s5 = new long[h];
         long[] durationSum = new long[h];
         long[] durationCount = new long[h];
 
-        for (CallSample s : callSamples) {
-            if (s.at().isBefore(cutoff)) continue;
-            long secAgo = Math.max(0, now.getEpochSecond() - s.at().getEpochSecond());
+        for (CallSample s : loadCallSamples()) {
+            Instant at = Instant.ofEpochMilli(s.at());
+            if (at.isBefore(cutoff)) continue;
+            long secAgo = Math.max(0, now.getEpochSecond() - at.getEpochSecond());
             int hoursAgo = (int) (secAgo / 3600);
             if (hoursAgo >= h) continue;
             int idx = h - 1 - hoursAgo;
@@ -180,8 +218,8 @@ public class SystemMonitorService {
 
     private Map<String, Long> countStatusesBetween(Instant fromInclusive, Instant toExclusive) {
         long s2 = 0, s3 = 0, s4 = 0, s5 = 0, s429 = 0, total = 0;
-        for (CallSample s : callSamples) {
-            Instant at = s.at();
+        for (CallSample s : loadCallSamples()) {
+            Instant at = Instant.ofEpochMilli(s.at());
             if (at.isBefore(fromInclusive) || !at.isBefore(toExclusive)) continue;
             total++;
             int c = s.statusCode();
@@ -205,7 +243,7 @@ public class SystemMonitorService {
      * Server-error count for alert delta (lifetime counter).
      */
     public long getServerErrorCount() {
-        return serverErrorCount.get();
+        return parseLong(redis.opsForHash().get(REDIS_TRAFFIC, "serverError"));
     }
 
     public double memoryUsedPercent() {
@@ -216,19 +254,40 @@ public class SystemMonitorService {
     }
 
     private List<TopEndpointDto> aggregateAllByCount(int limit) {
-        return endpointMetricsMap.values().stream()
-                .sorted(Comparator.comparingLong((EndpointMetrics m) -> m.count.get()).reversed())
-                .limit(Math.max(1, limit))
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        Set<String> keys = redis.opsForSet().members(REDIS_EP_KEYS);
+        if (keys == null || keys.isEmpty()) {
+            return List.of();
+        }
+        List<TopEndpointDto> list = new ArrayList<>();
+        for (String key : keys) {
+            Map<Object, Object> h = redis.opsForHash().entries(EP_PREFIX + key);
+            if (h == null || h.isEmpty()) continue;
+            long c = parseLong(h.get("count"));
+            long totalTime = parseLong(h.get("totalMs"));
+            long max = parseLong(h.get("maxMs"));
+            String path = Objects.toString(h.get("path"), key);
+            String method = Objects.toString(h.get("method"), "");
+            double avgTime = c > 0 ? (double) totalTime / c : 0.0;
+            double roundedAvg = Math.round(avgTime * 100.0) / 100.0;
+            list.add(TopEndpointDto.builder()
+                    .path(path)
+                    .method(method)
+                    .count(c)
+                    .avgResponseTimeMs(roundedAvg)
+                    .maxResponseTimeMs(max)
+                    .build());
+        }
+        list.sort(Comparator.comparingLong((TopEndpointDto d) ->
+                d.getCount() != null ? d.getCount() : 0L).reversed());
+        return list.stream().limit(Math.max(1, limit)).collect(Collectors.toList());
     }
 
     private List<TopEndpointDto> aggregateWindow(int hours, int limit, boolean byAvgDesc) {
         Instant cutoff = Instant.now().minusSeconds(Math.max(1, hours) * 3600L);
         Map<String, long[]> agg = new HashMap<>(); // count, totalMs, maxMs
         Map<String, String[]> meta = new HashMap<>();
-        for (CallSample s : callSamples) {
-            if (s.at().isBefore(cutoff)) continue;
+        for (CallSample s : loadCallSamples()) {
+            if (Instant.ofEpochMilli(s.at()).isBefore(cutoff)) continue;
             String key = s.method() + " " + s.path();
             meta.putIfAbsent(key, new String[]{s.path(), s.method()});
             long[] a = agg.computeIfAbsent(key, k -> new long[3]);
@@ -261,23 +320,11 @@ public class SystemMonitorService {
         return list.stream().limit(Math.max(1, limit)).collect(Collectors.toList());
     }
 
-    private TopEndpointDto toDto(EndpointMetrics m) {
-        long c = m.count.get();
-        long totalTime = m.totalDurationMs.get();
-        double avgTime = c > 0 ? (double) totalTime / c : 0.0;
-        double roundedAvg = Math.round(avgTime * 100.0) / 100.0;
-        return TopEndpointDto.builder()
-                .path(m.path)
-                .method(m.method)
-                .count(c)
-                .avgResponseTimeMs(roundedAvg)
-                .maxResponseTimeMs(m.maxDurationMs.get())
-                .build();
-    }
-
     public void addErrorLog(String errorMessage, String exceptionType, String requestUrl, String apiPath, String who, int httpCode, String referer, String clientIp) {
-        Map<String, Object> errorLog = new ConcurrentHashMap<>();
-        errorLog.put("no", errorNoGenerator.getAndIncrement());
+        Long no = redis.opsForValue().increment(REDIS_ERROR_SEQ);
+        String ref = referer != null && !referer.isBlank() ? referer : "알 수 없음";
+        Map<String, Object> errorLog = new LinkedHashMap<>();
+        errorLog.put("no", no != null ? no : 1L);
         errorLog.put("timestamp", LocalDateTime.now().format(formatter));
         errorLog.put("message", errorMessage != null ? errorMessage : "No message");
         errorLog.put("type", exceptionType != null ? exceptionType : "Unknown");
@@ -285,29 +332,71 @@ public class SystemMonitorService {
         errorLog.put("requestUrl", requestUrl != null ? requestUrl : "Unknown");
         errorLog.put("apiPath", apiPath != null ? apiPath : "Unknown");
         errorLog.put("who", who != null ? who : "로그인 전");
-        errorLog.put("referer", referer != null ? referer : "알 수 없음");
+        errorLog.put("referer", ref);
+        // Display: www.dwaeji.kr/dev/login (from Referer/Origin)
+        errorLog.put("requestPage", toRequestPage(ref));
         errorLog.put("clientIp", clientIp != null ? clientIp : "Unknown");
 
-        recentErrors.addFirst(errorLog);
-        if (recentErrors.size() > MAX_ERRORS) {
-            recentErrors.removeLast();
+        try {
+            redis.opsForList().leftPush(REDIS_ERRORS, jsonMapper.writeValueAsString(errorLog));
+            redis.opsForList().trim(REDIS_ERRORS, 0, MAX_ERRORS - 1);
+        } catch (JacksonException ignored) {
+            // skip on serialize failure
         }
     }
 
     public Map<String, Long> getTrafficStats() {
+        Map<Object, Object> h = redis.opsForHash().entries(REDIS_TRAFFIC);
         return Map.of(
-                "success", successCount.get(),
-                "redirection", redirectionCount.get(),
-                "notFound", notFoundCount.get(),
-                "clientError", clientErrorCount.get(),
-                "serverError", serverErrorCount.get(),
-                "rateLimited", rateLimitedCount.get(),
-                "total", totalCount.get()
+                "success", parseLong(h.get("success")),
+                "redirection", parseLong(h.get("redirection")),
+                "notFound", parseLong(h.get("notFound")),
+                "clientError", parseLong(h.get("clientError")),
+                "serverError", parseLong(h.get("serverError")),
+                "rateLimited", parseLong(h.get("rateLimited")),
+                "total", parseLong(h.get("total"))
         );
     }
 
     public Object[] getRecentErrors() {
-        return recentErrors.toArray();
+        List<String> raw = redis.opsForList().range(REDIS_ERRORS, 0, MAX_ERRORS - 1);
+        if (raw == null || raw.isEmpty()) {
+            return new Object[0];
+        }
+        List<Map<String, Object>> out = new ArrayList<>(raw.size());
+        for (String json : raw) {
+            try {
+                Map<String, Object> row = jsonMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+                if (!row.containsKey("requestPage")) {
+                    row.put("requestPage", toRequestPage(Objects.toString(row.get("referer"), null)));
+                }
+                out.add(row);
+            } catch (Exception ignored) {
+                // skip bad entry
+            }
+        }
+        return out.toArray();
+    }
+
+    /**
+     * {@code https://www.dwaeji.kr/dev/login} → {@code www.dwaeji.kr/dev/login}
+     */
+    static String toRequestPage(String referer) {
+        if (referer == null || referer.isBlank() || "알 수 없음".equals(referer)) {
+            return "알 수 없음";
+        }
+        try {
+            java.net.URI u = java.net.URI.create(referer.trim());
+            String host = u.getHost();
+            if (host == null || host.isBlank()) {
+                return referer.replaceFirst("(?i)^https?://", "");
+            }
+            String path = u.getPath() != null ? u.getPath() : "";
+            String query = (u.getQuery() != null && !u.getQuery().isBlank()) ? "?" + u.getQuery() : "";
+            return host + path + query;
+        } catch (Exception e) {
+            return referer.replaceFirst("(?i)^https?://", "");
+        }
     }
 
     @Scheduled(fixedRate = 60000) // 1분(60초)마다 서버 모니터링 및 알림 발송
@@ -317,7 +406,7 @@ public class SystemMonitorService {
         }
 
         double memoryUsed = memoryUsedPercent();
-        long currentErrors = serverErrorCount.get();
+        long currentErrors = getServerErrorCount();
         long newErrors = currentErrors - lastServerErrorCount;
 
         // 메모리 85% 이상이거나 1분간 서버에러(500) 100회 이상 폭주 시
@@ -340,25 +429,34 @@ public class SystemMonitorService {
         lastServerErrorCount = currentErrors;
     }
 
-    private static class EndpointMetrics {
-        final String path;
-        final String method;
-        final AtomicLong count = new AtomicLong(0);
-        final AtomicLong totalDurationMs = new AtomicLong(0);
-        final AtomicLong maxDurationMs = new AtomicLong(0);
-
-        EndpointMetrics(String path, String method) {
-            this.path = path;
-            this.method = method;
+    private List<CallSample> loadCallSamples() {
+        List<String> raw = redis.opsForList().range(REDIS_CALLS, 0, MAX_CALL_SAMPLES - 1);
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
         }
+        List<CallSample> list = new ArrayList<>(raw.size());
+        for (String json : raw) {
+            try {
+                list.add(jsonMapper.readValue(json, CallSample.class));
+            } catch (Exception ignored) {
+                // skip bad entry
+            }
+        }
+        return list;
+    }
 
-        void record(long durationMs) {
-            count.incrementAndGet();
-            totalDurationMs.addAndGet(durationMs);
-            maxDurationMs.updateAndGet(prev -> Math.max(prev, durationMs));
+    private static long parseLong(Object v) {
+        if (v == null) return 0L;
+        try {
+            return Long.parseLong(v.toString());
+        } catch (NumberFormatException e) {
+            return 0L;
         }
     }
 
-    private record CallSample(Instant at, String path, String method, long durationMs, int statusCode) {
+    /**
+     * JSON-friendly call sample stored in Redis list.
+     */
+    public record CallSample(long at, String path, String method, long durationMs, int statusCode) {
     }
 }

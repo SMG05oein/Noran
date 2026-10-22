@@ -45,6 +45,8 @@ const slowRowClass = (avg) => {
 
 const ApiAnalyticsViewer = () => {
   const [hours, setHours] = useState('24');
+  /** 'period' = 선택 기간 flat 필드, 'lifetime' = Redis 전체 누적 */
+  const [statusScope, setStatusScope] = useState('period');
   const [analytics, setAnalytics] = useState([]);
   const [slow, setSlow] = useState([]);
   const [breakdown, setBreakdown] = useState(null);
@@ -80,6 +82,10 @@ const ApiAnalyticsViewer = () => {
     }
     return trend;
   }, [trend]);
+
+  const lifetime = breakdown?.lifetime || null;
+  const useLifetime = statusScope === 'lifetime' && !!lifetime;
+  const statusSource = useLifetime ? lifetime : breakdown;
 
   const tooltipStyle = {
     backgroundColor: '#161b22',
@@ -117,21 +123,63 @@ const ApiAnalyticsViewer = () => {
         </div>
       </div>
 
-      {breakdown && (
-        <div className="dc-status-row" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
-          {STATUS_KEYS.map((key) => {
-            const delta = formatDelta(breakdown.delta?.[key]);
-            return (
-              <div key={key} className="dc-stat" style={{ minHeight: 72 }}>
-                <div className="dc-stat-label">{key}</div>
-                <div className="dc-stat-value">{breakdown[key] ?? 0}</div>
-                <div className={`dc-stat-meta ${delta.cls}`}>
-                  이전 대비 {delta.text}
-                  {breakdown.previous?.[key] != null ? ` (이전 ${breakdown.previous[key]})` : ''}
-                </div>
+      {breakdown && statusSource && (
+        <div className="dc-panel">
+          <div className="dc-panel-head">
+            <h2 className="dc-panel-title">상태코드 통계</h2>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <div className="dc-seg" role="group" aria-label="상태코드 집계 범위">
+                <button
+                  type="button"
+                  className={`dc-seg-btn ${!useLifetime ? 'active' : ''}`}
+                  onClick={() => setStatusScope('period')}
+                >
+                  기간 ({hours}h)
+                </button>
+                <button
+                  type="button"
+                  className={`dc-seg-btn ${useLifetime ? 'active' : ''}`}
+                  onClick={() => setStatusScope('lifetime')}
+                  disabled={!lifetime}
+                  title={lifetime ? 'Redis 전체 누적 (배포 후에도 유지)' : 'lifetime 데이터 없음'}
+                >
+                  전체(누적)
+                </button>
               </div>
-            );
-          })}
+              <span className="dc-mono" style={{ color: 'var(--dc-muted)', fontSize: '0.72rem' }}>
+                TOTAL(기간) {breakdown.total ?? 0}
+                {lifetime?.total != null ? ` · TOTAL(전체) ${lifetime.total}` : ''}
+              </span>
+            </div>
+          </div>
+          <div className="dc-panel-body" style={{ paddingTop: '0.65rem' }}>
+            <div className="dc-status-row" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', marginBottom: 0 }}>
+              {STATUS_KEYS.map((key) => {
+                const delta = !useLifetime ? formatDelta(breakdown.delta?.[key]) : null;
+                return (
+                  <div key={key} className="dc-stat" style={{ minHeight: 72 }}>
+                    <div className="dc-stat-label">
+                      {key}{useLifetime ? ' · 전체' : ` · ${hours}h`}
+                    </div>
+                    <div className="dc-stat-value">{statusSource[key] ?? 0}</div>
+                    {useLifetime ? (
+                      <div className="dc-stat-meta">Redis 누적</div>
+                    ) : (
+                      <div className={`dc-stat-meta ${delta.cls}`}>
+                        이전 대비 {delta.text}
+                        {breakdown.previous?.[key] != null ? ` (이전 ${breakdown.previous[key]})` : ''}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {!lifetime && (
+              <p className="mb-0 mt-2 small" style={{ color: 'var(--dc-muted)' }}>
+                전체(누적)은 백엔드 lifetime 필드 배포 후 표시됩니다.
+              </p>
+            )}
+          </div>
         </div>
       )}
 

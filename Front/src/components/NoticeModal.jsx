@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import MaintenanceOverlay from './MaintenanceOverlay';
 import useDevAuthStore from '../store/useDevAuthStore';
+import { getClientPageHeader } from '../api/clientPageHeader';
 
 const NoticeModal = () => {
   const [notices, setNotices] = useState([]);
@@ -28,7 +29,9 @@ const NoticeModal = () => {
     setChecking(true);
     try {
       // ① 공개용 긴급 점검 모드 확인 API 호출 (GET /api/dev/announcements/maintenance-status)
-      const statusRes = await axios.get(`${API_BASE_URL}/api/dev/announcements/maintenance-status`);
+      const statusRes = await axios.get(`${API_BASE_URL}/api/dev/announcements/maintenance-status`, {
+        headers: getClientPageHeader(),
+      });
       
       if (statusRes.data?.maintenanceMode) {
         const isBypassed = sessionStorage.getItem('maintenance_bypassed') === 'true';
@@ -63,7 +66,9 @@ const NoticeModal = () => {
       }
 
       // ③ 로그인한 서비스 페이지(/admin, / 등)에서는 공개용 공지사항 목록 API 호출 (GET /api/dev/announcements/public)
-      const noticesRes = await axios.get(`${API_BASE_URL}/api/dev/announcements/public`);
+      const noticesRes = await axios.get(`${API_BASE_URL}/api/dev/announcements/public`, {
+        headers: getClientPageHeader(),
+      });
       if (Array.isArray(noticesRes.data)) {
         const now = Date.now();
         const validNotices = noticesRes.data.filter((notice) => {

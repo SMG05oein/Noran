@@ -1,6 +1,7 @@
 package com.recode.Dwaeji.common.exception;
 
 import com.recode.Dwaeji.common.dto.ErrorResponseDto;
+import com.recode.Dwaeji.common.util.ClientPageResolver;
 import com.recode.Dwaeji.developer.exception.DevIpOtpRequiredException;
 import com.recode.Dwaeji.developer.service.SystemMonitorService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,11 +35,7 @@ public class GlobalExceptionHandler {
     }
 
     private String getReferer(HttpServletRequest request) {
-        String referer = request.getHeader("Referer");
-        if (referer == null || referer.isEmpty()) {
-            referer = request.getHeader("Origin");
-        }
-        return referer != null ? referer : "알 수 없음";
+        return ClientPageResolver.resolve(request);
     }
 
     private String getAuthIdentifier() {

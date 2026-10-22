@@ -1,32 +1,37 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
-import {
-  fetchSystemInfo,
-  fetchDeployInfo,
-  fetchDashboardAudit,
-  fetchAlertConfig,
-  postDashboardAction,
-  sendAlertTest,
-  changeDevPassword,
-} from '../api/devAuthApi';
-import {
-  Container, Row, Col, Card, Button, Spinner, Modal, Form, Alert, Badge, Tabs, Tab, Table,
-} from 'react-bootstrap';
+import { fetchSystemInfo, changeDevPassword, fetchAlertConfig, sendAlertTest } from '../api/devAuthApi';
+import { Modal, Form, Alert, Spinner, Button } from 'react-bootstrap';
 import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import DevLogViewer from '../components/DevLogViewer';
 import ApiAnalyticsViewer from '../components/ApiAnalyticsViewer';
 import AnnouncementManager from '../components/AnnouncementManager';
-import NetlifyDeployManager from '../components/NetlifyDeployManager';
-import DevExecutorAuthModal from '../components/DevExecutorAuthModal';
+import './DevConsole.css';
 
+const NAV = [
+  { key: 'overview', label: '현황' },
+  { key: 'logs', label: '로그' },
+  { key: 'analytics', label: 'API 통계' },
+  { key: 'announcements', label: '공지·점검' },
+];
 
-const statusBadge = (status) => {
-  const up = String(status).toUpperCase() === 'UP';
-  return <Badge bg={up ? 'success' : 'danger'}>{status || '-'}</Badge>;
+const formatUptime = (seconds = 0) => {
+  const s = Math.max(0, Number(seconds) || 0);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}시간 ${m}분 ${sec}초`;
+};
+
+const StatusPill = ({ ok, label, unknown, tone }) => {
+  if (unknown) return <span className="dc-pill dc-pill-muted">{label || '없음'}</span>;
+  const resolved = tone || (ok ? 'ok' : 'bad');
+  const cls = resolved === 'ok' ? 'dc-pill-ok' : resolved === 'warn' ? 'dc-pill-warn' : 'dc-pill-bad';
+  return <span className={`dc-pill ${cls}`}>{label || (resolved === 'ok' ? '정상' : resolved === 'warn' ? '주의' : '이상')}</span>;
 };
 
 const DevMain = () => {
@@ -34,10 +39,12 @@ const DevMain = () => {
   const logout = useDevAuthStore((state) => state.devLogout);
   const navigate = useNavigate();
 
+  const [section, setSection] = useState('overview');
   const [sysInfo, setSysInfo] = useState(null);
-  const [deployInfo, setDeployInfo] = useState(null);
   const [alertConfig, setAlertConfig] = useState(null);
-  const [auditRows, setAuditRows] = useState([]);
+  const [alertMsg, setAlertMsg] = useState('');
+  const [alertTesting, setAlertTesting] = useState(false);
+  const [logJump, setLogJump] = useState({ level: '', keyword: '' });
   const [loading, setLoading] = useState(true);
 
   const [showPwModal, setShowPwModal] = useState(false);
@@ -46,32 +53,57 @@ const DevMain = () => {
   const [pwError, setPwError] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
 
-  const [authAction, setAuthAction] = useState(null);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [actionMsg, setActionMsg] = useState('');
-
-  const loadSidePanels = useCallback(async () => {
-    const [deployRes, alertRes, auditRes] = await Promise.all([
-      fetchDeployInfo(),
-      fetchAlertConfig(),
-      fetchDashboardAudit(50),
-    ]);
-    if (deployRes.success) setDeployInfo(deployRes.data);
-    if (alertRes.success) setAlertConfig(alertRes.data);
-    if (auditRes.success) setAuditRows(Array.isArray(auditRes.data) ? auditRes.data : []);
-  }, []);
-
   useEffect(() => {
-    const getSysInfo = async () => {
+    let alive = true;
+    const tick = async () => {
       const res = await fetchSystemInfo();
+      if (!alive) return;
       if (res.success) setSysInfo(res.data);
       setLoading(false);
     };
-    getSysInfo();
-    loadSidePanels();
-    const interval = setInterval(getSysInfo, 5000);
-    return () => clearInterval(interval);
-  }, [loadSidePanels]);
+    const loadAlerts = async () => {
+      const res = await fetchAlertConfig();
+      if (alive && res.success) setAlertConfig(res.data);
+    };
+    tick();
+    loadAlerts();
+    const interval = setInterval(tick, 5000);
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const refreshAlertConfig = async () => {
+    const res = await fetchAlertConfig();
+    if (res.success) setAlertConfig(res.data);
+  };
+
+  const handleAlertTest = async () => {
+    setAlertTesting(true);
+    setAlertMsg('');
+    const res = await sendAlertTest();
+    if (res.success) {
+      const when = res.data?.sentAt
+        ? new Date(res.data.sentAt).toLocaleString('ko-KR')
+        : '';
+      setAlertMsg(
+        `${res.data?.message || '테스트 알림을 발송했습니다.'}${when ? ` (${when})` : ''}`
+      );
+      await refreshAlertConfig();
+    } else {
+      setAlertMsg(res.error || '발송에 실패했습니다.');
+    }
+    setAlertTesting(false);
+  };
+
+  const openLogsForError = (err) => {
+    setLogJump({
+      level: 'ERROR',
+      keyword: err?.apiPath && err.apiPath !== 'Unknown' ? String(err.apiPath) : '',
+    });
+    setSection('logs');
+  };
 
   const handleLogout = () => {
     logout();
@@ -85,7 +117,7 @@ const DevMain = () => {
     setPwError('');
     const res = await changeDevPassword(oldPw, newPw);
     if (res.success) {
-      alert('비밀번호가 성공적으로 변경되었습니다. 다시 로그인 해주세요.');
+      alert('비밀번호가 변경되었습니다. 다시 로그인하세요.');
       handleLogout();
     } else {
       setPwError(res.error);
@@ -93,388 +125,418 @@ const DevMain = () => {
     setPwLoading(false);
   };
 
-  const openAuth = (action) => {
-    setActionMsg('');
-    setAuthAction(action);
-  };
-
-  const handleAuthConfirm = async (id, pw) => {
-    setAuthLoading(true);
-    setActionMsg('');
-    let res;
-    if (authAction === 'alert-test') {
-      res = await sendAlertTest(id, pw);
-    } else {
-      res = await postDashboardAction(authAction, id, pw);
-    }
-    if (res.success) {
-      setActionMsg(res.data?.message || '요청이 수락되었습니다.');
-      setAuthAction(null);
-      loadSidePanels();
-      if (authAction === 'shutdown') {
-        alert(res.data?.message || '서버가 곧 종료됩니다.');
-      }
-    } else {
-      setActionMsg(res.error);
-    }
-    setAuthLoading(false);
-  };
-
   const health = sysInfo?.health;
-  const version = sysInfo?.version || deployInfo;
+  const version = sysInfo?.version;
+  const host = sysInfo?.host;
+  const status = sysInfo?.status;
+  const dbOk = String(health?.db?.status || '').toUpperCase() === 'UP';
+  const memUsedPct = sysInfo?.memory?.max_mb
+    ? Math.round((sysInfo.memory.used_mb / sysInfo.memory.max_mb) * 100)
+    : (sysInfo?.memory?.total_mb
+      ? Math.round((sysInfo.memory.used_mb / sysInfo.memory.total_mb) * 100)
+      : null);
+  const diskFree = health?.disk?.freePercent;
+  const memWarn = status?.memoryWarnThreshold ?? 85;
+  const diskWarn = status?.diskWarnThreshold ?? 15;
+  const dbLatency = health?.db?.latencyMs;
+  const dbTone = !health?.db ? '' : (!dbOk ? 'crit' : (dbLatency != null && dbLatency >= 200 ? 'warn' : ''));
+  const diskTone = diskFree == null ? '' : (diskFree <= diskWarn / 2 ? 'crit' : diskFree <= diskWarn ? 'warn' : '');
+  const memTone = memUsedPct == null ? '' : (memUsedPct >= 95 ? 'crit' : memUsedPct >= memWarn ? 'warn' : '');
+  const overall = status?.overall || 'ok';
+  const fetchedLabel = sysInfo?.fetchedAt
+    ? new Date(sysInfo.fetchedAt).toLocaleTimeString('ko-KR')
+    : null;
+
+  const trafficData = useMemo(() => {
+    if (!sysInfo?.traffic) return [];
+    return [
+      { name: '2xx', value: sysInfo.traffic.success, fill: '#3fb950' },
+      { name: '3xx', value: sysInfo.traffic.redirection, fill: '#58a6ff' },
+      { name: '404', value: sysInfo.traffic.notFound, fill: '#d29922' },
+      { name: '4xx', value: sysInfo.traffic.clientError, fill: '#f85149' },
+      { name: '5xx', value: sysInfo.traffic.serverError, fill: '#da3633' },
+      { name: '429', value: sysInfo.traffic.rateLimited, fill: '#8b949e' },
+    ];
+  }, [sysInfo]);
+
+  const memData = useMemo(() => {
+    if (!sysInfo?.memory) return [];
+    return [
+      { name: '사용', value: sysInfo.memory.used_mb },
+      { name: '여유', value: sysInfo.memory.free_mb },
+    ];
+  }, [sysInfo]);
+
+  const tooltipStyle = {
+    backgroundColor: '#161b22',
+    border: '1px solid #30363d',
+    borderRadius: 6,
+    color: '#e6edf3',
+    fontSize: 12,
+  };
 
   return (
-    <div className="dev-container min-vh-100" data-bs-theme="dark" style={{ padding: '2rem 0', backgroundColor: 'var(--color-bg-cream)' }}>
-      <Container>
-        <div className="d-flex justify-content-between align-items-center mb-5 border-bottom border-secondary pb-3">
-          <h2 className="fw-bold" style={{ color: '#00d2ff' }}>개발자 대시보드</h2>
-          <div>
-            <span className="me-3 fw-semibold">환영합니다, {devUser?.devName} 님</span>
-            {devUser?.isTempPw === 1 && <Badge bg="danger" className="me-3">임시 비밀번호 사용 중</Badge>}
-            <Button variant="outline-info" className="me-2" onClick={() => setShowPwModal(true)}>비밀번호 변경</Button>
-            <Button variant="outline-light" onClick={handleLogout}>로그아웃</Button>
+    <div className="dev-console" data-bs-theme="dark">
+      <div className="dc-shell">
+        <header className="dc-topbar">
+          <div className="dc-brand">
+            <span className="dc-brand-kicker">OCI · 단일 서버</span>
+            <h1 className="dc-brand-title">운영 콘솔</h1>
+            <p className="dc-brand-sub">배포·재기동은 서버 SSH에서 직접 · 콘솔은 모니터링·공지용</p>
           </div>
-        </div>
+          <div className="dc-top-actions">
+            <span className="dc-user">
+              <strong>{devUser?.devName || devUser?.devId}</strong>
+              {devUser?.isTempPw === 1 && (
+                <span className="dc-pill dc-pill-warn ms-2">임시 비밀번호</span>
+              )}
+            </span>
+            <button type="button" className="dc-btn dc-btn-ghost" onClick={() => setShowPwModal(true)}>
+              비밀번호
+            </button>
+            <button type="button" className="dc-btn" onClick={handleLogout}>
+              로그아웃
+            </button>
+          </div>
+        </header>
+
+        <nav className="dc-nav" aria-label="콘솔 메뉴">
+          {NAV.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`dc-nav-btn${section === item.key ? ' active' : ''}`}
+              onClick={() => setSection(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {sysInfo && (
+          <div className="dc-sticky-strip" aria-label="상태 요약">
+            <StatusPill
+              tone={overall === 'ok' ? 'ok' : overall === 'warn' ? 'warn' : 'bad'}
+              label={status?.label || '상태'}
+              unknown={!status && !sysInfo.health}
+            />
+            <span className="dc-sticky-item">
+              DB <strong>{health?.db?.status || '—'}</strong>
+              {dbLatency != null && <span style={{ color: 'var(--dc-muted)' }}>({dbLatency}ms)</span>}
+            </span>
+            <span className="dc-sticky-item">
+              디스크 <strong style={{ color: diskTone === 'crit' || diskTone === 'warn' ? 'var(--dc-warn)' : undefined }}>
+                {diskFree != null ? `${diskFree}%` : '—'}
+              </strong>
+            </span>
+            <span className="dc-sticky-item">
+              메모리 <strong style={{ color: memTone === 'crit' || memTone === 'warn' ? 'var(--dc-warn)' : undefined }}>
+                {memUsedPct != null ? `${memUsedPct}%` : '—'}
+              </strong>
+            </span>
+            <span className="dc-sticky-item" style={{ color: 'var(--dc-muted)', marginLeft: 'auto' }}>
+              {fetchedLabel ? `갱신 ${fetchedLabel}` : ''}
+              {host?.serverPort ? ` · :${host.serverPort}` : ''}
+            </span>
+          </div>
+        )}
 
         {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="info" />
-          </div>
-        ) : sysInfo ? (
+          <div className="dc-center"><div className="dc-spinner" /></div>
+        ) : !sysInfo ? (
+          <div className="dc-center">시스템 정보를 불러오지 못했습니다.</div>
+        ) : section === 'overview' ? (
           <>
-            <Tabs defaultActiveKey="system" className="mb-4" data-bs-theme="dark">
-              <Tab eventKey="system" title="시스템 및 트래픽">
-                {actionMsg && (
-                  <Alert variant={actionMsg.includes('실패') || actionMsg.includes('오류') ? 'danger' : 'info'} className="py-2">
-                    {actionMsg}
-                  </Alert>
+            <div className={`dc-banner ${overall}`}>
+              <div className="dc-banner-left">
+                <StatusPill
+                  tone={overall === 'ok' ? 'ok' : overall === 'warn' ? 'warn' : 'bad'}
+                  label={status?.label || (overall === 'ok' ? '정상' : overall === 'warn' ? '주의' : '위험')}
+                  unknown={!status}
+                />
+                <span className="dc-banner-title">전체 상태</span>
+                {Array.isArray(status?.issues) && status.issues.length > 0 && (
+                  <span className="dc-banner-issues">{status.issues.join(' · ')}</span>
                 )}
+              </div>
+              <span className="dc-banner-meta">
+                {fetchedLabel ? `갱신 ${fetchedLabel}` : '갱신 중'} · 5초마다
+              </span>
+            </div>
 
-                <Row className="g-4">
-                  <Col md={4}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Body>
-                        <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">JVM 메모리 현황</Card.Title>
-                        {sysInfo.memory && (
-                          <div style={{ height: 180, width: '100%' }}>
-                            <ResponsiveContainer>
-                              <PieChart>
-                                <Pie
-                                  data={[
-                                    { name: '사용 중', value: sysInfo.memory.used_mb },
-                                    { name: '여유', value: sysInfo.memory.free_mb }
-                                  ]}
-                                  cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2}
-                                  dataKey="value"
-                                >
-                                  <Cell key="cell-0" fill="#ff4d4d" />
-                                  <Cell key="cell-1" fill="#00d2ff" />
-                                </Pie>
-                                <RechartsTooltip contentStyle={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a', color: '#fff', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
-                                <Legend verticalAlign="bottom" height={20} wrapperStyle={{ fontSize: '12px' }} />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-                        <div className="d-flex justify-content-between small text-secondary mt-3 px-2">
-                          <span>총 메모리: {sysInfo.memory?.total_mb} MB</span>
-                          <span>최대 할당: {sysInfo.memory?.max_mb} MB</span>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                  <Col md={4}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Body>
-                        <Card.Title style={{ color: '#00d2ff' }} className="fw-bold mb-4">시스템 OS 정보</Card.Title>
-                        <p className="mb-2"><strong>OS 이름:</strong> {sysInfo.os?.name}</p>
-                        <p className="mb-2"><strong>아키텍처:</strong> {sysInfo.os?.arch}</p>
-                        <p className="mb-2"><strong>버전:</strong> {sysInfo.os?.version}</p>
-                        <p className="mb-0"><strong>프로세서 수:</strong> {sysInfo.os?.processors} 코어</p>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                  <Col md={4}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4">
-                      <Card.Body>
-                        <Card.Title className="fw-bold mb-4 text-primary">서버 가동 시간 (Uptime)</Card.Title>
-                        <p className="mb-2 fs-3 text-center mt-4 text-info fw-bold">
-                          {Math.floor((sysInfo.uptime?.uptime_seconds || 0) / 3600)}시간{' '}
-                          {Math.floor(((sysInfo.uptime?.uptime_seconds || 0) % 3600) / 60)}분{' '}
-                          {(sysInfo.uptime?.uptime_seconds || 0) % 60}초
-                        </p>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                </Row>
+            <div className="dc-status-row">
+              <div className={`dc-stat ${dbTone}`.trim()}>
+                <div className="dc-stat-label">데이터베이스</div>
+                <div className="dc-stat-value">
+                  <StatusPill ok={dbOk} label={health?.db?.status || '알 수 없음'} unknown={!health?.db} />
+                </div>
+                <div className="dc-stat-meta">
+                  {dbLatency != null ? `지연 ${dbLatency} ms` : '지연 정보 없음'}
+                </div>
+              </div>
+              <div className={`dc-stat ${diskTone}`.trim()}>
+                <div className="dc-stat-label">디스크 여유</div>
+                <div className="dc-stat-value">
+                  {diskFree != null ? `${diskFree}%` : '—'}
+                </div>
+                <div className="dc-stat-meta">
+                  {health?.disk
+                    ? `${health.disk.freeGb ?? '-'} / ${health.disk.totalGb ?? '-'} GB · 임계 ${diskWarn}%`
+                    : '정보 없음'}
+                </div>
+              </div>
+              <div className={`dc-stat ${memTone}`.trim()}>
+                <div className="dc-stat-label">JVM 메모리</div>
+                <div className="dc-stat-value">
+                  {memUsedPct != null ? `${memUsedPct}%` : '—'}
+                </div>
+                <div className="dc-stat-meta">
+                  {sysInfo.memory
+                    ? `${sysInfo.memory.used_mb} / ${sysInfo.memory.max_mb ?? sysInfo.memory.total_mb} MB · 임계 ${memWarn}%`
+                    : '정보 없음'}
+                </div>
+              </div>
+              <div className="dc-stat">
+                <div className="dc-stat-label">가동 시간</div>
+                <div className="dc-stat-value" style={{ fontSize: '1.05rem' }}>
+                  {formatUptime(sysInfo.uptime?.uptime_seconds)}
+                </div>
+                <div className="dc-stat-meta">
+                  부하 {health?.cpu?.systemLoadAverage ?? '—'}
+                  {health?.cpu?.processCpuLoad != null
+                    && ` · 프로세스 ${Math.round(health.cpu.processCpuLoad * 100)}%`}
+                </div>
+              </div>
+            </div>
 
-                {/* Health + Version */}
-                <Row className="mt-4 g-4">
-                  <Col md={6}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Header className="fw-bold" style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}>
-                        헬스체크
-                      </Card.Header>
-                      <Card.Body>
-                        {health ? (
-                          <>
-                            <p className="mb-2 d-flex justify-content-between">
-                              <span>DB</span>
-                              <span>
-                                {statusBadge(health.db?.status)}
-                                {health.db?.latencyMs != null && (
-                                  <span className="text-secondary ms-2 small">{health.db.latencyMs} ms</span>
-                                )}
-                              </span>
-                            </p>
-                            <p className="mb-2 small text-secondary">
-                              Disk: {health.disk?.freeGb ?? '-'} / {health.disk?.totalGb ?? '-'} GB
-                              ({health.disk?.freePercent ?? '-'}% free)
-                            </p>
-                            <p className="mb-2 small text-secondary">
-                              CPU load: {health.cpu?.systemLoadAverage ?? '-'}
-                              {health.cpu?.processCpuLoad != null && ` · process ${Math.round(health.cpu.processCpuLoad * 100)}%`}
-                            </p>
-                            <p className="mb-0 small text-secondary">
-                              Pool: active {health.pool?.active ?? '-'} / idle {health.pool?.idle ?? '-'} / max {health.pool?.max ?? '-'}
-                              {health.pool?.waiting != null && ` · waiting ${health.pool.waiting}`}
-                            </p>
-                          </>
-                        ) : (
-                          <div className="text-secondary">헬스 데이터 없음</div>
-                        )}
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                  <Col md={6}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Header className="fw-bold" style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}>
-                        버전 / 배포
-                      </Card.Header>
-                      <Card.Body>
-                        <p className="mb-2"><strong>App:</strong> {version?.appName || '-'}</p>
-                        <p className="mb-2">
-                          <strong>Profile:</strong>{' '}
-                          {Array.isArray(version?.profiles) ? version.profiles.join(', ') || '(default)' : '-'}
-                        </p>
-                        <p className="mb-2"><strong>Git SHA:</strong> <code>{version?.gitSha || 'unknown'}</code></p>
-                        <p className="mb-2"><strong>Build:</strong> {version?.buildTime || '-'}</p>
-                        <p className="mb-2"><strong>Java:</strong> {version?.javaVersion || '-'}</p>
-                        <p className="mb-3"><strong>Started:</strong> {version?.startTime ? new Date(version.startTime).toLocaleString('ko-KR') : '-'}</p>
-                        <div className="d-flex flex-wrap gap-2 align-items-center">
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => openAuth('shutdown')}
+            <div className="dc-grid-2">
+              <div className="dc-panel">
+                <div className="dc-panel-head">
+                  <h2 className="dc-panel-title">호스트 / 런타임</h2>
+                </div>
+                <div className="dc-panel-body">
+                  <dl className="dc-kv">
+                    <dt>호스트</dt>
+                    <dd className="dc-mono">{host?.hostname || '—'}</dd>
+                    <dt>포트</dt>
+                    <dd className="dc-mono">
+                      {host?.serverPort ?? '—'}
+                      {Array.isArray(host?.blueGreenPorts)
+                        ? ` · blue/green ${host.blueGreenPorts.join('/')}`
+                        : ''}
+                    </dd>
+                    <dt>PID</dt>
+                    <dd className="dc-mono">{host?.pid ?? '—'}</dd>
+                    <dt>모드</dt>
+                    <dd>{host?.mode === 'oci-single' ? 'OCI 단일 서버' : (host?.mode || '—')} · {host?.deployMethod || 'deploy.sh'}</dd>
+                    <dt>디스크 경로</dt>
+                    <dd className="dc-mono">{host?.diskPath || health?.disk?.path || '—'}</dd>
+                    <dt>작업 경로</dt>
+                    <dd className="dc-mono">{host?.workingDirectory || '—'}</dd>
+                    <dt>OS</dt>
+                    <dd>{sysInfo.os?.name} · {sysInfo.os?.arch}</dd>
+                    <dt>코어</dt>
+                    <dd>{sysInfo.os?.processors ?? '—'}</dd>
+                    <dt>풀</dt>
+                    <dd className="dc-mono">
+                      활성 {health?.pool?.active ?? '-'} / 대기 {health?.pool?.idle ?? '-'} / 최대 {health?.pool?.max ?? '-'}
+                      {health?.pool?.waiting != null ? ` · 대기열 ${health.pool.waiting}` : ''}
+                    </dd>
+                    <dt>앱</dt>
+                    <dd>{version?.appName || '—'}</dd>
+                    <dt>프로필</dt>
+                    <dd className="dc-mono">
+                      {Array.isArray(version?.profiles)
+                        ? version.profiles.join(', ') || '(default)'
+                        : '—'}
+                    </dd>
+                    <dt>Git</dt>
+                    <dd className="dc-mono">{version?.gitSha || 'unknown'}</dd>
+                    <dt>빌드</dt>
+                    <dd className="dc-mono">{version?.buildTime || '—'}</dd>
+                    <dt>Java</dt>
+                    <dd className="dc-mono">{version?.javaVersion || '—'}</dd>
+                    <dt>기동</dt>
+                    <dd className="dc-mono">
+                      {version?.startTime
+                        ? new Date(version.startTime).toLocaleString('ko-KR')
+                        : '—'}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+
+              <div className="dc-panel">
+                <div className="dc-panel-head">
+                  <h2 className="dc-panel-title">JVM 힙</h2>
+                </div>
+                <div className="dc-panel-body">
+                  {memData.length > 0 ? (
+                    <div className="dc-chart" style={{ height: 180 }}>
+                      <ResponsiveContainer>
+                        <PieChart>
+                          <Pie
+                            data={memData}
+                            dataKey="value"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={48}
+                            outerRadius={72}
+                            paddingAngle={2}
                           >
-                            종료
-                          </Button>
-                          <Button
-                            variant="outline-info"
-                            size="sm"
-                            disabled={!deployInfo?.redeployConfigured}
-                            onClick={() => openAuth('redeploy')}
-                            title={deployInfo?.redeployConfigured ? '' : 'BACKEND_DEPLOY_WEBHOOK_URL 미설정'}
+                            <Cell fill="#f85149" />
+                            <Cell fill="#3fb950" />
+                          </Pie>
+                          <RechartsTooltip contentStyle={tooltipStyle} />
+                          <Legend wrapperStyle={{ fontSize: 12, color: '#8b949e' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="dc-empty">메모리 데이터 없음</div>
+                  )}
+                  <div className="dc-stat-meta text-center">
+                    최대 {sysInfo.memory?.max_mb ?? '—'} MB
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="dc-grid-2">
+              <div className="dc-panel">
+                <div className="dc-panel-head">
+                  <h2 className="dc-panel-title">트래픽 (프로세스 기동 이후)</h2>
+                  <span className="dc-mono" style={{ color: 'var(--dc-muted)', fontSize: '0.75rem' }}>
+                    합계 {sysInfo.traffic?.total ?? 0}
+                  </span>
+                </div>
+                <div className="dc-panel-body">
+                  <div className="dc-chart">
+                    <ResponsiveContainer>
+                      <BarChart data={trafficData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8b949e' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#8b949e' }} />
+                        <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={tooltipStyle} />
+                        <Bar dataKey="value" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dc-panel">
+                <div className="dc-panel-head">
+                  <h2 className="dc-panel-title">알림 (이메일)</h2>
+                  <StatusPill
+                    ok={!!alertConfig?.enabled}
+                    label={alertConfig?.enabled ? '활성' : '비활성'}
+                    unknown={alertConfig == null}
+                  />
+                </div>
+                <div className="dc-panel-body">
+                  <dl className="dc-kv">
+                    <dt>채널</dt>
+                    <dd>
+                      {alertConfig?.emailEnabled ? '이메일' : '없음'}
+                      {alertConfig?.webhookEnabled ? ' + Webhook' : ''}
+                    </dd>
+                    <dt>수신</dt>
+                    <dd className="dc-mono">{alertConfig?.toMasked || '—'}</dd>
+                    <dt>마지막 발송</dt>
+                    <dd className="dc-mono">
+                      {alertConfig?.lastSentAt
+                        ? new Date(alertConfig.lastSentAt).toLocaleString('ko-KR')
+                        : '아직 없음'}
+                    </dd>
+                    <dt>메모리</dt>
+                    <dd className="dc-mono">≥ {alertConfig?.memoryUsedPercentThreshold ?? '—'}%</dd>
+                    <dt>디스크</dt>
+                    <dd className="dc-mono">여유 ≤ {alertConfig?.diskFreePercentThreshold ?? '—'}%</dd>
+                    <dt>5xx 증가</dt>
+                    <dd className="dc-mono">≥ {alertConfig?.serverErrorDeltaThreshold ?? '—'}건</dd>
+                  </dl>
+                  {alertMsg && (
+                    <div
+                      className={`dc-alert ${alertMsg.includes('실패') ? 'dc-alert-bad' : 'dc-alert-ok'}`}
+                      style={{ marginTop: '0.75rem', marginBottom: 0 }}
+                    >
+                      {alertMsg}
+                    </div>
+                  )}
+                  <div className="dc-ops-bar">
+                    <button
+                      type="button"
+                      className="dc-btn dc-btn-accent"
+                      disabled={!alertConfig?.enabled || alertTesting}
+                      onClick={handleAlertTest}
+                    >
+                      {alertTesting ? '발송 중…' : '테스트 알림'}
+                    </button>
+                    <span className="dc-ops-hint">
+                      IP OTP와 같은 메일 설정을 사용합니다. 수신 전용은 ALERT_EMAIL_TO로 지정할 수 있습니다.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="dc-panel">
+              <div className="dc-panel-head">
+                <h2 className="dc-panel-title">최근 오류</h2>
+                <span className="dc-mono" style={{ color: 'var(--dc-muted)', fontSize: '0.72rem' }}>
+                  행 클릭 → 로그 탭
+                </span>
+              </div>
+              <div className="dc-panel-body tight">
+                <div className="dc-table-wrap">
+                  {sysInfo.recent_errors?.length > 0 ? (
+                    <table className="dc-table">
+                      <thead>
+                        <tr>
+                          <th>번호</th>
+                          <th>시각</th>
+                          <th>IP</th>
+                          <th>요청자</th>
+                          <th>코드</th>
+                          <th>경로</th>
+                          <th>메시지</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sysInfo.recent_errors.map((err) => (
+                          <tr
+                            key={`${err.no}-${err.timestamp}`}
+                            className="dc-clickable"
+                            onClick={() => openLogsForError(err)}
+                            title="로그에서 이 경로 검색"
                           >
-                            백엔드 재배포
-                          </Button>
-                          {deployInfo?.statusUrl && (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              href={deployInfo.statusUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-info"
-                            >
-                              배포 상태 링크
-                            </Button>
-                          )}
-                          <span className="small text-secondary">
-                            재기동은 JAR 배포(deploy.sh)로만 합니다.
-                          </span>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                </Row>
-
-
-
-                {/* Alerts */}
-                <Row className="mt-4 g-4">
-                  <Col md={12}>
-                    <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Body className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <div>
-                          <h6 className="fw-bold mb-1" style={{ color: '#00d2ff' }}>알림 (Webhook)</h6>
-                          <div className="small text-secondary">
-                            {alertConfig?.enabled ? (
-                              <Badge bg="success" className="me-2">활성</Badge>
-                            ) : (
-                              <Badge bg="secondary" className="me-2">비활성</Badge>
-                            )}
-                            mem ≥ {alertConfig?.memoryUsedPercentThreshold ?? '-'}% · disk free ≤ {alertConfig?.diskFreePercentThreshold ?? '-'}% · 5xx Δ ≥ {alertConfig?.serverErrorDeltaThreshold ?? '-'}
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline-info"
-                          size="sm"
-                          disabled={!alertConfig?.enabled}
-                          onClick={() => openAuth('alert-test')}
-                        >
-                          테스트 알림
-                        </Button>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4 g-4">
-                  <Col md={4}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Body>
-                        <Card.Title className="fw-bold mb-4" style={{ color: '#00d2ff' }}>트래픽 응답 현황</Card.Title>
-                        {sysInfo.traffic && (
-                          <div style={{ height: 230, width: '100%' }}>
-                            <ResponsiveContainer>
-                              <BarChart
-                                data={[
-                                  { name: '2xx', value: sysInfo.traffic.success, fill: '#198754' },
-                                  { name: '3xx', value: sysInfo.traffic.redirection, fill: '#0d6efd' },
-                                  { name: '404', value: sysInfo.traffic.notFound, fill: '#ffc107' },
-                                  { name: '4xx', value: sysInfo.traffic.clientError, fill: '#dc3545' },
-                                  { name: '5xx', value: sysInfo.traffic.serverError, fill: '#a71d2a' },
-                                  { name: '429', value: sysInfo.traffic.rateLimited, fill: '#6c757d' },
-                                ]}
-                                margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
-                              >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-                                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#adb5bd' }} />
-                                <YAxis tick={{ fontSize: 12, fill: '#adb5bd' }} />
-                                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#1e1e2d', border: '1px solid #3f3f5a', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]} />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-                        <div className="d-flex justify-content-between fs-6 mt-3 border-top pt-3" style={{ borderColor: '#3f3f5a', color: '#00d2ff' }}>
-                          <span className="fw-bold">총 요청 수</span>
-                          <span className="fw-bold">{sysInfo.traffic?.total}건</span>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-
-                  <Col md={8}>
-                    <Card className="shadow-sm border-0 h-100 rounded-4">
-                      <Card.Header className="fw-bold text-primary">
-                        최근 발생 오류 로그 (최대 50건)
-                      </Card.Header>
-                      <Card.Body style={{ overflow: 'auto', maxHeight: '350px', padding: 0 }}>
-                        {sysInfo.recent_errors?.length > 0 ? (
-                          <Table striped hover size="sm" className="mb-0 text-center align-middle" style={{ fontSize: '0.85rem' }}>
-                            <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#2b2b40' }}>
-                              <tr style={{ whiteSpace: 'nowrap' }}>
-                                <th>번호</th>
-                                <th>발생 시각</th>
-                                <th>요청 출처(IP)</th>
-                                <th>요청 페이지(Referer)</th>
-                                <th>요청자</th>
-                                <th>코드</th>
-                                <th>API 경로</th>
-                                <th>메시지</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sysInfo.recent_errors.map((err, idx) => (
-                                <tr key={idx} style={{ whiteSpace: 'nowrap' }}>
-                                  <td>{err.no}</td>
-                                  <td style={{ color: '#adb5bd' }}>{err.timestamp}</td>
-                                  <td style={{ color: '#a8c7fa' }}>{err.clientIp}</td>
-                                  <td style={{ color: '#e2b3ff' }}>{err.referer || '-'}</td>
-                                  <td><Badge bg={err.who === '로그인 전' ? 'secondary' : 'info'}>{err.who}</Badge></td>
-                                  <td><span className="text-warning">{err.httpCode}</span></td>
-                                  <td><span className="text-primary">{err.apiPath}</span></td>
-                                  <td><span className="text-danger">{err.message}</span></td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </Table>
-                        ) : (
-                          <div className="text-center text-secondary py-4">발생한 오류 로그가 없습니다.</div>
-                        )}
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4 g-4">
-                  <Col md={12}>
-                    <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                      <Card.Header
-                        className="fw-bold d-flex justify-content-between align-items-center"
-                        style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}
-                      >
-                        <span>프로세스 감사 로그</span>
-                        <Button variant="outline-info" size="sm" onClick={loadSidePanels}>새로고침</Button>
-                      </Card.Header>
-                      <Card.Body className="p-0" style={{ maxHeight: '220px', overflow: 'auto' }}>
-                        {auditRows.length > 0 ? (
-                          <Table size="sm" variant="dark" hover className="mb-0 align-middle" style={{ fontSize: '0.85rem' }}>
-                            <thead>
-                              <tr className="text-muted">
-                                <th>시각</th>
-                                <th>Actor</th>
-                                <th>동작</th>
-                                <th>결과</th>
-                                <th>메시지</th>
-                                <th>IP</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {auditRows.map((row) => (
-                                <tr key={row.id}>
-                                  <td className="text-secondary">{row.timestamp ? new Date(row.timestamp).toLocaleString('ko-KR') : '-'}</td>
-                                  <td>{row.actor || '-'}</td>
-                                  <td>{row.detail || '-'}</td>
-                                  <td>{row.success ? <Badge bg="success">OK</Badge> : <Badge bg="danger">FAIL</Badge>}</td>
-                                  <td className="text-truncate" style={{ maxWidth: 200 }}>{row.message}</td>
-                                  <td>{row.clientIp || '-'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </Table>
-                        ) : (
-                          <div className="text-center text-secondary py-4">감사 기록이 없습니다.</div>
-                        )}
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                </Row>
-              </Tab>
-
-              <Tab eventKey="logs" title="실시간 로그">
-                <DevLogViewer />
-              </Tab>
-
-              <Tab eventKey="analytics" title="API 호출 통계">
-                <ApiAnalyticsViewer />
-              </Tab>
-
-              <Tab eventKey="announcements" title="공지사항 및 점검 관리">
-                <AnnouncementManager />
-              </Tab>
-
-              <Tab eventKey="netlify" title="프론트 배포">
-                <NetlifyDeployManager />
-              </Tab>
-            </Tabs>
+                            <td>{err.no}</td>
+                            <td className="dc-mono" style={{ color: 'var(--dc-muted)' }}>{err.timestamp}</td>
+                            <td className="dc-mono">{err.clientIp}</td>
+                            <td>{err.who}</td>
+                            <td style={{ color: 'var(--dc-warn)' }}>{err.httpCode}</td>
+                            <td className="dc-mono" style={{ color: 'var(--dc-info)' }}>{err.apiPath}</td>
+                            <td style={{ color: 'var(--dc-danger)' }}>{err.message}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="dc-empty">오류 로그가 없습니다.</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </>
+        ) : section === 'logs' ? (
+          <DevLogViewer initialLevel={logJump.level} initialKeyword={logJump.keyword} />
+        ) : section === 'analytics' ? (
+          <ApiAnalyticsViewer />
         ) : (
-          <div className="text-center py-5 text-danger">시스템 정보를 불러오지 못했습니다.</div>
+          <AnnouncementManager />
         )}
-      </Container>
+      </div>
 
       <Modal show={showPwModal} onHide={() => setShowPwModal(false)} centered>
         <Modal.Header closeButton>
@@ -491,33 +553,15 @@ const DevMain = () => {
               <Form.Label>새 비밀번호</Form.Label>
               <Form.Control type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} required />
             </Form.Group>
-            <div className="d-flex justify-content-end">
-              <Button variant="secondary" className="me-2" onClick={() => setShowPwModal(false)}>취소</Button>
-              <Button variant="primary" type="submit" disabled={pwLoading}>
-                {pwLoading ? <Spinner animation="border" size="sm" /> : '변경하기'}
+            <div className="d-flex justify-content-end gap-2">
+              <Button variant="secondary" onClick={() => setShowPwModal(false)}>취소</Button>
+              <Button variant="success" type="submit" disabled={pwLoading}>
+                {pwLoading ? <Spinner animation="border" size="sm" /> : '변경'}
               </Button>
             </div>
           </Form>
         </Modal.Body>
       </Modal>
-
-      <DevExecutorAuthModal
-        show={!!authAction}
-        onHide={() => setAuthAction(null)}
-        title={
-          authAction === 'shutdown' ? '서버 종료'
-            : authAction === 'redeploy' ? '백엔드 재배포'
-              : authAction === 'alert-test' ? '테스트 알림'
-                : '인증'
-        }
-        warning={
-          authAction === 'shutdown'
-            ? '서버 프로세스가 종료됩니다. 자동 재기동되지 않습니다. Executor ID/PW를 입력하세요.'
-            : 'Executor ID/PW를 입력하세요.'
-        }
-        loading={authLoading}
-        onConfirm={handleAuthConfirm}
-      />
     </div>
   );
 };

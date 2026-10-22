@@ -59,33 +59,6 @@ export const fetchSystemInfo = async () => {
   }
 };
 
-export const fetchDeployInfo = async () => {
-  try {
-    const response = await devApiClient.get(`${addUrl}/dashboard/deploy-info`);
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, '배포 정보를 불러오는데 실패했습니다.') };
-  }
-};
-
-export const fetchDashboardAudit = async (limit = 50) => {
-  try {
-    const response = await devApiClient.get(`${addUrl}/dashboard/audit`, { params: { limit } });
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, '대시보드 감사 로그를 불러오는데 실패했습니다.') };
-  }
-};
-
-export const postDashboardAction = async (action, id, pw) => {
-  try {
-    const response = await devApiClient.post(`${addUrl}/dashboard/${action}`, { id, pw });
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, `${action} 요청에 실패했습니다.`) };
-  }
-};
-
 export const changeDevPassword = async (oldPw, newPw) => {
   try {
     const response = await devApiClient.post(`${addUrl}/auth/change-password`, { oldPw, newPw });
@@ -167,6 +140,17 @@ export const fetchStatusBreakdown = async (hours = 24) => {
   }
 };
 
+export const fetchHourlyTrend = async (hours = 24) => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/analytics/hourly-trend`, {
+      params: { hours },
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: extractError(error, '시간대별 추이를 불러오는데 실패했습니다.') };
+  }
+};
+
 export const fetchAnnouncements = async () => {
   try {
     const response = await devApiClient.get(`${addUrl}/announcements`);
@@ -240,53 +224,12 @@ export const fetchAlertConfig = async () => {
   }
 };
 
-export const sendAlertTest = async (id, pw) => {
+export const sendAlertTest = async () => {
   try {
-    const response = await devApiClient.post(`${addUrl}/alerts/test`, { id, pw });
+    const response = await devApiClient.post(`${addUrl}/alerts/test`);
     return { success: true, data: response.data };
   } catch (error) {
     return { success: false, error: extractError(error, '테스트 알림 전송에 실패했습니다.') };
   }
 };
 
-export const fetchNetlifyStatus = async () => {
-  try {
-    const response = await devApiClient.get(`${addUrl}/netlify/status`);
-    return { success: true, data: response.data };
-  } catch (error) {
-    if (error.response?.status === 503 && error.response?.data) {
-      return { success: true, data: error.response.data };
-    }
-    return { success: false, error: extractError(error, 'Netlify 상태를 불러오는데 실패했습니다.') };
-  }
-};
-
-export const fetchNetlifyDeploys = async (perPage = 15) => {
-  try {
-    const response = await devApiClient.get(`${addUrl}/netlify/deploys`, { params: { perPage } });
-    return { success: true, data: response.data };
-  } catch (error) {
-    if (error.response?.status === 503 && error.response?.data) {
-      return { success: true, data: error.response.data };
-    }
-    return { success: false, error: extractError(error, 'Netlify 배포 목록을 불러오는데 실패했습니다.') };
-  }
-};
-
-export const triggerNetlifyDeploy = async (id, pw, clearCache = false) => {
-  try {
-    const response = await devApiClient.post(`${addUrl}/netlify/deploy`, { id, pw, clearCache });
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, 'Netlify 배포 트리거에 실패했습니다.') };
-  }
-};
-
-export const rollbackNetlifyDeploy = async (id, pw, deployId) => {
-  try {
-    const response = await devApiClient.post(`${addUrl}/netlify/rollback`, { id, pw, deployId });
-    return { success: true, data: response.data };
-  } catch (error) {
-    return { success: false, error: extractError(error, 'Netlify 롤백에 실패했습니다.') };
-  }
-};

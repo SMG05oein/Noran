@@ -49,7 +49,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "http://localhost:5173",
                         "https://dwaeji.kr",
                         "https://www.dwaeji.kr"
-                        // 만약 Netlify 배포 주소가 따로 있다면 여기에 추가해 주세요. (예: "https://my-app.netlify.app")
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

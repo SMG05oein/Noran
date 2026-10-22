@@ -44,13 +44,10 @@
 | `DEV_IP_OTP_TO` | `MAIL_USERNAME` | IP 불일치 시 OTP 수신 메일 |
 | `GIT_SHA` | `unknown` | 빌드 SHA |
 | `BUILD_TIME` | 비어 있음 | 빌드 시각 |
-| `ALERT_WEBHOOK_URL` | 비어 있음 | Discord/Slack 알림 (비우면 비활성) |
-| `BACKEND_DEPLOY_WEBHOOK_URL` | 비어 있음 | 백엔드 재배포 웹훅 |
-| `BACKEND_DEPLOY_STATUS_URL` | 비어 있음 | 배포 상태 조회 URL |
-| `NETLIFY_TOKEN` | 비어 있음 | Netlify 배포 프록시 |
-| `NETLIFY_SITE_ID` | 비어 있음 | Netlify 사이트 ID |
-| `NETLIFY_BUILD_HOOK_URL` | 비어 있음 | Netlify 빌드 훅 |
-| `NETLIFY_SITE_ADMIN_URL` | 비어 있음 | Netlify 관리 화면 URL |
+| `ALERT_EMAIL_TO` | `MAIL_USERNAME` | 운영 알림 수신 메일 (비우면 mail/OTP 수신과 동일) |
+| `ALERT_WEBHOOK_URL` | 비어 있음 | Discord/Slack 알림 (선택, 이메일과 병행 가능) |
+| `BACKEND_DEPLOY_WEBHOOK_URL` | 비어 있음 | 백엔드 재배포 웹훅 (선택, 보통 `deploy.sh` 사용) |
+| `BACKEND_DEPLOY_STATUS_URL` | 비어 있음 | 배포 상태 조회 URL (선택) |
 
 Hibernate `ddl-auto`는 `update`입니다. 애플리케이션 기동 시 엔티티 기준으로 스키마가 반영됩니다.
 
@@ -111,7 +108,8 @@ Windows:
 | `/api/dev/analytics` | 트래픽·느린 엔드포인트·상태 코드 분포 |
 | `/api/dev/announcements` | 공지·점검 모드 |
 | `/api/dev/alerts` | 알림 설정·테스트 |
-| `/api/dev/netlify` | 프론트 배포 상태·배포·롤백 |
+
+운영은 OCI 단일 호스트(Front + API + MySQL)이며, JAR 배포는 서버의 `deploy.sh` / `watch_deploy.sh`를 사용합니다.
 
 요청·응답 스키마는 Swagger에서 확인합니다. 개발자 대시보드 상세는 `developer-dashboard-api.md`, 근무기록 엑셀 대조 시나리오는 `excel-compare-qa.md`를 참고하세요.
 

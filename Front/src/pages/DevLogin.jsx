@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
 import { devLogin } from '../api/devAuthApi';
 import { promptDevIpOtp } from '../api/devIpToken';
-import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
+import './DevConsole.css';
 
 const DevLogin = () => {
   const [devId, setDevId] = useState('');
@@ -15,7 +15,7 @@ const DevLogin = () => {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!devId.trim() || !devPw.trim()) return setError('아이디와 비밀번호를 입력해주세요.');
 
     setLoading(true);
@@ -53,48 +53,42 @@ const DevLogin = () => {
   };
 
   return (
-    <div className="auth-container" data-bs-theme="dark" style={{ backgroundColor: 'var(--color-bg-cream)' }}>
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', zIndex: 1 }}>
-        <div className="w-100" style={{ maxWidth: '400px' }}>
-          <Card className="shadow-lg border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-            <Card.Body className="p-5">
-              <h2 className="text-center mb-4 fw-bold" style={{ color: '#00d2ff' }}>Developer Portal</h2>
-              {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
-              <Form onSubmit={handleLogin}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semibold">Developer ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={devId}
-                    onChange={(e) => setDevId(e.target.value)}
-                    required
-                    style={{ backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a' }}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold">Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={devPw}
-                    onChange={(e) => setDevPw(e.target.value)}
-                    required
-                    style={{ backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a' }}
-                  />
-                </Form.Group>
-                <Button
-                  disabled={loading}
-                  className="w-100 mb-3"
-                  style={{ backgroundColor: '#00d2ff', border: 'none', color: '#000', fontWeight: 'bold' }}
-                  type="submit"
-                  size="lg"
-                >
-                  {loading ? <Spinner as="span" animation="border" size="sm" /> : 'Access'}
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
-        </div>
-      </Container>
+    <div className="dev-console dc-login" data-bs-theme="dark">
+      <div className="dc-login-card">
+        <span className="dc-brand-kicker">노란돼지 · 운영</span>
+        <h1>운영 콘솔 로그인</h1>
+        <p className="dc-brand-sub">OCI 단일 서버 개발자 접속</p>
+
+        {error && <div className="dc-alert dc-alert-bad">{error}</div>}
+
+        <form onSubmit={handleLogin}>
+          <div className="dc-field">
+            <label htmlFor="dev-id">개발자 ID</label>
+            <input
+              id="dev-id"
+              type="text"
+              autoComplete="username"
+              value={devId}
+              onChange={(e) => setDevId(e.target.value)}
+              required
+            />
+          </div>
+          <div className="dc-field">
+            <label htmlFor="dev-pw">비밀번호</label>
+            <input
+              id="dev-pw"
+              type="password"
+              autoComplete="current-password"
+              value={devPw}
+              onChange={(e) => setDevPw(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="dc-btn dc-btn-accent dc-login-submit" disabled={loading}>
+            {loading ? '로그인 중…' : '로그인'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

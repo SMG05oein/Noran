@@ -12,10 +12,13 @@ import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.RuntimeMXBean;
+import java.net.InetAddress;
 import java.sql.Connection;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -36,6 +39,12 @@ public class DeveloperDashboardService {
     private String backendDeployWebhookUrl;
     @Value("${deploy.backend.status.url:}")
     private String backendDeployStatusUrl;
+    @Value("${server.port:8080}")
+    private String serverPort;
+    @Value("${alert.memory.used-percent-threshold:85}")
+    private double memoryWarnThreshold;
+    @Value("${alert.disk.free-percent-threshold:15}")
+    private double diskWarnThreshold;
 
     private static double roundGb(long bytes) {
         return Math.round((bytes / (1024.0 * 1024.0 * 1024.0)) * 100.0) / 100.0;
@@ -85,10 +94,107 @@ public class DeveloperDashboardService {
         systemInfo.put("traffic", systemMonitorService.getTrafficStats());
         systemInfo.put("recent_errors", systemMonitorService.getRecentErrors());
 
-        systemInfo.put("health", buildHealth());
+        Map<String, Object> health = buildHealth();
+        systemInfo.put("health", health);
         systemInfo.put("version", buildVersion());
+        systemInfo.put("host", buildHost(health));
+        systemInfo.put("status", buildStatusSummary(health, systemInfo));
+        systemInfo.put("fetchedAt", Instant.now().toString());
 
         return systemInfo;
+    }
+
+    /**
+     * OCI single-host context for Ops Console.
+     */
+    public Map<String, Object> buildHost(Map<String, Object> health) {
+        Map<String, Object> host = new LinkedHashMap<>();
+        host.put("mode", "oci-single");
+        host.put("deployMethod", "deploy.sh");
+        host.put("blueGreenPorts", List.of(8080, 8081));
+        host.put("serverPort", serverPort);
+        try {
+            host.put("hostname", InetAddress.getLocalHost().getHostName());
+        } catch (Exception e) {
+            host.put("hostname", "unknown");
+        }
+        try {
+            host.put("pid", ProcessHandle.current().pid());
+        } catch (Exception e) {
+            host.put("pid", null);
+        }
+        File cwd = new File(".").getAbsoluteFile();
+        host.put("workingDirectory", cwd.getAbsolutePath());
+        if (health != null && health.get("disk") instanceof Map<?, ?> disk) {
+            Object path = disk.get("path");
+            if (path != null) host.put("diskPath", path.toString());
+        }
+        return host;
+    }
+
+    /**
+     * overall: ok | warn | crit — Front uses for banner / card tint.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> buildStatusSummary(Map<String, Object> health, Map<String, Object> systemInfo) {
+        List<String> issues = new ArrayList<>();
+        String level = "ok";
+
+        Map<String, Object> db = health != null && health.get("db") instanceof Map
+                ? (Map<String, Object>) health.get("db") : Map.of();
+        String dbStatus = String.valueOf(db.getOrDefault("status", "UNKNOWN"));
+        if (!"UP".equalsIgnoreCase(dbStatus)) {
+            level = "crit";
+            issues.add("DB " + dbStatus);
+        } else if (db.get("latencyMs") instanceof Number lat && lat.longValue() >= 200) {
+            level = worse(level, "warn");
+            issues.add("DB 지연 " + lat.longValue() + "ms");
+        }
+
+        Map<String, Object> disk = health != null && health.get("disk") instanceof Map
+                ? (Map<String, Object>) health.get("disk") : Map.of();
+        if (disk.get("freePercent") instanceof Number fp) {
+            double free = fp.doubleValue();
+            if (free <= diskWarnThreshold) {
+                level = worse(level, free <= diskWarnThreshold / 2 ? "crit" : "warn");
+                issues.add(String.format("디스크 여유 %.1f%%", free));
+            }
+        }
+
+        Map<String, Object> memory = systemInfo != null && systemInfo.get("memory") instanceof Map
+                ? (Map<String, Object>) systemInfo.get("memory") : Map.of();
+        if (memory.get("used_mb") instanceof Number used && memory.get("max_mb") instanceof Number max
+                && max.longValue() > 0) {
+            double pct = used.doubleValue() * 100.0 / max.doubleValue();
+            if (pct >= memoryWarnThreshold) {
+                level = worse(level, pct >= 95 ? "crit" : "warn");
+                issues.add(String.format("JVM 메모리 %.0f%%", pct));
+            }
+        }
+
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("overall", level);
+        status.put("label", switch (level) {
+            case "crit" -> "위험";
+            case "warn" -> "주의";
+            default -> "정상";
+        });
+        status.put("issues", issues);
+        status.put("memoryWarnThreshold", memoryWarnThreshold);
+        status.put("diskWarnThreshold", diskWarnThreshold);
+        return status;
+    }
+
+    private static String worse(String current, String next) {
+        int c = rank(current);
+        int n = rank(next);
+        return n > c ? next : current;
+    }
+
+    private static int rank(String level) {
+        if ("crit".equals(level)) return 2;
+        if ("warn".equals(level)) return 1;
+        return 0;
     }
 
     public Map<String, Object> buildHealth() {
@@ -118,8 +224,13 @@ public class DeveloperDashboardService {
 
     public Map<String, Object> deployInfo() {
         Map<String, Object> m = new LinkedHashMap<>(buildVersion());
+        // Existing Ops Console fields (keep names/types stable)
         m.put("redeployConfigured", backendDeployWebhookUrl != null && !backendDeployWebhookUrl.isBlank());
         m.put("statusUrl", blankToNull(backendDeployStatusUrl));
+        // OCI single-host context (additive; Front may ignore)
+        m.put("hostMode", "oci-single");
+        m.put("deployMethod", "deploy.sh");
+        m.put("message", "OCI single host · Front/API/DB co-located · JAR blue-green via deploy.sh (8080/8081)");
         return m;
     }
 

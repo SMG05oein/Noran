@@ -1,44 +1,76 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, Button, Form, Spinner, Alert, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Spinner } from 'react-bootstrap';
 import { fetchDevLogs, downloadDevLogs } from '../api/devAuthApi';
 
-const DevLogViewer = () => {
+const DevLogViewer = ({ initialLevel = '', initialKeyword = '' }) => {
   const [logsData, setLogsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [lines, setLines] = useState(200);
-  const [level, setLevel] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const [keywordInput, setKeywordInput] = useState('');
+  const [level, setLevel] = useState(initialLevel || '');
+  const [keyword, setKeyword] = useState(initialKeyword || '');
+  const [keywordInput, setKeywordInput] = useState(initialKeyword || '');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [followBottom, setFollowBottom] = useState(true);
   const logContainerRef = useRef(null);
-
-  const loadLogs = async () => {
-    setLoading(true);
-    const res = await fetchDevLogs(lines, { level, keyword });
-    if (res.success) setLogsData(res.data);
-    setLoading(false);
-  };
+  const stickRef = useRef(true);
 
   useEffect(() => {
-    loadLogs();
+    if (initialLevel != null) setLevel(initialLevel || '');
+  }, [initialLevel]);
+
+  useEffect(() => {
+    if (initialKeyword != null) {
+      setKeyword(initialKeyword || '');
+      setKeywordInput(initialKeyword || '');
+    }
+  }, [initialKeyword]);
+
+  const loadLogs = useCallback(async ({ quiet } = {}) => {
+    if (!quiet) setLoading(true);
+    const res = await fetchDevLogs(lines, { level, keyword });
+    if (res.success) setLogsData(res.data);
+    if (!quiet) setLoading(false);
   }, [lines, level, keyword]);
 
   useEffect(() => {
-    if (!autoRefresh) return undefined;
-    const interval = setInterval(loadLogs, 3000);
-    return () => clearInterval(interval);
-  }, [autoRefresh, lines, level, keyword]);
+    loadLogs();
+  }, [loadLogs]);
 
   useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logsData]);
+    if (!autoRefresh) return undefined;
+    const interval = setInterval(() => loadLogs({ quiet: true }), 3000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, loadLogs]);
+
+  useEffect(() => {
+    const el = logContainerRef.current;
+    if (!el || !followBottom || !stickRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [logsData, followBottom]);
+
+  const onScroll = () => {
+    const el = logContainerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    stickRef.current = nearBottom;
+  };
 
   const applyKeyword = (e) => {
     e.preventDefault();
     setKeyword(keywordInput.trim());
+  };
+
+  const setErrorOnly = () => {
+    setLevel('ERROR');
+    setKeyword('');
+    setKeywordInput('');
+  };
+
+  const clearFilters = () => {
+    setLevel('');
+    setKeyword('');
+    setKeywordInput('');
   };
 
   const handleDownload = async () => {
@@ -59,118 +91,144 @@ const DevLogViewer = () => {
 
   const formatLogLine = (line) => {
     if (line.includes('ERROR')) {
-      return <span style={{ color: '#ff6b6b', fontWeight: 'bold' }}>{line}</span>;
+      return <span style={{ color: '#f85149', fontWeight: 600 }}>{line}</span>;
     }
     if (line.includes('WARN')) {
-      return <span style={{ color: '#fca5a5' }}>{line}</span>;
+      return <span style={{ color: '#d29922' }}>{line}</span>;
     }
     if (line.includes('INFO')) {
-      return <span style={{ color: '#34d399' }}>{line}</span>;
+      return <span style={{ color: '#3fb950' }}>{line}</span>;
     }
     if (line.includes('DEBUG')) {
-      return <span style={{ color: '#60a5fa' }}>{line}</span>;
+      return <span style={{ color: '#58a6ff' }}>{line}</span>;
     }
-    return <span style={{ color: '#d1d5db' }}>{line}</span>;
+    return <span style={{ color: '#c9d1d9' }}>{line}</span>;
   };
 
   return (
-    <Card className="shadow-sm border-0 rounded-4">
-      <Card.Header className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-bold">실시간 서버 로그 뷰어</span>
-          {logsData?.available && <Badge bg="success">실시간 작동 중</Badge>}
+    <div className="dc-panel">
+      <div className="dc-panel-head">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <h2 className="dc-panel-title mb-0">실시간 서버 로그</h2>
+          {logsData?.available && <span className="dc-pill dc-pill-ok">연결됨</span>}
+          {!autoRefresh && <span className="dc-pill dc-pill-warn">일시정지</span>}
           {logsData?.filtered && (
-            <Badge bg="info">
+            <span className="dc-pill dc-pill-info">
               필터 {logsData.matchedLines ?? logsData.totalLines ?? 0}줄
-            </Badge>
+            </span>
           )}
         </div>
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <Form.Check
-            type="switch"
-            id="auto-refresh-switch"
-            label="자동 갱신 (3초)"
-            checked={autoRefresh}
-            onChange={(e) => setAutoRefresh(e.target.checked)}
-            className="text-light small"
-          />
-          <Form.Select
-            size="sm"
+      </div>
+      <div className="dc-panel-body">
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <button
+            type="button"
+            className={`dc-btn ${autoRefresh ? 'dc-btn-ghost' : 'dc-btn-warn'}`}
+            onClick={() => setAutoRefresh((v) => !v)}
+          >
+            {autoRefresh ? '일시정지' : '재개'}
+          </button>
+          <button
+            type="button"
+            className={`dc-btn ${followBottom ? 'dc-btn-accent' : 'dc-btn-ghost'}`}
+            onClick={() => {
+              setFollowBottom((v) => !v);
+              stickRef.current = true;
+            }}
+          >
+            {followBottom ? '맨 아래 고정 ON' : '맨 아래 고정 OFF'}
+          </button>
+          <button type="button" className="dc-btn dc-btn-danger" onClick={setErrorOnly}>
+            ERROR만
+          </button>
+          <button type="button" className="dc-btn dc-btn-ghost" onClick={clearFilters}>
+            필터 해제
+          </button>
+          <select
+            className="form-select form-select-sm"
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            style={{ width: '110px' }}
+            style={{ width: 110 }}
           >
             <option value="">전체 레벨</option>
             <option value="ERROR">ERROR</option>
             <option value="WARN">WARN</option>
             <option value="INFO">INFO</option>
             <option value="DEBUG">DEBUG</option>
-          </Form.Select>
-          <Form.Select
-            size="sm"
+          </select>
+          <select
+            className="form-select form-select-sm"
             value={lines}
             onChange={(e) => setLines(Number(e.target.value))}
-            style={{ width: '110px' }}
+            style={{ width: 100 }}
           >
-            <option value={50}>50 줄</option>
-            <option value={100}>100 줄</option>
-            <option value={200}>200 줄</option>
-            <option value={500}>500 줄</option>
-          </Form.Select>
-          <Form onSubmit={applyKeyword} className="d-flex gap-1">
-            <Form.Control
-              size="sm"
+            <option value={50}>50줄</option>
+            <option value={100}>100줄</option>
+            <option value={200}>200줄</option>
+            <option value={500}>500줄</option>
+          </select>
+          <form onSubmit={applyKeyword} className="d-flex gap-1">
+            <input
+              className="form-control form-control-sm"
               placeholder="키워드"
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
-              style={{ width: '140px' }}
+              style={{ width: 140 }}
             />
-            <Button variant="outline-secondary" size="sm" type="submit">검색</Button>
-          </Form>
-          <Button variant="outline-info" size="sm" onClick={loadLogs} disabled={loading}>
-            {loading ? <Spinner animation="border" size="sm" /> : '새로고침'}
-          </Button>
-          <Button variant="outline-success" size="sm" onClick={handleDownload} disabled={downloading || !logsData?.available}>
-            {downloading ? <Spinner animation="border" size="sm" /> : '다운로드'}
-          </Button>
+            <button type="submit" className="dc-btn dc-btn-ghost">검색</button>
+          </form>
+          <button type="button" className="dc-btn dc-btn-info" onClick={() => loadLogs()} disabled={loading}>
+            {loading ? '…' : '새로고침'}
+          </button>
+          <button
+            type="button"
+            className="dc-btn dc-btn-ghost"
+            onClick={handleDownload}
+            disabled={downloading || !logsData?.available}
+          >
+            {downloading ? '…' : '다운로드'}
+          </button>
         </div>
-      </Card.Header>
-      <Card.Body className="p-3">
+
         {logsData && !logsData.available && (
-          <Alert variant="warning" className="py-2 mb-3">
+          <div className="dc-alert dc-alert-bad mb-3">
             {logsData.message || '로컬 환경이거나 로그 파일을 찾을 수 없습니다.'}
-          </Alert>
+          </div>
         )}
 
         <div
           ref={logContainerRef}
+          onScroll={onScroll}
           className="hide-scrollbar"
           style={{
-            backgroundColor: '#0d1117',
+            backgroundColor: '#010409',
             color: '#c9d1d9',
-            fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
-            fontSize: '0.85rem',
-            padding: '1rem',
-            borderRadius: '8px',
-            height: '500px',
+            fontFamily: 'var(--dc-mono)',
+            fontSize: '0.82rem',
+            padding: '0.85rem 1rem',
+            borderRadius: 8,
+            border: '1px solid var(--dc-border)',
+            height: 'min(62vh, 560px)',
             overflowY: 'auto',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-all',
-            lineHeight: '1.5',
+            lineHeight: 1.55,
           }}
         >
           {loading && !logsData ? (
-            <div className="text-center py-5 text-muted">로그를 불러오는 중입니다...</div>
-          ) : logsData?.logs && logsData.logs.length > 0 ? (
+            <div className="dc-empty">
+              <Spinner animation="border" size="sm" />
+            </div>
+          ) : logsData?.logs?.length > 0 ? (
             logsData.logs.map((line, idx) => (
               <div key={idx}>{formatLogLine(line)}</div>
             ))
           ) : (
-            <div className="text-center text-muted py-5">출력할 로그 데이터가 없습니다.</div>
+            <div className="dc-empty">출력할 로그가 없습니다.</div>
           )}
         </div>
-      </Card.Body>
-    </Card>
+      </div>
+    </div>
   );
 };
 

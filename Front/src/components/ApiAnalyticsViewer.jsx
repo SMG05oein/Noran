@@ -1,36 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Table, Badge, Button, Spinner, ProgressBar, Form, Row, Col } from 'react-bootstrap';
-import { fetchApiAnalytics, fetchSlowEndpoints, fetchStatusBreakdown } from '../api/devAuthApi';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Spinner } from 'react-bootstrap';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer, Legend,
+} from 'recharts';
+import {
+  fetchApiAnalytics,
+  fetchSlowEndpoints,
+  fetchStatusBreakdown,
+  fetchHourlyTrend,
+} from '../api/devAuthApi';
 
 const HOUR_OPTIONS = [
-  { value: '', label: '전체(누적)' },
   { value: '1', label: '최근 1시간' },
   { value: '6', label: '최근 6시간' },
   { value: '24', label: '최근 24시간' },
   { value: '168', label: '최근 7일' },
 ];
 
+const STATUS_KEYS = ['total', '2xx', '3xx', '4xx', '5xx', '429'];
+
+const formatDelta = (n) => {
+  if (n == null || n === 0) return { text: '±0', cls: 'dc-delta-flat' };
+  if (n > 0) return { text: `+${n}`, cls: 'dc-delta-up' };
+  return { text: `${n}`, cls: 'dc-delta-down' };
+};
+
+const methodClass = (method) => {
+  switch (String(method || '').toUpperCase()) {
+    case 'GET': return 'dc-pill-ok';
+    case 'POST': return 'dc-pill-info';
+    case 'PUT': return 'dc-pill-warn';
+    case 'DELETE': return 'dc-pill-bad';
+    default: return 'dc-pill-muted';
+  }
+};
+
+const slowRowClass = (avg) => {
+  if (avg == null) return '';
+  if (avg >= 1000) return 'dc-row-critical';
+  if (avg >= 500) return 'dc-row-slow';
+  return '';
+};
+
 const ApiAnalyticsViewer = () => {
   const [hours, setHours] = useState('24');
   const [analytics, setAnalytics] = useState([]);
   const [slow, setSlow] = useState([]);
   const [breakdown, setBreakdown] = useState(null);
+  const [trend, setTrend] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadAnalytics = async () => {
     setLoading(true);
-    const hoursParam = hours === '' ? undefined : Number(hours);
-    const windowHours = hoursParam ?? 24;
-
-    const [topRes, slowRes, statusRes] = await Promise.all([
-      fetchApiAnalytics({ hours: hoursParam, limit: 10 }),
-      fetchSlowEndpoints({ hours: windowHours, limit: 10 }),
-      fetchStatusBreakdown(windowHours),
+    const h = Number(hours) || 24;
+    const [topRes, slowRes, statusRes, trendRes] = await Promise.all([
+      fetchApiAnalytics({ hours: h, limit: 10 }),
+      fetchSlowEndpoints({ hours: h, limit: 10 }),
+      fetchStatusBreakdown(h),
+      fetchHourlyTrend(h),
     ]);
-
     setAnalytics(topRes.success && Array.isArray(topRes.data) ? topRes.data : []);
     setSlow(slowRes.success && Array.isArray(slowRes.data) ? slowRes.data : []);
     setBreakdown(statusRes.success ? statusRes.data : null);
+    setTrend(trendRes.success && Array.isArray(trendRes.data) ? trendRes.data : []);
     setLoading(false);
   };
 
@@ -38,153 +71,215 @@ const ApiAnalyticsViewer = () => {
     loadAnalytics();
   }, [hours]);
 
-  const getMethodBadge = (method) => {
-    switch (method?.toUpperCase()) {
-      case 'GET':
-        return <Badge bg="success">GET</Badge>;
-      case 'POST':
-        return <Badge bg="primary">POST</Badge>;
-      case 'PUT':
-        return <Badge bg="warning" text="dark">PUT</Badge>;
-      case 'DELETE':
-        return <Badge bg="danger">DELETE</Badge>;
-      default:
-        return <Badge bg="secondary">{method}</Badge>;
-    }
-  };
-
   const maxCount = analytics.length > 0 ? Math.max(...analytics.map((a) => a.count || 1)) : 1;
 
+  const chartTrend = useMemo(() => {
+    // 7일이면 라벨 과밀 → 6시간 단위로 축약 표시용 원본 유지, 차트는 그대로
+    if (trend.length > 48) {
+      return trend.filter((_, i) => i % 3 === 0 || i === trend.length - 1);
+    }
+    return trend;
+  }, [trend]);
+
+  const tooltipStyle = {
+    backgroundColor: '#161b22',
+    border: '1px solid #30363d',
+    borderRadius: 6,
+    color: '#e6edf3',
+    fontSize: 12,
+  };
+
   return (
-    <div className="d-flex flex-column gap-4">
-      <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-        <Card.Body className="d-flex flex-wrap justify-content-between align-items-center gap-3 py-3">
-          <span className="fw-bold" style={{ color: '#00d2ff' }}>조회 기간</span>
+    <div className="d-flex flex-column gap-3">
+      <div className="dc-panel">
+        <div className="dc-panel-head">
+          <h2 className="dc-panel-title">조회 기간</h2>
           <div className="d-flex align-items-center gap-2">
-            <Form.Select
-              size="sm"
+            <select
+              className="form-select form-select-sm"
               value={hours}
               onChange={(e) => setHours(e.target.value)}
-              style={{ width: '160px', backgroundColor: '#1e1e2d', color: '#fff', border: '1px solid #3f3f5a' }}
+              style={{ width: 150 }}
             >
               {HOUR_OPTIONS.map((o) => (
-                <option key={o.value || 'all'} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </Form.Select>
-            <Button variant="outline-info" size="sm" onClick={loadAnalytics} disabled={loading}>
-              {loading ? <Spinner animation="border" size="sm" /> : '새로고침'}
-            </Button>
+            </select>
+            <button type="button" className="dc-btn dc-btn-ghost" onClick={loadAnalytics} disabled={loading}>
+              {loading ? '로딩…' : '새로고침'}
+            </button>
           </div>
-        </Card.Body>
-      </Card>
+        </div>
+        <div className="dc-panel-body" style={{ paddingTop: '0.65rem' }}>
+          <p className="mb-0 small" style={{ color: 'var(--dc-muted)' }}>
+            이전 동일 구간과 비교 · 시간대별 호출 추이 · 느린 API(평균 ≥500ms 주의, ≥1s 위험)
+          </p>
+        </div>
+      </div>
 
       {breakdown && (
-        <Row className="g-3">
-          {['2xx', '3xx', '4xx', '5xx', '429', 'total'].map((key) => (
-            <Col key={key} xs={6} md={2}>
-              <Card className="shadow-sm border-0 rounded-3 text-center" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-                <Card.Body className="py-3">
-                  <div className="small text-secondary mb-1">{key}</div>
-                  <div className="fw-bold fs-5 text-info">{breakdown[key] ?? 0}</div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        <div className="dc-status-row" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
+          {STATUS_KEYS.map((key) => {
+            const delta = formatDelta(breakdown.delta?.[key]);
+            return (
+              <div key={key} className="dc-stat" style={{ minHeight: 72 }}>
+                <div className="dc-stat-label">{key}</div>
+                <div className="dc-stat-value">{breakdown[key] ?? 0}</div>
+                <div className={`dc-stat-meta ${delta.cls}`}>
+                  이전 대비 {delta.text}
+                  {breakdown.previous?.[key] != null ? ` (이전 ${breakdown.previous[key]})` : ''}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-        <Card.Header className="fw-bold" style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}>
-          API 호출 통계 Top 10 {hours === '' ? '(누적)' : `(${hours}h)`}
-        </Card.Header>
-        <Card.Body className="p-0">
+      <div className="dc-panel">
+        <div className="dc-panel-head">
+          <h2 className="dc-panel-title">시간대별 호출 추이</h2>
+          <span className="dc-mono" style={{ color: 'var(--dc-muted)', fontSize: '0.75rem' }}>
+            {hours}h · 호출 수 / 5xx
+          </span>
+        </div>
+        <div className="dc-panel-body">
           {loading ? (
-            <div className="text-center py-5"><Spinner animation="border" variant="info" /></div>
+            <div className="dc-empty"><Spinner animation="border" size="sm" /></div>
+          ) : chartTrend.length > 0 ? (
+            <div className="dc-chart" style={{ height: 240 }}>
+              <ResponsiveContainer>
+                <BarChart data={chartTrend} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#8b949e' }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 11, fill: '#8b949e' }} />
+                  <RechartsTooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 12, color: '#8b949e' }} />
+                  <Bar dataKey="total" name="호출" fill="#58a6ff" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="s5xx" name="5xx" fill="#f85149" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="dc-empty">추이 데이터가 없습니다. (백엔드 배포 후 수집됩니다)</div>
+          )}
+        </div>
+      </div>
+
+      <div className="dc-panel">
+        <div className="dc-panel-head">
+          <h2 className="dc-panel-title">API 호출 Top 10 ({hours}h)</h2>
+        </div>
+        <div className="dc-panel-body tight">
+          {loading ? (
+            <div className="dc-empty"><Spinner animation="border" size="sm" /></div>
           ) : analytics.length > 0 ? (
-            <div className="table-responsive hide-scrollbar">
-              <Table responsive variant="dark" hover className="mb-0 align-middle" style={{ fontSize: '0.9rem' }}>
-                <thead style={{ backgroundColor: '#1e1e2d' }}>
-                  <tr className="text-muted">
-                    <th style={{ width: '60px' }} className="text-center">순위</th>
-                    <th style={{ width: '90px' }}>메소드</th>
-                    <th>API 경로 (Path)</th>
-                    <th style={{ width: '180px' }}>호출 횟수</th>
-                    <th style={{ width: '130px' }} className="text-end">평균 응답시간</th>
+            <div className="dc-table-wrap">
+              <table className="dc-table">
+                <thead>
+                  <tr>
+                    <th>순위</th>
+                    <th>메소드</th>
+                    <th>경로</th>
+                    <th>호출</th>
+                    <th>평균</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="text-center fw-bold text-info">#{idx + 1}</td>
-                      <td>{getMethodBadge(item.method)}</td>
-                      <td className="fw-bold text-light">{item.path}</td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <ProgressBar
-                            now={(item.count / maxCount) * 100}
-                            variant="info"
-                            style={{ height: '8px', flex: 1, backgroundColor: '#3f3f5a' }}
-                          />
-                          <span className="fw-semibold small" style={{ width: '45px' }}>{item.count}회</span>
-                        </div>
-                      </td>
-                      <td className="text-end fw-bold">
-                        <span className={item.avgResponseTimeMs > 500 ? 'text-danger' : item.avgResponseTimeMs > 100 ? 'text-warning' : 'text-success'}>
-                          {typeof item.avgResponseTimeMs === 'number' ? item.avgResponseTimeMs.toFixed(2) : item.avgResponseTimeMs} ms
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {analytics.map((item, idx) => {
+                    const avg = item.avgResponseTimeMs;
+                    return (
+                      <tr key={`${item.method}-${item.path}-${idx}`} className={slowRowClass(avg)}>
+                        <td>#{idx + 1}</td>
+                        <td>
+                          <span className={`dc-pill ${methodClass(item.method)}`}>{item.method}</span>
+                        </td>
+                        <td className="dc-mono">{item.path}</td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div
+                              style={{
+                                flex: 1,
+                                height: 6,
+                                borderRadius: 3,
+                                background: '#30363d',
+                                overflow: 'hidden',
+                                minWidth: 60,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${Math.max(4, (item.count / maxCount) * 100)}%`,
+                                  height: '100%',
+                                  background: '#58a6ff',
+                                }}
+                              />
+                            </div>
+                            <span className="dc-mono">{item.count}</span>
+                          </div>
+                        </td>
+                        <td className="dc-mono">
+                          {typeof avg === 'number' ? `${avg.toFixed(1)} ms` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
-              </Table>
+              </table>
             </div>
           ) : (
-            <div className="text-center text-muted py-5">수집된 API 통계 데이터가 없습니다.</div>
+            <div className="dc-empty">수집된 API 통계가 없습니다.</div>
           )}
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="shadow-sm border-0 rounded-4" style={{ backgroundColor: '#2b2b40', color: '#fff' }}>
-        <Card.Header className="fw-bold" style={{ backgroundColor: '#1e1e2d', color: '#00d2ff', borderBottom: '1px solid #3f3f5a' }}>
-          느린 엔드포인트 Top 10
-        </Card.Header>
-        <Card.Body className="p-0">
+      <div className="dc-panel">
+        <div className="dc-panel-head">
+          <h2 className="dc-panel-title">느린 엔드포인트 Top 10</h2>
+        </div>
+        <div className="dc-panel-body tight">
           {loading ? (
-            <div className="text-center py-4"><Spinner animation="border" size="sm" variant="info" /></div>
+            <div className="dc-empty"><Spinner animation="border" size="sm" /></div>
           ) : slow.length > 0 ? (
-            <Table responsive variant="dark" hover className="mb-0 align-middle" style={{ fontSize: '0.9rem' }}>
-              <thead>
-                <tr className="text-muted">
-                  <th style={{ width: '60px' }} className="text-center">순위</th>
-                  <th style={{ width: '90px' }}>메소드</th>
-                  <th>경로</th>
-                  <th className="text-end">호출</th>
-                  <th className="text-end">평균</th>
-                  <th className="text-end">최대</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slow.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="text-center text-info fw-bold">#{idx + 1}</td>
-                    <td>{getMethodBadge(item.method)}</td>
-                    <td>{item.path}</td>
-                    <td className="text-end">{item.count}</td>
-                    <td className="text-end text-warning">
-                      {typeof item.avgResponseTimeMs === 'number' ? item.avgResponseTimeMs.toFixed(2) : item.avgResponseTimeMs} ms
-                    </td>
-                    <td className="text-end text-danger">
-                      {item.maxResponseTimeMs != null ? `${item.maxResponseTimeMs} ms` : '-'}
-                    </td>
+            <div className="dc-table-wrap">
+              <table className="dc-table">
+                <thead>
+                  <tr>
+                    <th>순위</th>
+                    <th>메소드</th>
+                    <th>경로</th>
+                    <th>호출</th>
+                    <th>평균</th>
+                    <th>최대</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {slow.map((item, idx) => {
+                    const avg = item.avgResponseTimeMs;
+                    return (
+                      <tr key={`slow-${item.method}-${item.path}-${idx}`} className={slowRowClass(avg)}>
+                        <td>#{idx + 1}</td>
+                        <td>
+                          <span className={`dc-pill ${methodClass(item.method)}`}>{item.method}</span>
+                        </td>
+                        <td className="dc-mono">{item.path}</td>
+                        <td>{item.count}</td>
+                        <td className="dc-mono" style={{ color: avg >= 500 ? 'var(--dc-warn)' : undefined }}>
+                          {typeof avg === 'number' ? `${avg.toFixed(1)} ms` : '—'}
+                        </td>
+                        <td className="dc-mono" style={{ color: 'var(--dc-danger)' }}>
+                          {item.maxResponseTimeMs != null ? `${item.maxResponseTimeMs} ms` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <div className="text-center text-muted py-4">느린 엔드포인트 데이터가 없습니다.</div>
+            <div className="dc-empty">느린 엔드포인트 데이터가 없습니다.</div>
           )}
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

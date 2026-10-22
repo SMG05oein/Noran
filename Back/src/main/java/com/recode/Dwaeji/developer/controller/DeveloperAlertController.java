@@ -1,6 +1,5 @@
 package com.recode.Dwaeji.developer.controller;
 
-import com.recode.Dwaeji.developer.dto.DevAuthBodyDto;
 import com.recode.Dwaeji.developer.service.DevAlertService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +23,7 @@ public class DeveloperAlertController {
 
     @PostMapping("/test")
     @PreAuthorize("hasRole('DEVELOPER')")
-    public ResponseEntity<Map<String, Object>> test(@RequestBody DevAuthBodyDto body) {
-        alertService.sendTest(body);
-        return ResponseEntity.ok(Map.of("ok", true, "message", "Test alert sent"));
+    public ResponseEntity<Map<String, Object>> test() {
+        return ResponseEntity.ok(alertService.sendTest());
     }
 }

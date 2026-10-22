@@ -1,0 +1,702 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+.dev-console {
+  --dc-bg: #0d1117;
+  --dc-bg-elev: #161b22;
+  --dc-bg-soft: #21262d;
+  --dc-border: #30363d;
+  --dc-border-strong: #484f58;
+  --dc-text: #e6edf3;
+  --dc-muted: #8b949e;
+  --dc-accent: #3fb950;
+  --dc-accent-dim: rgba(63, 185, 80, 0.15);
+  --dc-warn: #d29922;
+  --dc-warn-dim: rgba(210, 153, 34, 0.15);
+  --dc-danger: #f85149;
+  --dc-danger-dim: rgba(248, 81, 73, 0.12);
+  --dc-info: #58a6ff;
+  --dc-info-dim: rgba(88, 166, 255, 0.12);
+  --dc-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --dc-sans: 'IBM Plex Sans', system-ui, sans-serif;
+
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(63, 185, 80, 0.08), transparent 55%),
+    radial-gradient(900px 400px at 90% 0%, rgba(88, 166, 255, 0.06), transparent 50%),
+    var(--dc-bg);
+  color: var(--dc-text);
+  font-family: var(--dc-sans);
+}
+
+.dev-console *,
+.dev-console *::before,
+.dev-console *::after {
+  box-sizing: border-box;
+}
+
+.dev-console .dc-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 2.5rem;
+}
+
+.dev-console .dc-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--dc-border);
+  margin-bottom: 1.25rem;
+}
+
+.dev-console .dc-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dev-console .dc-brand-kicker {
+  font-family: var(--dc-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-brand-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.dev-console .dc-brand-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dev-console .dc-user {
+  font-size: 0.85rem;
+  color: var(--dc-muted);
+  margin-right: 0.25rem;
+}
+
+.dev-console .dc-user strong {
+  color: var(--dc-text);
+  font-weight: 600;
+}
+
+.dev-console .dc-btn {
+  appearance: none;
+  border: 1px solid var(--dc-border);
+  background: var(--dc-bg-elev);
+  color: var(--dc-text);
+  font-family: var(--dc-sans);
+  font-size: 0.8rem;
+  font-weight: 550;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dev-console .dc-btn:hover:not(:disabled) {
+  border-color: var(--dc-border-strong);
+  background: var(--dc-bg-soft);
+}
+
+.dev-console .dc-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dev-console .dc-btn-ghost {
+  background: transparent;
+}
+
+.dev-console .dc-btn-accent {
+  border-color: rgba(63, 185, 80, 0.45);
+  background: var(--dc-accent-dim);
+  color: var(--dc-accent);
+}
+
+.dev-console .dc-btn-danger {
+  border-color: rgba(248, 81, 73, 0.45);
+  background: var(--dc-danger-dim);
+  color: var(--dc-danger);
+}
+
+.dev-console .dc-btn-info {
+  border-color: rgba(88, 166, 255, 0.4);
+  background: var(--dc-info-dim);
+  color: var(--dc-info);
+}
+
+.dev-console .dc-btn-warn {
+  border-color: rgba(210, 153, 34, 0.45);
+  background: var(--dc-warn-dim);
+  color: var(--dc-warn);
+}
+
+.dev-console .dc-sticky-strip {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--dc-border);
+  border-radius: 8px;
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.dev-console .dc-sticky-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.dev-console .dc-sticky-item strong {
+  font-family: var(--dc-mono);
+  font-weight: 550;
+}
+
+.dev-console .dc-table tbody tr.dc-clickable {
+  cursor: pointer;
+}
+
+.dev-console .dc-table tbody tr.dc-clickable:hover {
+  background: rgba(88, 166, 255, 0.08);
+}
+
+.dev-console .dc-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  padding: 0.3rem;
+  background: var(--dc-bg-elev);
+  border: 1px solid var(--dc-border);
+  border-radius: 8px;
+}
+
+.dev-console .dc-nav-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--dc-muted);
+  font-family: var(--dc-sans);
+  font-size: 0.82rem;
+  font-weight: 550;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dev-console .dc-nav-btn:hover {
+  color: var(--dc-text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dev-console .dc-nav-btn.active {
+  color: var(--dc-text);
+  background: var(--dc-bg-soft);
+  box-shadow: inset 0 0 0 1px var(--dc-border);
+}
+
+.dev-console .dc-status-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .dev-console .dc-status-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .dev-console .dc-status-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dev-console .dc-stat {
+  background: var(--dc-bg-elev);
+  border: 1px solid var(--dc-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  min-height: 88px;
+}
+
+.dev-console .dc-stat.warn {
+  border-color: rgba(210, 153, 34, 0.55);
+  background: linear-gradient(180deg, var(--dc-warn-dim), var(--dc-bg-elev) 70%);
+}
+
+.dev-console .dc-stat.crit {
+  border-color: rgba(248, 81, 73, 0.55);
+  background: linear-gradient(180deg, var(--dc-danger-dim), var(--dc-bg-elev) 70%);
+}
+
+.dev-console .dc-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--dc-border);
+  background: var(--dc-bg-elev);
+}
+
+.dev-console .dc-banner.ok {
+  border-color: rgba(63, 185, 80, 0.4);
+  background: var(--dc-accent-dim);
+}
+
+.dev-console .dc-banner.warn {
+  border-color: rgba(210, 153, 34, 0.45);
+  background: var(--dc-warn-dim);
+}
+
+.dev-console .dc-banner.crit {
+  border-color: rgba(248, 81, 73, 0.45);
+  background: var(--dc-danger-dim);
+}
+
+.dev-console .dc-banner-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dev-console .dc-banner-title {
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.dev-console .dc-banner-issues {
+  font-size: 0.8rem;
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-banner-meta {
+  font-family: var(--dc-mono);
+  font-size: 0.72rem;
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-delta-up {
+  color: var(--dc-danger);
+}
+
+.dev-console .dc-delta-down {
+  color: var(--dc-accent);
+}
+
+.dev-console .dc-delta-flat {
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-row-slow {
+  background: rgba(210, 153, 34, 0.08);
+}
+
+.dev-console .dc-row-critical {
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.dev-console .dc-stat-label {
+  font-family: var(--dc-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dc-muted);
+  margin-bottom: 0.35rem;
+}
+
+.dev-console .dc-stat-value {
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.dev-console .dc-stat-meta {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--dc-muted);
+  font-family: var(--dc-mono);
+}
+
+.dev-console .dc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--dc-mono);
+  font-size: 0.72rem;
+  font-weight: 550;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.dev-console .dc-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dev-console .dc-pill-ok {
+  color: var(--dc-accent);
+  background: var(--dc-accent-dim);
+  border-color: rgba(63, 185, 80, 0.35);
+}
+
+.dev-console .dc-pill-bad {
+  color: var(--dc-danger);
+  background: var(--dc-danger-dim);
+  border-color: rgba(248, 81, 73, 0.35);
+}
+
+.dev-console .dc-pill-warn {
+  color: var(--dc-warn);
+  background: var(--dc-warn-dim);
+  border-color: rgba(210, 153, 34, 0.35);
+}
+
+.dev-console .dc-pill-muted {
+  color: var(--dc-muted);
+  background: rgba(139, 148, 158, 0.12);
+  border-color: var(--dc-border);
+}
+
+.dev-console .dc-pill-info {
+  color: var(--dc-info);
+  background: var(--dc-info-dim);
+  border-color: rgba(88, 166, 255, 0.35);
+}
+
+.dev-console .dc-grid-2 {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.dev-console .dc-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 960px) {
+  .dev-console .dc-grid-2,
+  .dev-console .dc-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dev-console .dc-panel {
+  background: var(--dc-bg-elev);
+  border: 1px solid var(--dc-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dev-console .dc-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.95rem;
+  border-bottom: 1px solid var(--dc-border);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.dev-console .dc-panel-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.dev-console .dc-panel-body {
+  padding: 0.95rem;
+}
+
+.dev-console .dc-panel-body.tight {
+  padding: 0;
+}
+
+.dev-console .dc-kv {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.dev-console .dc-kv dt {
+  margin: 0;
+  color: var(--dc-muted);
+  font-family: var(--dc-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 0.15rem;
+}
+
+.dev-console .dc-kv dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.dev-console .dc-mono {
+  font-family: var(--dc-mono);
+  font-size: 0.82rem;
+}
+
+.dev-console .dc-ops-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed var(--dc-border);
+}
+
+.dev-console .dc-ops-hint {
+  flex: 1 1 180px;
+  font-size: 0.75rem;
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-chart {
+  width: 100%;
+  height: 210px;
+}
+
+.dev-console .dc-table-wrap {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.dev-console .dc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.dev-console .dc-table th,
+.dev-console .dc-table td {
+  padding: 0.45rem 0.65rem;
+  border-bottom: 1px solid var(--dc-border);
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.dev-console .dc-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1c2128;
+  color: var(--dc-muted);
+  font-family: var(--dc-mono);
+  font-size: 0.68rem;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dev-console .dc-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dev-console .dc-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--dc-muted);
+  font-size: 0.85rem;
+}
+
+.dev-console .dc-alert {
+  margin-bottom: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--dc-border);
+  font-size: 0.85rem;
+  background: var(--dc-bg-soft);
+}
+
+.dev-console .dc-alert-ok {
+  border-color: rgba(63, 185, 80, 0.35);
+  background: var(--dc-accent-dim);
+  color: var(--dc-accent);
+}
+
+.dev-console .dc-alert-bad {
+  border-color: rgba(248, 81, 73, 0.35);
+  background: var(--dc-danger-dim);
+  color: #ffb1af;
+}
+
+.dev-console .dc-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  color: var(--dc-muted);
+}
+
+.dev-console .dc-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--dc-border);
+  border-top-color: var(--dc-accent);
+  border-radius: 50%;
+  animation: dc-spin 0.7s linear infinite;
+}
+
+@keyframes dc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Nested Bootstrap cards inside tool tabs */
+.dev-console .card {
+  background: var(--dc-bg-elev) !important;
+  border: 1px solid var(--dc-border) !important;
+  border-radius: 8px !important;
+  color: var(--dc-text) !important;
+}
+
+.dev-console .card-header {
+  background: rgba(255, 255, 255, 0.015) !important;
+  border-bottom: 1px solid var(--dc-border) !important;
+  color: var(--dc-text) !important;
+}
+
+.dev-console .form-control,
+.dev-console .form-select {
+  background: var(--dc-bg) !important;
+  border-color: var(--dc-border) !important;
+  color: var(--dc-text) !important;
+}
+
+.dev-console .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--dc-text);
+  --bs-table-border-color: var(--dc-border);
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.02);
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.02);
+  color: var(--dc-text);
+}
+
+.dev-console .modal-content {
+  background: var(--dc-bg-elev);
+  border: 1px solid var(--dc-border);
+  color: var(--dc-text);
+}
+
+.dev-console .modal-header,
+.dev-console .modal-footer {
+  border-color: var(--dc-border);
+}
+
+.dev-console .btn-close {
+  filter: invert(1);
+  opacity: 0.7;
+}
+
+/* Login */
+.dev-console.dc-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.dev-console .dc-login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--dc-bg-elev);
+  border: 1px solid var(--dc-border);
+  border-radius: 10px;
+  padding: 1.75rem 1.5rem;
+}
+
+.dev-console .dc-login-card h1 {
+  margin: 0.35rem 0 0.25rem;
+  font-size: 1.4rem;
+  font-weight: 650;
+}
+
+.dev-console .dc-login-card .dc-brand-sub {
+  margin-bottom: 1.25rem;
+}
+
+.dev-console .dc-field {
+  margin-bottom: 0.85rem;
+}
+
+.dev-console .dc-field label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--dc-muted);
+  font-family: var(--dc-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dev-console .dc-field input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--dc-border);
+  background: var(--dc-bg);
+  color: var(--dc-text);
+  font-family: var(--dc-sans);
+  font-size: 0.95rem;
+}
+
+.dev-console .dc-field input:focus {
+  outline: none;
+  border-color: var(--dc-info);
+  box-shadow: 0 0 0 3px var(--dc-info-dim);
+}
+
+.dev-console .dc-login-submit {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.65rem;
+  font-size: 0.9rem;
+}

@@ -98,10 +98,91 @@ public class SystemMonitorService {
     }
 
     public Map<String, Long> getStatusBreakdown(int hours) {
-        Instant cutoff = Instant.now().minusSeconds(hours * 3600L);
-        long s2 = 0, s3 = 0, s4 = 0, s5 = 0, s429 = 0, total = 0;
+        Instant now = Instant.now();
+        Instant cutoff = now.minusSeconds(hours * 3600L);
+        return countStatusesBetween(cutoff, now);
+    }
+
+    /**
+     * Current window + previous equal window + deltas for Ops Console compare UI.
+     */
+    public Map<String, Object> getStatusBreakdownCompared(int hours) {
+        int h = Math.max(1, hours);
+        Instant now = Instant.now();
+        Instant curStart = now.minusSeconds(h * 3600L);
+        Instant prevStart = now.minusSeconds(h * 2L * 3600L);
+
+        Map<String, Long> current = countStatusesBetween(curStart, now);
+        Map<String, Long> previous = countStatusesBetween(prevStart, curStart);
+
+        Map<String, Long> delta = new LinkedHashMap<>();
+        for (String key : List.of("2xx", "3xx", "4xx", "5xx", "429", "total")) {
+            long c = current.getOrDefault(key, 0L);
+            long p = previous.getOrDefault(key, 0L);
+            delta.put(key, c - p);
+        }
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("hours", h);
+        out.put("2xx", current.get("2xx"));
+        out.put("3xx", current.get("3xx"));
+        out.put("4xx", current.get("4xx"));
+        out.put("5xx", current.get("5xx"));
+        out.put("429", current.get("429"));
+        out.put("total", current.get("total"));
+        out.put("previous", previous);
+        out.put("delta", delta);
+        return out;
+    }
+
+    /**
+     * Hourly buckets for simple traffic trend chart (oldest → newest).
+     */
+    public List<Map<String, Object>> getHourlyTrend(int hours) {
+        int h = Math.min(168, Math.max(1, hours));
+        Instant now = Instant.now();
+        Instant cutoff = now.minusSeconds(h * 3600L);
+
+        // bucket index 0 = oldest hour in window
+        long[] total = new long[h];
+        long[] s5 = new long[h];
+        long[] durationSum = new long[h];
+        long[] durationCount = new long[h];
+
         for (CallSample s : callSamples) {
             if (s.at().isBefore(cutoff)) continue;
+            long secAgo = Math.max(0, now.getEpochSecond() - s.at().getEpochSecond());
+            int hoursAgo = (int) (secAgo / 3600);
+            if (hoursAgo >= h) continue;
+            int idx = h - 1 - hoursAgo;
+            total[idx]++;
+            if (s.statusCode() >= 500) s5[idx]++;
+            durationSum[idx] += s.durationMs();
+            durationCount[idx]++;
+        }
+
+        List<Map<String, Object>> list = new ArrayList<>(h);
+        for (int i = 0; i < h; i++) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            int hoursAgo = h - 1 - i;
+            row.put("offsetHours", hoursAgo);
+            row.put("label", hoursAgo == 0 ? "지금" : "-" + hoursAgo + "h");
+            row.put("total", total[i]);
+            row.put("s5xx", s5[i]);
+            double avg = durationCount[i] > 0
+                    ? Math.round((durationSum[i] * 100.0 / durationCount[i])) / 100.0
+                    : 0;
+            row.put("avgMs", avg);
+            list.add(row);
+        }
+        return list;
+    }
+
+    private Map<String, Long> countStatusesBetween(Instant fromInclusive, Instant toExclusive) {
+        long s2 = 0, s3 = 0, s4 = 0, s5 = 0, s429 = 0, total = 0;
+        for (CallSample s : callSamples) {
+            Instant at = s.at();
+            if (at.isBefore(fromInclusive) || !at.isBefore(toExclusive)) continue;
             total++;
             int c = s.statusCode();
             if (c == 429) s429++;

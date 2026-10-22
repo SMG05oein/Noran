@@ -20,6 +20,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * When client IP is not on the allowlist, developer APIs require email OTP
  * sent to the configured mailbox (typically MAIL_USERNAME — self mail).
+ *
+ * <p>OTP codes and IP sessions are kept in-process ({@link ConcurrentHashMap}).
+ * Blue-green JAR deploy replaces the JVM, so outstanding OTP/sessions are cleared.
+ * Persisting to Redis/DB is out of scope for now (known ops caveat).
  */
 @Service
 @RequiredArgsConstructor

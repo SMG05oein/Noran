@@ -52,8 +52,16 @@ public class DeveloperAnalyticsController {
 
     @GetMapping("/status-breakdown")
     @PreAuthorize("hasRole('DEVELOPER')")
-    public ResponseEntity<Map<String, Long>> getStatusBreakdown(
+    public ResponseEntity<Map<String, Object>> getStatusBreakdown(
             @RequestParam(defaultValue = "24") int hours) {
-        return ResponseEntity.ok(systemMonitorService.getStatusBreakdown(normalizeHours(hours)));
+        // Additive: previous/delta for period compare; flat 2xx..total kept for Front compat
+        return ResponseEntity.ok(systemMonitorService.getStatusBreakdownCompared(normalizeHours(hours)));
+    }
+
+    @GetMapping("/hourly-trend")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<List<Map<String, Object>>> getHourlyTrend(
+            @RequestParam(defaultValue = "24") int hours) {
+        return ResponseEntity.ok(systemMonitorService.getHourlyTrend(normalizeHours(hours)));
     }
 }

@@ -7,6 +7,7 @@ import { isHoliday } from 'holiday-kr';
 import useAuthStore from '../store/useAuthStore';
 import { countPeak } from '../utils/shiftPeak';
 import { downloadWeeklyAssignExcel } from '../utils/weeklyAssignExcel';
+import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
 import AssignTimeInput, { TIME_OPTIONS, BULK_LIST_OPTIONS } from '../components/AssignTimeInput';
 import { openStartTimeForDate, toDateStr, normalizeScheduleStatus, resolveOriginFlags, resetShiftFields, withBaseline, isShiftDirty } from '../utils/shiftReset';
 import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine, RiQuestionLine, RiTimeLine } from 'react-icons/ri';
@@ -177,6 +178,16 @@ const AdminWeeklyAssign = () => {
 
   const [editSchedules, setEditSchedules] = useState({});
 
+  const {
+    busy: excelDownloading,
+    runDownload: runExcelDownload,
+    ProgressModal: ExcelDownloadProgressModal,
+  } = useSyncExcelDownloadProgress({
+    title: '배정표 엑셀 생성 중...',
+    description: '브라우저에서 엑셀 파일을 만드는 중입니다.',
+    cancelHint: '화면만 닫습니다. 이미 파일 생성이 시작된 경우 잠시 후 다운로드가 완료될 수 있습니다.',
+  });
+
   const currentBranchObj = useMemo(() => {
     if (branches.length === 0) return null;
     return branches.find(b => Number(b.wpIdx) === Number(selectedWpIdx)) || branches[0];
@@ -186,20 +197,24 @@ const AdminWeeklyAssign = () => {
   const selectedBranchName = currentBranchObj?.wpName || user?.workPlaceName || user?.branch || '지점';
 
   const handleDownloadExcel = async () => {
-    try {
-      await downloadWeeklyAssignExcel({
-        branchName: selectedBranchName,
-        weekStart: currentWeekStart,
-        weekDays,
-        users: renderUsers,
-        editSchedules,
-        toUserIdx,
-        schedules,
-      });
-    } catch (err) {
-      console.error(err);
-      alert('엑셀 다운로드 중 오류가 발생했습니다.');
-    }
+    if (excelDownloading) return;
+    await runExcelDownload(async () => {
+      try {
+        await downloadWeeklyAssignExcel({
+          branchName: selectedBranchName,
+          weekStart: currentWeekStart,
+          weekDays,
+          users: renderUsers,
+          editSchedules,
+          toUserIdx,
+          schedules,
+        });
+        return { success: true };
+      } catch (err) {
+        console.error(err);
+        return { success: false, error: '엑셀 다운로드 중 오류가 발생했습니다.' };
+      }
+    });
   };
 
   const loadData = async () => {
@@ -1198,8 +1213,9 @@ const AdminWeeklyAssign = () => {
         <StickyActionBar
           right={
             <>
-              <Button variant="success" onClick={handleDownloadExcel}>
-                <RiDownload2Line className="me-1" /> 엑셀
+              <Button variant="success" onClick={handleDownloadExcel} disabled={excelDownloading || loading}>
+                {excelDownloading ? <Spinner size="sm" className="me-1" /> : <RiDownload2Line className="me-1" />}
+                엑셀
               </Button>
               <Button variant="outline-primary" onClick={() => {
                 setSelectedOtherUserIdx('');
@@ -1417,6 +1433,7 @@ const AdminWeeklyAssign = () => {
           </Modal.Footer>
         </Modal>
       </Container>
+      {ExcelDownloadProgressModal}
     </div>
   );
 };

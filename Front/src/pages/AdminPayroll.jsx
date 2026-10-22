@@ -7,6 +7,7 @@ import { RiSearchLine, RiDownload2Line, RiMoneyDollarCircleLine } from 'react-ic
 import PaginationBar from '../components/PaginationBar';
 import Loading from '../components/Loading';
 import useAuthStore from '../store/useAuthStore';
+import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
 import './AdminMain.css';
 
 const AdminPayroll = () => {
@@ -17,7 +18,13 @@ const AdminPayroll = () => {
   const [branches, setBranches] = useState([{ wpIdx: null, wpName: '전체' }]);
   const [userTypes, setUserTypes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
+  const {
+    busy: downloading,
+    runDownload,
+    ProgressModal: DownloadProgressModal,
+  } = useSyncExcelDownloadProgress({
+    title: '급여 엑셀 다운로드 중...',
+  });
 
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -124,18 +131,15 @@ const AdminPayroll = () => {
   };
 
   const handleDownloadExcel = async () => {
-    if (!selectedMonth) return;
+    if (!selectedMonth || downloading) return;
     const [yearStr, monthStr] = selectedMonth.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
     const workPlaceIdx = selectedWpIdx || null;
 
-    setDownloading(true);
-    const res = await downloadPayrollExcel(year, month, workPlaceIdx);
-    setDownloading(false);
-    if (!res.success) {
-      alert(res.error || '엑셀 다운로드에 실패했습니다.');
-    }
+    await runDownload(({ signal }) =>
+      downloadPayrollExcel(year, month, workPlaceIdx, { signal })
+    );
   };
 
   return (
@@ -296,6 +300,7 @@ const AdminPayroll = () => {
           </Card>
         )}
       </Container>
+      {DownloadProgressModal}
     </div>
   );
 };

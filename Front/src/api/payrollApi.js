@@ -1,4 +1,5 @@
 import { globalApiClient } from './apiClient';
+import { extractAxiosErrorMessage } from '../utils/syncApiProgress';
 
 /** 급여 목록 조회 (Spring Page) */
 export const fetchPayrollList = async (params = {}) => {
@@ -14,8 +15,8 @@ export const fetchPayrollList = async (params = {}) => {
   }
 };
 
-/** 급여 엑셀 다운로드 */
-export const downloadPayrollExcel = async (year, month, workPlaceIdx) => {
+/** 급여 엑셀 다운로드. options: { signal?: AbortSignal } */
+export const downloadPayrollExcel = async (year, month, workPlaceIdx, options = {}) => {
   try {
     const params = { year, month };
     if (workPlaceIdx) params.workPlaceIdx = workPlaceIdx;
@@ -23,6 +24,7 @@ export const downloadPayrollExcel = async (year, month, workPlaceIdx) => {
     const response = await globalApiClient.get('/api/payroll/excel', {
       params,
       responseType: 'blob',
+      signal: options.signal,
     });
 
     const blob = new Blob([response.data], {
@@ -41,6 +43,8 @@ export const downloadPayrollExcel = async (year, month, workPlaceIdx) => {
     return { success: true };
   } catch (error) {
     console.error('급여 엑셀 다운로드 실패:', error);
-    return { success: false, error: '엑셀 다운로드 중 오류가 발생했습니다.' };
+    const parsed = await extractAxiosErrorMessage(error, '엑셀 다운로드 중 오류가 발생했습니다.');
+    if (parsed.aborted) return { success: false, aborted: true, error: parsed.message };
+    return { success: false, error: parsed.message, status: parsed.status };
   }
 };

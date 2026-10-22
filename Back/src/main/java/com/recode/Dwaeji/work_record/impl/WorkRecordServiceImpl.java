@@ -17,6 +17,11 @@ import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import com.recode.Dwaeji.work_record.service.WorkRecordService;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -53,6 +60,10 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private int editDeadlineDayOfMonth;
     @Value("${work-record.edit-deadline-time:23:59:59}")
     private String editDeadlineTime;
+    @Value("${work-record.excel.download-max-rows:50000}")
+    private int excelDownloadMaxRows;
+    @Value("${work-record.excel.upload-max-records:20000}")
+    private int excelUploadMaxRecords;
 
     private static long toMinutes(LocalTime t) {
         return t.getHour() * 60L + t.getMinute();
@@ -700,6 +711,12 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             records = workRecordRepository.findByWrDateBetween(startDate, endDate);
         }
 
+        if (records.size() > excelDownloadMaxRows) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    String.format("엑셀 다운로드 가능 행 수(%d)를 초과했습니다. (현재 %d행) 근무지를 나눠 다운로드해 주세요.",
+                            excelDownloadMaxRows, records.size()));
+        }
+
         // 전체: 근무지별 Sheet / 특정 지점: Sheet 1개 (그룹 키는 wpIdx, Sheet 순서는 wpIdx 오름차순)
         Map<Long, List<WorkRecord>> byWpIdx = new TreeMap<>(Comparator.nullsLast(Long::compareTo));
         if (workPlaceIdx != null) {
@@ -714,7 +731,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             }
         }
 
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+        // SXSSF: 행 윈도우만 메모리 유지 (OOM 방지). autoSize/전체 캔버스 apply 는 SXSSF와 맞지 않아 미사용.
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(100)) {
             String[] headers = {"No", "날짜", "이름", "근무지", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
             var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
@@ -739,13 +757,17 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                         .collect(Collectors.toList());
                 String baseName = resolveSheetName(entry.getKey(), sheetRecords, month, workPlaceIdx);
                 String sheetName = uniqueExcelSheetName(toExcelSheetName(baseName), usedSheetNames);
-                writeWorkRecordSheet(workbook.createSheet(sheetName), headers, sheetRecords, dark, nameCountByUserIdx);
+                writeWorkRecordSheetStreaming(workbook.createSheet(sheetName), headers, sheetRecords, dark, nameCountByUserIdx);
             }
 
-            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
+            workbook.dispose();
             return out.toByteArray();
-        } catch (java.io.IOException e) {
+        } catch (OutOfMemoryError e) {
+            throw new ResponseStatusException(HttpStatus.INSUFFICIENT_STORAGE,
+                    "서버 메모리가 부족해 엑셀을 생성하지 못했습니다. 근무지를 나눠 다운로드해 주세요.");
+        } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "엑셀 파일 생성 중 오류가 발생했습니다.");
         }
     }
@@ -768,21 +790,26 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         return "미소속";
     }
 
-    private void writeWorkRecordSheet(
-            org.apache.poi.ss.usermodel.Sheet sheet,
+    private void writeWorkRecordSheetStreaming(
+            Sheet sheet,
             String[] headers,
             List<WorkRecord> records,
             com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark,
             Map<Long, Long> nameCountByUserIdx) {
-        org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+        int[] colWidths = {8, 14, 18, 16, 12, 12, 12, 14};
+        Row headerRow = sheet.createRow(0);
+        headerRow.setHeightInPoints(22);
         for (int i = 0; i < headers.length; i++) {
-            headerRow.createCell(i).setCellValue(headers[i]);
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(dark.header());
         }
 
         int rowNum = 1;
         for (WorkRecord record : records) {
             User user = record.getUser();
-            org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
+            Row row = sheet.createRow(rowNum);
+            CellStyle rowStyle = (rowNum % 2 == 0) ? dark.bodyAlt() : dark.body();
             String date = record.getWrDate() != null ? record.getWrDate().toString() : "";
             String userName = user != null && user.getUserName() != null ? user.getUserName() : "";
             Long userIdx = user != null ? user.getUserIdx() : null;
@@ -800,24 +827,24 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             String endTime = record.getWrEndTime() != null ? record.getWrEndTime().toString() : "";
             String restTimeStr = record.getWrRestTime() != null ? record.getWrRestTime().toString() : "00:00";
             String totalHours = formatTotalWorkHours(record.getWrStartTime(), record.getWrEndTime(), record.getWrRestTime());
-            row.createCell(0).setCellValue(rowNum - 1);
-            row.createCell(1).setCellValue(date);
-            row.createCell(2).setCellValue(userName);
-            row.createCell(3).setCellValue(wpName);
-            row.createCell(4).setCellValue(startTime);
-            row.createCell(5).setCellValue(endTime);
-            row.createCell(6).setCellValue(restTimeStr);
-            row.createCell(7).setCellValue(totalHours);
-        }
-        if (rowNum > 1) {
-            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, rowNum - 1, 0, headers.length - 1));
+            String[] values = {
+                    String.valueOf(rowNum), date, userName, wpName, startTime, endTime, restTimeStr, totalHours
+            };
+            for (int c = 0; c < values.length; c++) {
+                Cell cell = row.createCell(c);
+                if (c == 0) {
+                    cell.setCellValue(rowNum);
+                } else {
+                    cell.setCellValue(values[c]);
+                }
+                cell.setCellStyle(rowStyle);
+            }
+            rowNum++;
         }
         for (int i = 0; i < headers.length; i++) {
-            sheet.autoSizeColumn(i);
-            int currentWidth = sheet.getColumnWidth(i);
-            sheet.setColumnWidth(i, (int) (currentWidth * 1.3));
+            sheet.setColumnWidth(i, colWidths[i] * 256);
         }
-        com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, Math.max(rowNum - 1, 0), headers.length);
+        sheet.createFreezePane(0, 1);
     }
 
     @Override
@@ -827,6 +854,11 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         User requester = getRequester(requesterId);
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 엑셀 검증을 수행할 수 있습니다.");
+        }
+        if (requestDto.getRecords() != null && requestDto.getRecords().size() > excelUploadMaxRecords) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    String.format("한 번에 검증 가능한 최대 건수(%d)를 초과했습니다. (현재 %d건)",
+                            excelUploadMaxRecords, requestDto.getRecords().size()));
         }
 
         List<String> duplicateNames = new ArrayList<>();
@@ -1022,7 +1054,23 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         if (requestDto.getRecords() == null || requestDto.getRecords().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록할 근무 기록이 없습니다.");
         }
+        if (requestDto.getRecords().size() > excelUploadMaxRecords) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    String.format("한 번에 업로드 가능한 최대 건수(%d)를 초과했습니다. (현재 %d건) 파일을 나눠 업로드해 주세요.",
+                            excelUploadMaxRecords, requestDto.getRecords().size()));
+        }
 
+        try {
+            return uploadWorkRecordsFromExcelInternal(requester, requestDto);
+        } catch (OutOfMemoryError e) {
+            throw new ResponseStatusException(HttpStatus.INSUFFICIENT_STORAGE,
+                    "서버 메모리가 부족해 업로드를 완료하지 못했습니다. 파일을 나눠 업로드해 주세요.");
+        }
+    }
+
+    private com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcelInternal(
+            User requester,
+            com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto) {
         // 0. 전체 근무지 맵 구성 (active 조건 없이 전체 조회: 시트명 매칭용)
         List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
         Map<String, com.recode.Dwaeji.user.database.WorkPlace> wpByName = allWorkPlaces.stream()

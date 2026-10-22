@@ -10,6 +10,7 @@ import Loading from '../components/Loading';
 import AdminCreateRecordModal from '../components/AdminCreateRecordModal';
 import AdminExcelUploadModal from '../components/AdminExcelUploadModal';
 import AdminUnrecordedModal from '../components/AdminUnrecordedModal';
+import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
 import './AdminMain.css';
 
 const AdminRecords = () => {
@@ -40,7 +41,13 @@ const AdminRecords = () => {
   const [remarks, setRemarks] = useState('');
   const [editWorkPlaceIdx, setEditWorkPlaceIdx] = useState('');
   const [saving, setSaving] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const {
+    busy: downloading,
+    runDownload,
+    ProgressModal: DownloadProgressModal,
+  } = useSyncExcelDownloadProgress({
+    title: '엑셀 다운로드 중...',
+  });
 
   // 수정 이력(Audit Log) 관련 상태
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -363,18 +370,15 @@ const AdminRecords = () => {
   };
 
   const handleDownloadExcel = async () => {
-    if (!selectedMonth) return;
+    if (!selectedMonth || downloading) return;
     const [yearStr, monthStr] = selectedMonth.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
     const workPlaceIdx = selectedWpIdx || null;
 
-    setDownloading(true);
-    const res = await downloadWorkRecordExcel(year, month, workPlaceIdx);
-    setDownloading(false);
-    if (!res.success) {
-      alert(res.error || '엑셀 다운로드에 실패했습니다.');
-    }
+    await runDownload(({ signal }) =>
+      downloadWorkRecordExcel(year, month, workPlaceIdx, { signal })
+    );
   };
 
   return (
@@ -791,6 +795,8 @@ const AdminRecords = () => {
         selectedMonth={selectedMonth}
         selectedBranchName={branches.find(b => b.wpIdx === selectedWpIdx)?.wpName || '전체'}
       />
+
+      {DownloadProgressModal}
 
     </div>
   );

@@ -14,6 +14,7 @@ import {
   startExcelCompare,
   getExcelCompareStatus,
 } from '../api/workApi';
+import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
 import './AdminMain.css';
 
 /** 결과 상태 표시 순서·라벨 (Back statusCounts 키와 동일) */
@@ -37,6 +38,13 @@ const AdminExcelCompare = () => {
   const [statusCounts, setStatusCounts] = useState(null);
   const [totalCount, setTotalCount] = useState(null);
   const [progress, setProgress] = useState(0);
+  const {
+    busy: excelDlBusy,
+    runDownload: runExcelDownload,
+    ProgressModal: ExcelDownloadProgressModal,
+  } = useSyncExcelDownloadProgress({
+    title: '엑셀 다운로드 중...',
+  });
 
   const yearMonth = useMemo(() => {
     if (!selectedMonth) return { year: null, month: null };
@@ -54,12 +62,14 @@ const AdminExcelCompare = () => {
   };
 
   const applyPhaseResult = (res) => {
-    setPhase(res.phase || null);
+    const nextPhase = res.phase || null;
+    setPhase(nextPhase);
     setSessionId(res.sessionId || null);
     setMessages(res.messages || []);
     setStatusCounts(res.statusCounts || null);
     setTotalCount(res.totalCount != null ? res.totalCount : null);
-    setProgress(res.progress || 0);
+    const pct = res.progress != null ? Number(res.progress) : 0;
+    setProgress(nextPhase === 'DONE' ? Math.max(pct, 100) : pct);
   };
 
   useEffect(() => {
@@ -83,13 +93,15 @@ const AdminExcelCompare = () => {
   }, [phase, sessionId]);
 
   const handleTemplate = async () => {
-    setBusy(true);
-    const res = await downloadExcelCompareTemplate();
-    setBusy(false);
-    if (!res.success) alert(res.error || '템플릿 다운로드에 실패했습니다.');
+    if (busy || excelDlBusy) return;
+    await runExcelDownload(
+      ({ signal }) => downloadExcelCompareTemplate({ signal }),
+      { title: '대조 템플릿 다운로드 중...', fallbackError: '템플릿 다운로드에 실패했습니다.' }
+    );
   };
 
   const handleStart = async () => {
+    if (busy || excelDlBusy) return;
     if (!file) {
       alert('대조할 엑셀 파일을 선택해주세요.');
       return;
@@ -100,6 +112,10 @@ const AdminExcelCompare = () => {
     }
     setBusy(true);
     resetResult();
+    // POST 대기 중에도 대조와 동일 톤의 진행 모달(0%) 표시
+    setPhase('PROCESSING');
+    setProgress(0);
+
     const res = await startExcelCompare(file, yearMonth.year, yearMonth.month);
     setBusy(false);
 
@@ -108,23 +124,30 @@ const AdminExcelCompare = () => {
       return;
     }
     if (!res.success) {
-      alert(res.error || '엑셀 대조에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.');
+      // 413/507 등: 세션 없이 BE msg 노출 (업로드 시작 단계)
+      setPhase('ERROR');
+      setSessionId(null);
+      setProgress(0);
+      setMessages([res.error || '엑셀 대조에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.']);
       return;
     }
     applyPhaseResult(res);
   };
 
   const handleDownloadResult = async () => {
+    if (busy || excelDlBusy) return;
     if (!sessionId) {
       alert('세션이 없습니다. 파일을 다시 업로드해 주세요.');
       return;
     }
-    setBusy(true);
-    const res = await downloadExcelCompareResult(sessionId, yearMonth.year, yearMonth.month);
-    setBusy(false);
-    if (!res.success) {
-      alert(res.error || '결과 다운로드에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.');
-    }
+    await runExcelDownload(
+      ({ signal }) =>
+        downloadExcelCompareResult(sessionId, yearMonth.year, yearMonth.month, { signal }),
+      {
+        title: '대조 결과 다운로드 중...',
+        fallbackError: '결과 다운로드에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.',
+      }
+    );
   };
 
   const statusRows = STATUS_META
@@ -178,7 +201,7 @@ const AdminExcelCompare = () => {
               variant="outline-success"
               className="fw-bold rounded-pill px-3 py-2"
               onClick={handleTemplate}
-              disabled={busy}
+              disabled={busy || excelDlBusy}
             >
               <RiDownload2Line className="me-1" />
               템플릿 받기
@@ -202,7 +225,7 @@ const AdminExcelCompare = () => {
               variant="primary"
               className="fw-bold rounded-pill px-3 py-2"
               onClick={handleStart}
-              disabled={busy || !file}
+              disabled={busy || excelDlBusy || !file}
             >
               {busy ? <Spinner size="sm" className="me-1" /> : <RiUpload2Line className="me-1" />}
               대조 시작
@@ -255,7 +278,7 @@ const AdminExcelCompare = () => {
                 variant="success"
                 className="fw-bold rounded-pill px-3"
                 onClick={handleDownloadResult}
-                disabled={busy || !sessionId}
+                disabled={busy || excelDlBusy || !sessionId}
               >
                 {busy ? <Spinner size="sm" className="me-1" /> : <RiFileExcel2Line className="me-1" />}
                 결과 다운로드
@@ -297,11 +320,20 @@ const AdminExcelCompare = () => {
 
       <Modal show={phase === 'PROCESSING'} backdrop="static" keyboard={false} centered>
         <Modal.Body className="text-center py-5">
-          <h5 className="fw-bold mb-3">엑셀 대조 중...</h5>
+          <h5 className="fw-bold mb-3">
+            {sessionId ? '엑셀 대조 중...' : '엑셀 업로드 중...'}
+          </h5>
           <p className="text-muted small mb-4">대용량 파일의 경우 시간이 걸릴 수 있습니다.</p>
-          <ProgressBar animated now={progress} label={`${progress}%`} style={{ height: '25px' }} />
+          <ProgressBar
+            animated
+            now={Math.max(0, Math.min(100, Math.round(progress || 0)))}
+            label={`${Math.max(0, Math.min(100, Math.round(progress || 0)))}%`}
+            style={{ height: '25px' }}
+          />
         </Modal.Body>
       </Modal>
+
+      {ExcelDownloadProgressModal}
     </div>
   );
 };

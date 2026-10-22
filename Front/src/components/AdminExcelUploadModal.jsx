@@ -1,8 +1,14 @@
-import { useState } from 'react';
-import { Modal, Button, Table, Form, Alert, Spinner, Badge } from 'react-bootstrap';
+import { useState, useRef } from 'react';
+import { Modal, Button, Table, Form, Alert, Badge } from 'react-bootstrap';
 import { RiUpload2Line, RiFileExcel2Line, RiCheckLine, RiAlertLine, RiInformationLine, RiBuilding4Line, RiUserLine } from 'react-icons/ri';
 import * as XLSX from 'xlsx';
 import { validateExcelWorkRecords, uploadExcelWorkRecords } from '../api/workApi';
+import { ExcelProgressPanel } from './ExcelProgressModal';
+import {
+  EXCEL_LIMIT_MESSAGES,
+  EXCEL_UPLOAD_MAX_RECORDS,
+  startSyncProgressTicker,
+} from '../utils/syncApiProgress';
 
 const normalizeHeader = (header) => {
   if (!header) return '';
@@ -80,6 +86,8 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
   const [uniqueNames, setUniqueNames] = useState([]);
   const [detectedSheetNames, setDetectedSheetNames] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressPhase, setProgressPhase] = useState(null); // 'validate' | 'upload' | null
   const [errorMsg, setErrorMsg] = useState('');
 
   // 1단계 검증 결과
@@ -89,8 +97,32 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
   const [uploadResult, setUploadResult] = useState(null);
   const [invalidRowsList, setInvalidRowsList] = useState([]);
 
+  const abortRef = useRef(null);
+  const tickerRef = useRef(null);
+
+  const stopProgressTicker = () => {
+    tickerRef.current?.stop();
+    tickerRef.current = null;
+  };
+
+  const resetProgressUi = () => {
+    stopProgressTicker();
+    abortRef.current = null;
+    setLoading(false);
+    setProgress(0);
+    setProgressPhase(null);
+  };
+
+  const handleCancelInFlight = () => {
+    abortRef.current?.abort();
+    resetProgressUi();
+  };
+
   // 모달 닫힐 때 초기화 및 메인 테이블 최신화
   const handleClose = () => {
+    if (loading) {
+      handleCancelInFlight();
+    }
     const isCompleted = step === 'complete';
     setStep('select');
     setParsedRecords([]);
@@ -100,7 +132,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     setInvalidRowsList([]);
     setValidationResult(null);
     setUploadResult(null);
-    setLoading(false);
+    resetProgressUi();
     onHide();
     if (isCompleted && onSuccess) {
       onSuccess();
@@ -221,15 +253,31 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     reader.readAsArrayBuffer(selectedFile);
   };
 
-  // 1단계: 사전 검증 API 호출
+  // 1단계: 사전 검증 API 호출 (진행률 0→40%)
   const handleValidateAndNext = async () => {
+    if (loading) return;
     if (parsedRecords.length === 0 || uniqueNames.length === 0) {
       setErrorMsg('업로드할 유효한 데이터가 없습니다.');
       return;
     }
 
+    if (parsedRecords.length > EXCEL_UPLOAD_MAX_RECORDS) {
+      setErrorMsg(EXCEL_LIMIT_MESSAGES.UPLOAD_413);
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
+    setProgressPhase('validate');
+    setProgress(0);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    tickerRef.current = startSyncProgressTicker({
+      from: 0,
+      toCap: 40,
+      onTick: setProgress,
+    });
 
     const payload = {
       userNames: uniqueNames,
@@ -237,8 +285,13 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
       records: parsedRecords
     };
 
-    const res = await validateExcelWorkRecords(payload);
-    setLoading(false);
+    const res = await validateExcelWorkRecords(payload, { signal: controller.signal });
+    stopProgressTicker();
+
+    if (res.aborted) {
+      resetProgressUi();
+      return;
+    }
 
     const data = res.data || {};
     const {
@@ -252,18 +305,23 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
     // 1) 행 단위 데이터 오류(invalidRows) 존재 시 업로드 차단 및 상세 목록 표시
     if (invalidRows && invalidRows.length > 0) {
+      resetProgressUi();
       setInvalidRowsList(invalidRows);
       setErrorMsg(`엑셀 데이터 중 ${invalidRows.length}건의 오류가 발견되었습니다. 아래 오류 상세 내역을 확인해 주세요.`);
       return;
     }
 
     if (!res.success) {
+      resetProgressUi();
       setErrorMsg(res.error || '엑셀 데이터 사전 검증에 실패했습니다.');
       return;
     }
 
+    setProgress(40);
+
     // 2) 동명이인 존재 시 업로드 차단
     if (duplicateNames.length > 0) {
+      resetProgressUi();
       setErrorMsg(
         `동일한 이름의 사용자가 여러 명 존재하여 식별할 수 없습니다. 업로드 전 직원 관리에서 동명이인의 이름을 구분(예: 이름#1)해 주세요. (대상자: ${duplicateNames.join(', ')})`
       );
@@ -273,6 +331,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
     // 3) 미등록 근무지 시트명 존재 시 업로드 차단
     if (invalidWorkPlaces.length > 0) {
+      resetProgressUi();
       setErrorMsg(
         `시스템에 등록되지 않은 근무지 시트가 포함되어 있습니다: [${invalidWorkPlaces.join(', ')}]. 시트명을 실제 등록된 근무지명과 일치시켜 주세요.`
       );
@@ -287,41 +346,67 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
     // 4) 기존 동일 날짜 기록이 존재하는 경우 -> 덮어쓰기 확인 팝업 단계로 이동
     if (existingRecords.length > 0) {
+      resetProgressUi();
       setStep('overwrite_confirm');
     } else if (unreg.length > 0) {
-      // 신규 임시 직원 등록 확인 후 진행
+      // 신규 임시 직원 확인 전에는 진행 UI를 잠시 내려둠
+      resetProgressUi();
       const proceed = window.confirm(
         `다음 직원은 시스템에 등록되지 않아 '신규 임시 직원'으로 자동 등록됩니다:\n[${unreg.join(', ')}]\n\n계속 진행하시겠습니까?`
       );
       if (proceed) {
-        executeUpload(false);
+        await executeUpload(false);
       }
     } else {
-      // 중복 없음 -> 바로 최종 등록 실행
-      executeUpload(false);
+      // 중복 없음 -> 바로 최종 등록 (40%부터 이어서)
+      await executeUpload(false, { continueFromValidate: true });
     }
   };
 
-  // 2단계: 최종 등록 API 호출
-  const executeUpload = async (overwriteExisting) => {
+  // 2단계: 최종 등록 API 호출 (진행률 40→95%, 성공 시 100%)
+  const executeUpload = async (overwriteExisting, { continueFromValidate = false } = {}) => {
+    if (loading && !continueFromValidate) return;
+
     setLoading(true);
     setErrorMsg('');
+    setProgressPhase('upload');
+    if (!continueFromValidate) {
+      setProgress(40);
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setProgress(40);
+    tickerRef.current = startSyncProgressTicker({
+      from: 40,
+      toCap: 95,
+      onTick: setProgress,
+    });
 
     const payload = {
       overwriteExisting,
       records: parsedRecords
     };
 
-    const res = await uploadExcelWorkRecords(payload);
-    setLoading(false);
+    const res = await uploadExcelWorkRecords(payload, { signal: controller.signal });
+    stopProgressTicker();
+
+    if (res.aborted) {
+      resetProgressUi();
+      return;
+    }
 
     if (!res.success) {
+      resetProgressUi();
       setErrorMsg(res.error || '근무기록 일괄 등록에 실패했습니다.');
       return;
     }
 
+    setProgress(100);
+    await new Promise((r) => setTimeout(r, 300));
     setUploadResult(res.data);
     setStep('complete');
+    resetProgressUi();
   };
 
   // 샘플 엑셀 다운로드 (동적 근무지 시트 다중 생성)
@@ -346,8 +431,15 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
   };
 
   return (
-    <Modal show={show} onHide={handleClose} centered size={step === 'overwrite_confirm' ? 'lg' : 'md'}>
-      <Modal.Header closeButton className="border-0 pb-0">
+    <Modal
+      show={show}
+      onHide={handleClose}
+      centered
+      size={step === 'overwrite_confirm' ? 'lg' : 'md'}
+      backdrop={loading ? 'static' : true}
+      keyboard={!loading}
+    >
+      <Modal.Header closeButton={!loading} className="border-0 pb-0">
         <Modal.Title className="fw-bold d-flex align-items-center gap-2">
           <RiFileExcel2Line className="text-success" />
           {step === 'select' && '근무 기록 엑셀 일괄 등록'}
@@ -358,13 +450,18 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
       <Modal.Body className="pt-3">
         {loading && (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} className="mb-3" />
-            <h6 className="fw-bold text-dark mb-1">
-              {step === 'overwrite_confirm' ? '근무 기록을 일괄 등록(반영)하는 중입니다...' : '엑셀 데이터 검증 및 등록 처리 중입니다...'}
-            </h6>
-            <p className="text-muted small mb-0">대용량 데이터이거나 신규 사원 생성 시 수 초 정도 소요될 수 있습니다. 잠시만 기다려 주세요.</p>
-          </div>
+          <ExcelProgressPanel
+            title={
+              progressPhase === 'upload'
+                ? '근무 기록 등록 중...'
+                : '엑셀 데이터 검증 중...'
+            }
+            description="대용량 데이터이거나 신규 사원 생성 시 수 초 정도 소요될 수 있습니다."
+            progress={progress}
+            onCancel={handleCancelInFlight}
+            cancelLabel="취소"
+            cancelHint="요청을 중단합니다. 이미 서버에서 처리 중이면 작업이 계속될 수 있습니다."
+          />
         )}
 
         {!loading && errorMsg && (
@@ -621,50 +718,48 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
       </Modal.Body>
 
       <Modal.Footer className="border-0 pt-0">
-        {step === 'select' && (
+        {step === 'select' && !loading && (
           <>
-            <Button variant="secondary" onClick={handleClose} disabled={loading}>
+            <Button variant="secondary" onClick={handleClose}>
               취소
             </Button>
             <Button
               variant="primary"
               onClick={handleValidateAndNext}
-              disabled={loading || parsedRecords.length === 0}
+              disabled={parsedRecords.length === 0}
               className="fw-bold d-inline-flex align-items-center gap-1"
             >
-              {loading ? <Spinner size="sm" animation="border" /> : <RiUpload2Line />}
-              {loading ? '검증 및 업로드 분석 중...' : '다음 단계 (사전 검증)'}
+              <RiUpload2Line />
+              다음 단계 (사전 검증)
             </Button>
           </>
         )}
 
-        {step === 'overwrite_confirm' && (
+        {step === 'overwrite_confirm' && !loading && (
           <div className="w-100 d-flex justify-content-between align-items-center">
-            <Button variant="outline-secondary" onClick={() => setStep('select')} disabled={loading} size="sm">
+            <Button variant="outline-secondary" onClick={() => setStep('select')} size="sm">
               이전으로
             </Button>
             <div className="d-flex gap-2">
               <Button
                 variant="secondary"
                 onClick={() => executeUpload(false)}
-                disabled={loading}
                 className="fw-bold"
               >
-                {loading ? <Spinner size="sm" animation="border" /> : null} 중복 건너뛰고 등록
+                중복 건너뛰고 등록
               </Button>
               <Button
                 variant="danger"
                 onClick={() => executeUpload(true)}
-                disabled={loading}
                 className="fw-bold"
               >
-                {loading ? <Spinner size="sm" animation="border" /> : null} 기존 기록 덮어쓰기
+                기존 기록 덮어쓰기
               </Button>
             </div>
           </div>
         )}
 
-        {step === 'complete' && (
+        {step === 'complete' && !loading && (
           <Button variant="primary" className="w-100 fw-bold py-2" onClick={handleClose}>
             확인
           </Button>

@@ -1,5 +1,6 @@
 import { globalApiClient as apiClient } from './apiClient';
 import axios from 'axios';
+import { extractAxiosErrorMessage } from '../utils/syncApiProgress';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const addUrl = '/api/user';
@@ -332,13 +333,15 @@ export const updateMyBankInfo = async (bankData) => {
 };
 
 // 직원 엑셀 다운로드 (지점별 Sheet)
-export const downloadUserExcel = async (workPlaceIdx = null) => {
+/** options: { signal?: AbortSignal } */
+export const downloadUserExcel = async (workPlaceIdx = null, options = {}) => {
   try {
     const params = {};
     if (workPlaceIdx) params.workPlaceIdx = workPlaceIdx;
     const response = await apiClient.get(`${addUrl}/admin/excel`, {
       params,
       responseType: 'blob',
+      signal: options.signal,
     });
     const blob = new Blob([response.data], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -353,8 +356,9 @@ export const downloadUserExcel = async (workPlaceIdx = null) => {
     window.URL.revokeObjectURL(url);
     return { success: true };
   } catch (error) {
-    const errMsg = error.response?.data?.msg || '직원 엑셀 다운로드에 실패했습니다.';
-    return { success: false, error: errMsg };
+    const parsed = await extractAxiosErrorMessage(error, '직원 엑셀 다운로드에 실패했습니다.');
+    if (parsed.aborted) return { success: false, aborted: true, error: parsed.message };
+    return { success: false, error: parsed.message, status: parsed.status };
   }
 };
 

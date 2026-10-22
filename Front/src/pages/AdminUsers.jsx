@@ -27,6 +27,7 @@ import BranchFilter from '../components/BranchFilter';
 import Loading from '../components/Loading';
 import { RiSearchLine, RiDownload2Line } from 'react-icons/ri';
 import useAuthStore from '../store/useAuthStore';
+import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
 import './AdminMain.css';
 
 const SHOW_BANK_COLS_KEY = 'adminUsers.showBankCols';
@@ -88,7 +89,13 @@ const AdminUsers = () => {
   /** 원문 조회 시 현재 페이지 캐시 (userIdx → 계좌번호) */
   const [accountPlainByIdx, setAccountPlainByIdx] = useState({});
   const [accountPlainLoading, setAccountPlainLoading] = useState(false);
-  const [excelDownloading, setExcelDownloading] = useState(false);
+  const {
+    busy: excelDownloading,
+    runDownload: runExcelDownload,
+    ProgressModal: ExcelDownloadProgressModal,
+  } = useSyncExcelDownloadProgress({
+    title: '직원 엑셀 다운로드 중...',
+  });
 
   // 체크박스 다중 선택 상태
   const [selectedUserIdxs, setSelectedUserIdxs] = useState(new Set());
@@ -385,10 +392,10 @@ const AdminUsers = () => {
   };
 
   const handleDownloadUsersExcel = async () => {
-    setExcelDownloading(true);
-    const res = await downloadUserExcel(selectedBranch || null);
-    setExcelDownloading(false);
-    if (!res.success) alert(res.error || '엑셀 다운로드에 실패했습니다.');
+    if (excelDownloading) return;
+    await runExcelDownload(({ signal }) =>
+      downloadUserExcel(selectedBranch || null, { signal })
+    );
   };
 
   const selectableUsers = users.filter(u => u.userIsActive !== 0);
@@ -1127,6 +1134,7 @@ const AdminUsers = () => {
         </Modal.Footer>
       </Modal>
 
+      {ExcelDownloadProgressModal}
     </div>
   );
 };

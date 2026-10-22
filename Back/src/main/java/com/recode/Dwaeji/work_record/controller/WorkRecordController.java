@@ -71,7 +71,9 @@ public class WorkRecordController {
         return ResponseEntity.ok(workRecordService.getMonthlyWorkRecords(userDetails.getUsername(), startDate, endDate));
     }
 
-    @Operation(summary = "근무 기록 엑셀 다운로드", description = "특정 월(년/월)의 근무 기록을 엑셀로 다운로드합니다. workPlaceIdx 없으면 근무지별 Sheet로 나눕니다. 관리자 전용.")
+    @Operation(summary = "근무 기록 엑셀 다운로드",
+            description = "특정 월(년/월)의 근무 기록을 엑셀로 다운로드합니다. workPlaceIdx 없으면 근무지별 Sheet로 나눕니다. "
+                    + "SXSSF 스트리밍 생성. 행 수 상한 초과 시 413. 동기 API라 서버 progress 필드는 없으며 FE에서 대기 구간 진행률 UI를 권장합니다.")
     @GetMapping("/excel")
     public ResponseEntity<byte[]> downloadExcel(
             @AuthenticationPrincipal UserDetails userDetails,

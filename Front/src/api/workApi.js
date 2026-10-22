@@ -1,4 +1,8 @@
 import { globalApiClient } from './apiClient';
+import {
+  EXCEL_LIMIT_MESSAGES,
+  isRequestAborted,
+} from '../utils/syncApiProgress';
 
 // 근무 기록 조회 (캐시 적용)
 export const fetchWorkRecords = async (params = {}, skipCache = false) => {
@@ -267,12 +271,64 @@ const triggerXlsxDownload = (blobData, filename) => {
   window.URL.revokeObjectURL(url);
 };
 
+const parseResponseDataMessage = async (data) => {
+  if (data == null) return null;
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return parsed?.msg || parsed?.message || data;
+    } catch {
+      return data;
+    }
+  }
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
+    try {
+      const text = await data.text();
+      return parseResponseDataMessage(text);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof data === 'object') {
+    return data.msg || data.message || null;
+  }
+  return null;
+};
+
+/** 엑셀 다운/업 공통: ErrorResponseDto.msg 우선, 413/507 하드코딩은 fallback */
+const parseExcelPayloadError = async (error, { fallback, kind = 'download' } = {}) => {
+  if (isRequestAborted(error)) {
+    return { success: false, aborted: true, error: '요청이 취소되었습니다.', status: null };
+  }
+
+  const status = error.response?.status;
+  const fromBody = await parseResponseDataMessage(error.response?.data);
+  const limitFallback =
+    status === 413
+      ? kind === 'upload'
+        ? EXCEL_LIMIT_MESSAGES.UPLOAD_413
+        : EXCEL_LIMIT_MESSAGES.DOWNLOAD_413
+      : status === 507
+        ? EXCEL_LIMIT_MESSAGES.OOM_507
+        : null;
+
+  return {
+    success: false,
+    error: fromBody || limitFallback || fallback,
+    status,
+    data: typeof error.response?.data === 'object' && !(error.response?.data instanceof Blob)
+      ? error.response.data
+      : undefined,
+  };
+};
+
 const mapExcelComparePhase = (data = {}) => ({
   phase: data.phase || null,
   sessionId: data.sessionId || null,
   messages: data.messages || [],
   statusCounts: data.statusCounts || null,
   totalCount: data.totalCount != null ? data.totalCount : null,
+  progress: data.progress != null ? Number(data.progress) : 0,
   data,
 });
 
@@ -282,28 +338,34 @@ const parseExcelCompareError = (error, fallback) => {
     return {
       success: false,
       ...mapExcelComparePhase(data),
-      error: (data.messages && data.messages[0]) || fallback,
+      error: (data.messages && data.messages[0]) || data.msg || data.message || fallback,
       status: error.response?.status,
     };
   }
+  // ErrorResponseDto: { status, error, msg } — BE msg 우선
   const errMsg =
     data?.msg ||
+    data?.message ||
     (typeof data === 'string' ? data : null) ||
     fallback;
   return { success: false, error: errMsg, status: error.response?.status };
 };
 
-/** 근무 기록 엑셀 대조 템플릿 다운로드 */
-export const downloadExcelCompareTemplate = async () => {
+/** 근무 기록 엑셀 대조 템플릿 다운로드. options: { signal?: AbortSignal } */
+export const downloadExcelCompareTemplate = async (options = {}) => {
   try {
     const response = await globalApiClient.get('/api/work-record/excel-compare/template', {
       responseType: 'blob',
+      signal: options.signal,
     });
     triggerXlsxDownload(response.data, '근무기록_대조_템플릿.xlsx');
     return { success: true };
   } catch (error) {
     console.error('엑셀 대조 템플릿 다운로드 실패:', error);
-    return { success: false, error: '템플릿 다운로드 중 오류가 발생했습니다.' };
+    return parseExcelPayloadError(error, {
+      fallback: '템플릿 다운로드 중 오류가 발생했습니다.',
+      kind: 'download',
+    });
   }
 };
 
@@ -341,19 +403,23 @@ export const getExcelCompareStatus = async (sessionId) => {
   }
 };
 
-/** 엑셀 대조 결과 다운로드 */
-export const downloadExcelCompareResult = async (sessionId, year, month) => {
+/** 엑셀 대조 결과 다운로드. options: { signal?: AbortSignal } */
+export const downloadExcelCompareResult = async (sessionId, year, month, options = {}) => {
   try {
     const response = await globalApiClient.get('/api/work-record/excel-compare/result', {
       params: { compareId: sessionId },
       responseType: 'blob',
+      signal: options.signal,
     });
     const label = year && month ? `_${year}년_${month}월` : '';
     triggerXlsxDownload(response.data, `근무기록_대조결과${label}.xlsx`);
     return { success: true };
   } catch (error) {
     console.error('엑셀 대조 결과 다운로드 실패:', error);
-    return { success: false, error: '결과 다운로드 중 오류가 발생했습니다.' };
+    return parseExcelPayloadError(error, {
+      fallback: '결과 다운로드 중 오류가 발생했습니다.',
+      kind: 'download',
+    });
   }
 };
 
@@ -414,7 +480,8 @@ export const updateWorkApply = async (startDate, endDate, applyDataArray) => {
 };
 
 // 근무 기록 엑셀 다운로드
-export const downloadWorkRecordExcel = async (year, month, workPlaceIdx) => {
+// options: { signal?: AbortSignal }
+export const downloadWorkRecordExcel = async (year, month, workPlaceIdx, options = {}) => {
   try {
     const params = { year, month };
     if (workPlaceIdx) params.workPlaceIdx = workPlaceIdx;
@@ -422,45 +489,65 @@ export const downloadWorkRecordExcel = async (year, month, workPlaceIdx) => {
     const response = await globalApiClient.get('/api/work-record/excel', {
       params,
       responseType: 'blob',
+      signal: options.signal,
     });
+
+    // 일부 서버가 에러를 200+JSON blob으로 주는 경우 방어
+    const contentType = response.headers?.['content-type'] || '';
+    if (contentType.includes('application/json')) {
+      const text = await response.data.text();
+      let msg = '엑셀 다운로드 중 오류가 발생했습니다.';
+      try {
+        const json = JSON.parse(text);
+        msg = json.msg || json.message || msg;
+      } catch {
+        /* ignore */
+      }
+      return { success: false, error: msg };
+    }
 
     triggerXlsxDownload(response.data, `근무기록_${year}년_${month}월.xlsx`);
     return { success: true };
   } catch (error) {
-    console.error("엑셀 다운로드 실패:", error);
-    return { success: false, error: '엑셀 다운로드 중 오류가 발생했습니다.' };
+    console.error('엑셀 다운로드 실패:', error);
+    return parseExcelPayloadError(error, {
+      fallback: '엑셀 다운로드 중 오류가 발생했습니다.',
+      kind: 'download',
+    });
   }
 };
 
 // 관리자 근무기록 엑셀 인원 및 근무지 사전 검증
-export const validateExcelWorkRecords = async (payload) => {
+// options: { signal?: AbortSignal }
+export const validateExcelWorkRecords = async (payload, options = {}) => {
   try {
     // payload: { userNames: string[], workPlaceNames: string[], records: Array }
-    const response = await globalApiClient.post('/api/work-record/admin/excel-validate', payload);
+    const response = await globalApiClient.post('/api/work-record/admin/excel-validate', payload, {
+      signal: options.signal,
+    });
     return { success: true, data: response.data };
   } catch (error) {
-    const errMsg =
-      error.response?.data?.msg ||
-      error.response?.data?.message ||
-      (typeof error.response?.data === 'string' ? error.response.data : null) ||
-      '엑셀 데이터 검증 중 오류가 발생했습니다.';
-    return { success: false, error: errMsg, data: error.response?.data, status: error.response?.status };
+    return parseExcelPayloadError(error, {
+      fallback: '엑셀 데이터 검증 중 오류가 발생했습니다.',
+      kind: 'upload',
+    });
   }
 };
 
 // 관리자 근무기록 엑셀 최종 일괄 등록
-export const uploadExcelWorkRecords = async (payload) => {
+// options: { signal?: AbortSignal }
+export const uploadExcelWorkRecords = async (payload, options = {}) => {
   try {
     // payload: { overwriteExisting: boolean, records: Array }
-    const response = await globalApiClient.post('/api/work-record/admin/excel-upload', payload);
+    const response = await globalApiClient.post('/api/work-record/admin/excel-upload', payload, {
+      signal: options.signal,
+    });
     return { success: true, data: response.data };
   } catch (error) {
-    const errMsg =
-      error.response?.data?.msg ||
-      error.response?.data?.message ||
-      (typeof error.response?.data === 'string' ? error.response.data : null) ||
-      '근무기록 엑셀 업로드 등록에 실패했습니다.';
-    return { success: false, error: errMsg, status: error.response?.status };
+    return parseExcelPayloadError(error, {
+      fallback: '근무기록 엑셀 업로드 등록에 실패했습니다.',
+      kind: 'upload',
+    });
   }
 };
 

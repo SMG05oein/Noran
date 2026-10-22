@@ -14,6 +14,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ExcelCompareServiceImpl implements ExcelCompareService {
+
+    @Value("${work-record.excel.compare-max-rows:20000}")
+    private int compareMaxRows;
+    @Value("${work-record.excel.compare-max-file-bytes:10485760}")
+    private long compareMaxFileBytes;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("H:mm");
@@ -284,8 +290,19 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "엑셀 파일이 필요합니다.");
         }
+        if (file.getSize() > compareMaxFileBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    String.format("엑셀 파일 크기 상한(%.1fMB)을 초과했습니다. (현재 %.1fMB) 파일을 나눠 대조해 주세요.",
+                            compareMaxFileBytes / (1024.0 * 1024.0),
+                            file.getSize() / (1024.0 * 1024.0)));
+        }
 
         ParsedExcel parsed = parseAndValidate(file);
+        if (parsed.rows.size() > compareMaxRows) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    String.format("대조 가능 최대 행 수(%d)를 초과했습니다. (현재 %d행) 기간·근무지를 나눠 대조해 주세요.",
+                            compareMaxRows, parsed.rows.size()));
+        }
         if (!parsed.columnErrors.isEmpty()) {
             return ExcelCompareUploadResponseDto.builder()
                     .phase("COLUMN_ERROR")
@@ -472,6 +489,11 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
                         continue;
                     }
                     result.rows.add(parsed);
+                    if (result.rows.size() > compareMaxRows) {
+                        throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
+                                String.format("대조 가능 최대 행 수(%d)를 초과했습니다. 기간·근무지를 나눠 대조해 주세요.",
+                                        compareMaxRows));
+                    }
                 }
             }
             if (!anySheetParsed) {

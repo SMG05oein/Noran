@@ -257,8 +257,8 @@ const AdminUsers = () => {
           });
         }
         setUsers(list);
-        setTotalPages(res.data.totalPages || 1);
-        setTotalElements(res.data.totalElements || 0);
+        setTotalPages(res.data.page?.totalPages || 1);
+        setTotalElements(res.data.page?.totalElements || 0);
       } else if (res.success && Array.isArray(res.data)) {
         let list = res.data;
         if (selectedRole === '전체' && !sortBy) {

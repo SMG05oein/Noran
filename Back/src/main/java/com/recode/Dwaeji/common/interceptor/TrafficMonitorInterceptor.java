@@ -46,7 +46,11 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
             if (countData[1] > 10) { // 1초에 10번 초과 시 차단
                 response.setStatus(429);
                 response.getWriter().write("Too Many Requests");
-                systemMonitorService.recordTraffic(429);
+                try {
+                    systemMonitorService.recordTraffic(429);
+                } catch (RuntimeException ignored) {
+                    // Redis 장애 시에도 429 응답은 유지
+                }
                 return false;
             }
         }
@@ -55,8 +59,22 @@ public class TrafficMonitorInterceptor implements HandlerInterceptor {
         return true;
     }
 
+    private final java.util.concurrent.atomic.AtomicBoolean redisWarned = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TrafficMonitorInterceptor.class);
+
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        // 모니터링(Redis) 장애가 요청 처리에 영향을 주지 않도록 격리
+        try {
+            recordMetrics(request, response, ex);
+        } catch (RuntimeException e) {
+            if (redisWarned.compareAndSet(false, true)) {
+                log.warn("트래픽 모니터링 기록 실패 (Redis 미연결?). 이후 동일 오류는 로그를 생략합니다: {}", e.getMessage());
+            }
+        }
+    }
+
+    private void recordMetrics(HttpServletRequest request, HttpServletResponse response, Exception ex) {
         String uri = request.getRequestURI();
         // 개발자 전용 대시보드 API(/api/dev/*)는 트래픽 통계 및 모니터링에서 제외
         if (uri != null && uri.startsWith("/api/dev/")) {

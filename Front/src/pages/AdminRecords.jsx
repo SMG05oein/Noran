@@ -96,7 +96,7 @@ const AdminRecords = () => {
     const recRes = await fetchWorkRecords(params, skipCache);
     if (recRes.success) {
       setWorkRecords(recRes.data.content || recRes.data || []);
-      setTotalPages(recRes.data.totalPages || 1);
+      setTotalPages(recRes.data.page?.totalPages || 1);
     }
     setLoading(false);
   };

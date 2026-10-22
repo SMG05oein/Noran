@@ -75,7 +75,7 @@ const AdminPayroll = () => {
     const res = await fetchPayrollList(params);
     if (res.success) {
       setPayrollRows(res.data.content || res.data || []);
-      setTotalPages(res.data.totalPages || 1);
+      setTotalPages(res.data.page?.totalPages || 1);
     } else {
       setPayrollRows([]);
       setTotalPages(1);

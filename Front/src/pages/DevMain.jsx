@@ -10,6 +10,7 @@ import {
 import DevLogViewer from '../components/DevLogViewer';
 import ApiAnalyticsViewer from '../components/ApiAnalyticsViewer';
 import AnnouncementManager from '../components/AnnouncementManager';
+import DevIpManager from '../components/DevIpManager';
 import './DevConsole.css';
 
 const NAV = [
@@ -17,6 +18,7 @@ const NAV = [
   { key: 'logs', label: '로그' },
   { key: 'analytics', label: 'API 통계' },
   { key: 'announcements', label: '공지·점검' },
+  { key: 'ips', label: 'IP' },
 ];
 
 const formatUptime = (seconds = 0) => {
@@ -549,6 +551,8 @@ const DevMain = () => {
           <DevLogViewer initialLevel={logJump.level} initialKeyword={logJump.keyword} />
         ) : section === 'analytics' ? (
           <ApiAnalyticsViewer />
+        ) : section === 'ips' ? (
+          <DevIpManager />
         ) : (
           <AnnouncementManager />
         )}

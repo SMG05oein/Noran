@@ -80,6 +80,64 @@ export const fetchDevLogs = async (lines = 200, { level = '', keyword = '' } = {
   }
 };
 
+// 허용 IP 관리 (403 IP OTP는 devApiClient 인터셉터가 처리)
+export const fetchAllowedIps = async () => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/ips`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, status: error.response?.status, error: extractError(error, 'IP 목록을 불러오는데 실패했습니다.') };
+  }
+};
+
+export const addAllowedIp = async ({ type, ip, memo }) => {
+  try {
+    const payload = { type, ip };
+    if (memo) payload.memo = memo;
+    const response = await devApiClient.post(`${addUrl}/ips`, payload);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, status: error.response?.status, error: extractError(error, 'IP 등록에 실패했습니다.') };
+  }
+};
+
+export const deleteAllowedIp = async (id) => {
+  try {
+    const response = await devApiClient.delete(`${addUrl}/ips/${id}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, status: error.response?.status, error: extractError(error, 'IP 삭제에 실패했습니다.') };
+  }
+};
+
+// 로그 레벨 임시 변경 (403 IP OTP는 devApiClient 인터셉터가 처리)
+export const fetchLogLevels = async () => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/logs/level`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, status: error.response?.status, error: extractError(error, '로그 레벨 정보를 불러오는데 실패했습니다.') };
+  }
+};
+
+export const changeLogLevel = async (logger, level, minutes) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/logs/level`, { logger, level, minutes });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, status: error.response?.status, error: extractError(error, '로그 레벨 변경에 실패했습니다.') };
+  }
+};
+
+export const resetLogLevels = async () => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/logs/level/reset`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, status: error.response?.status, error: extractError(error, '로그 레벨 복구에 실패했습니다.') };
+  }
+};
+
 export const downloadDevLogs = async (lines = 2000, { level = '', keyword = '' } = {}) => {
   try {
     const params = { lines };

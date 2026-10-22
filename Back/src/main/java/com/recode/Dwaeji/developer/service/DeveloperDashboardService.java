@@ -91,8 +91,21 @@ public class DeveloperDashboardService {
                 "uptime_seconds", uptimeMs / 1000
         ));
 
-        systemInfo.put("traffic", systemMonitorService.getTrafficStats());
-        systemInfo.put("recent_errors", systemMonitorService.getRecentErrors());
+        // Redis 장애 시에도 나머지 시스템 정보는 내려가도록 격리
+        try {
+            systemInfo.put("traffic", systemMonitorService.getTrafficStats());
+        } catch (Exception e) {
+            systemInfo.put("traffic", Map.of(
+                    "success", 0L, "redirection", 0L, "notFound", 0L, "clientError", 0L,
+                    "serverError", 0L, "rateLimited", 0L, "total", 0L));
+            systemInfo.put("trafficUnavailable", true);
+        }
+        try {
+            systemInfo.put("recent_errors", systemMonitorService.getRecentErrors());
+        } catch (Exception e) {
+            systemInfo.put("recent_errors", new Object[0]);
+            systemInfo.put("recentErrorsUnavailable", true);
+        }
 
         Map<String, Object> health = buildHealth();
         systemInfo.put("health", health);

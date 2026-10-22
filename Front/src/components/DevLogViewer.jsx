@@ -1,6 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Spinner } from 'react-bootstrap';
-import { fetchDevLogs, downloadDevLogs } from '../api/devAuthApi';
+import {
+  fetchDevLogs,
+  downloadDevLogs,
+  fetchLogLevels,
+  changeLogLevel,
+  resetLogLevels,
+} from '../api/devAuthApi';
+
+const BASE_PACKAGE = 'com.recode.Dwaeji';
+const PACKAGE_OPTIONS = [
+  { value: BASE_PACKAGE, label: `${BASE_PACKAGE} (전체)` },
+  ...['work_record', 'user', 'gathering', 'payroll', 'joke', 'developer'].map((s) => ({
+    value: `${BASE_PACKAGE}.${s}`,
+    label: `${BASE_PACKAGE}.${s}`,
+  })),
+];
+const DEFAULT_LEVELS = ['ERROR', 'WARN', 'INFO', 'DEBUG'];
+const MINUTE_OPTIONS = [5, 10, 30, 60];
 
 const DevLogViewer = ({ initialLevel = '', initialKeyword = '' }) => {
   const [logsData, setLogsData] = useState(null);
@@ -14,6 +31,85 @@ const DevLogViewer = ({ initialLevel = '', initialKeyword = '' }) => {
   const [followBottom, setFollowBottom] = useState(true);
   const logContainerRef = useRef(null);
   const stickRef = useRef(true);
+
+  // 로그 레벨 임시 변경
+  const [levelPanelOpen, setLevelPanelOpen] = useState(false);
+  const [levelInfo, setLevelInfo] = useState(null);
+  const [targetLogger, setTargetLogger] = useState(BASE_PACKAGE);
+  const [targetLevel, setTargetLevel] = useState('DEBUG');
+  const [targetMinutes, setTargetMinutes] = useState(10);
+  const [levelBusy, setLevelBusy] = useState(false);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  const showToast = useCallback((message, type = 'ok') => {
+    setToast({ message, type });
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  useEffect(() => () => clearTimeout(toastTimerRef.current), []);
+
+  const loadLevelInfo = useCallback(async () => {
+    const res = await fetchLogLevels();
+    if (res.success) setLevelInfo(res.data);
+    else if (res.status === 400) showToast(res.error, 'bad');
+    return res;
+  }, [showToast]);
+
+  // 화면 진입 시 1회만 조회 (폴링 없음)
+  useEffect(() => {
+    loadLevelInfo();
+  }, [loadLevelInfo]);
+
+  const allowedLevels = levelInfo?.allowedLevels?.length ? levelInfo.allowedLevels : DEFAULT_LEVELS;
+  const maxMinutes = levelInfo?.maxMinutes || 60;
+  const minuteOptions = MINUTE_OPTIONS.filter((m) => m <= maxMinutes);
+  const overrides = levelInfo?.overrides || [];
+  const hasDebugActive = overrides.some((o) => String(o.level).toUpperCase() === 'DEBUG');
+
+  const applyLogLevel = async () => {
+    if (
+      targetLevel === 'DEBUG' &&
+      !window.confirm(
+        `DEBUG 로그는 양이 많고 개인정보가 포함될 수 있습니다. ${targetMinutes}분 후 자동으로 복구됩니다.`
+      )
+    ) {
+      return;
+    }
+    setLevelBusy(true);
+    const res = await changeLogLevel(targetLogger, targetLevel, targetMinutes);
+    if (res.success) {
+      showToast(
+        `${targetLogger} 패키지 ${res.data?.level || targetLevel}, ${res.data?.revertAfterMinutes ?? targetMinutes}분 후 자동 복구`
+      );
+      await loadLevelInfo();
+    } else {
+      showToast(res.error, 'bad');
+    }
+    setLevelBusy(false);
+  };
+
+  const resetAllLevels = async () => {
+    setLevelBusy(true);
+    const res = await resetLogLevels();
+    if (res.success) {
+      showToast('로그 레벨을 모두 복구했습니다.');
+      await loadLevelInfo();
+    } else {
+      showToast(res.error, 'bad');
+    }
+    setLevelBusy(false);
+  };
+
+  const viewDebugLogs = () => {
+    setLevel('DEBUG');
+    setKeyword('');
+    setKeywordInput('');
+    stickRef.current = true;
+    // level 변경 시 loadLogs가 자동 재실행되며, 이미 DEBUG면 직접 새로고침
+    if (level === 'DEBUG' && !keyword) loadLogs();
+  };
 
   useEffect(() => {
     if (initialLevel != null) setLevel(initialLevel || '');
@@ -112,6 +208,11 @@ const DevLogViewer = ({ initialLevel = '', initialKeyword = '' }) => {
           <h2 className="dc-panel-title mb-0">실시간 서버 로그</h2>
           {logsData?.available && <span className="dc-pill dc-pill-ok">연결됨</span>}
           {!autoRefresh && <span className="dc-pill dc-pill-warn">일시정지</span>}
+          {overrides.length > 0 && (
+            <span className="dc-pill dc-pill-bad">
+              {hasDebugActive ? 'DEBUG 활성 중' : '로그 레벨 임시 변경 중'}
+            </span>
+          )}
           {logsData?.filtered && (
             <span className="dc-pill dc-pill-info">
               필터 {logsData.matchedLines ?? logsData.totalLines ?? 0}줄
@@ -156,6 +257,13 @@ const DevLogViewer = ({ initialLevel = '', initialKeyword = '' }) => {
             <option value="INFO">INFO</option>
             <option value="DEBUG">DEBUG</option>
           </select>
+          <button
+            type="button"
+            className={`dc-btn ${levelPanelOpen ? 'dc-btn-accent' : 'dc-btn-ghost'}`}
+            onClick={() => setLevelPanelOpen((v) => !v)}
+          >
+            레벨 설정
+          </button>
           <select
             className="form-select form-select-sm"
             value={lines}
@@ -189,6 +297,80 @@ const DevLogViewer = ({ initialLevel = '', initialKeyword = '' }) => {
             {downloading ? '…' : '다운로드'}
           </button>
         </div>
+
+        {toast && (
+          <div className={`dc-alert ${toast.type === 'bad' ? 'dc-alert-bad' : 'dc-alert-ok'} mb-3`} role="status">
+            {toast.message}
+          </div>
+        )}
+
+        {levelPanelOpen && (
+          <div className="mb-3 p-3" style={{ border: '1px solid var(--dc-border)', borderRadius: 8 }}>
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+              <select
+                className="form-select form-select-sm"
+                value={targetLogger}
+                onChange={(e) => setTargetLogger(e.target.value)}
+                style={{ width: 300 }}
+                aria-label="대상 패키지"
+              >
+                {PACKAGE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <select
+                className="form-select form-select-sm"
+                value={targetLevel}
+                onChange={(e) => setTargetLevel(e.target.value)}
+                style={{ width: 110 }}
+                aria-label="레벨"
+              >
+                {allowedLevels.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+              <select
+                className="form-select form-select-sm"
+                value={targetMinutes}
+                onChange={(e) => setTargetMinutes(Number(e.target.value))}
+                style={{ width: 100 }}
+                aria-label="유지 시간"
+              >
+                {minuteOptions.map((m) => (
+                  <option key={m} value={m}>{m}분</option>
+                ))}
+              </select>
+              <button type="button" className="dc-btn dc-btn-accent" onClick={applyLogLevel} disabled={levelBusy}>
+                {levelBusy ? '…' : '적용'}
+              </button>
+              <button type="button" className="dc-btn dc-btn-info" onClick={viewDebugLogs}>
+                DEBUG 로그 바로 보기
+              </button>
+            </div>
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <strong style={{ fontSize: '0.85rem' }}>
+                현재 임시 변경{levelInfo?.root ? ` (root: ${levelInfo.root})` : ''}
+              </strong>
+              {overrides.length === 0 ? (
+                <span className="text-muted" style={{ fontSize: '0.85rem' }}>없음</span>
+              ) : (
+                overrides.map((o) => (
+                  <span key={o.logger} className="dc-pill dc-pill-info">
+                    {o.logger}: {o.level}
+                  </span>
+                ))
+              )}
+              <button
+                type="button"
+                className="dc-btn dc-btn-danger"
+                onClick={resetAllLevels}
+                disabled={levelBusy || overrides.length === 0}
+              >
+                전체 복구
+              </button>
+            </div>
+          </div>
+        )}
 
         {logsData && !logsData.available && (
           <div className="dc-alert dc-alert-bad mb-3">

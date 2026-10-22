@@ -234,16 +234,21 @@ public class GlobalExceptionHandler {
     // 예측하지 못한 서버 내부 오류 (500)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleAllExceptions(Exception ex, HttpServletRequest request) {
-        systemMonitorService.addErrorLog(
-                ex.getMessage(),
-                ex.getClass().getSimpleName(),
-                request.getRequestURL().toString(),
-                request.getRequestURI(),
-                getAuthIdentifier(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                getReferer(request),
-                getClientIp(request)
-        );
+        try {
+            systemMonitorService.addErrorLog(
+                    ex.getMessage(),
+                    ex.getClass().getSimpleName(),
+                    request.getRequestURL().toString(),
+                    request.getRequestURI(),
+                    getAuthIdentifier(),
+                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    getReferer(request),
+                    getClientIp(request)
+            );
+        } catch (Exception monitorEx) {
+            // Redis 등 모니터링 저장소 장애가 에러 응답 자체를 막지 않도록 한다.
+            log.warn("에러 로그 저장 실패(모니터링 저장소 확인 필요): {}", monitorEx.getMessage());
+        }
 
         log.error("[500 Internal Error] {} - {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 

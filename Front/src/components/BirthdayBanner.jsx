@@ -79,7 +79,7 @@ const BirthdayBanner = ({ userName }) => {
             className="fw-bold mb-1 text-truncate"
             style={{ color: isDark ? '#FDE68A' : '#92400E' }}
           >
-            생일을 진심으로 축하합니다, <span style={{ color: isDark ? '#FBBF24' : '#B45309' }}>{displayName}</span>님!
+            생일을 진심으로 축하합니다! <br/> <span style={{ color: isDark ? '#FBBF24' : '#B45309' }}>{displayName}</span>님!
           </h5>
 
           <p

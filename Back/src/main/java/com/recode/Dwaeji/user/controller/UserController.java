@@ -22,6 +22,18 @@ public class UserController {
 
     private final UserService userService;
 
+    private static final long REFRESH_COOKIE_MAX_AGE_SECONDS = 7L * 24 * 60 * 60;
+
+    private ResponseCookie refreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(REFRESH_COOKIE_MAX_AGE_SECONDS)
+                .sameSite("None")
+                .build();
+    }
+
     @Operation(summary = "로그인", description = "아이디와 비밀번호로 로그인합니다. 성공 시 액세스 토큰을 반환하고, 리프레시 토큰은 HttpOnly 쿠키로 발급합니다.")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto, jakarta.servlet.http.HttpServletRequest request) {
@@ -31,21 +43,17 @@ public class UserController {
         } else {
             clientIp = clientIp.split(",")[0].trim();
         }
-        
-        LoginResponseDto loginResponse = userService.login(loginRequestDto, clientIp);
 
-        // HttpOnly 쿠키 생성 (리프레시 토큰)
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
-                .httpOnly(true)
-                .secure(true) // HTTPS 적용 완료 (true)
-                .path("/")
-                .maxAge(7 * 24 * 60 * 60) // 7일
-                .sameSite("None") // PWA 크로스 도메인 허용
+        AuthTokenResult result = userService.login(loginRequestDto, clientIp);
+        LoginResponseDto body = LoginResponseDto.builder()
+                .accessToken(result.getAccessToken())
+                .msg(result.getMsg())
+                .isTempUser(result.getIsTempUser())
                 .build();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(loginResponse);
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(result.getRefreshToken()).toString())
+                .body(body);
     }
 
     @Operation(summary = "회원가입", description = "새로운 유저를 등록합니다.")
@@ -187,12 +195,19 @@ public class UserController {
         return ResponseEntity.ok("선택한 유저들의 정보가 성공적으로 일괄 업데이트되었습니다.");
     }
 
-    @Operation(summary = "토큰 재발급", description = "HttpOnly 쿠키로 전달된 리프레시 토큰을 확인하여 새로운 액세스 토큰을 발급합니다.")
+    @Operation(summary = "토큰 재발급", description = "HttpOnly 쿠키로 전달된 리프레시 토큰을 확인하여 새로운 액세스·리프레시 토큰을 발급합니다. 리프레시는 HttpOnly 쿠키로만 전달됩니다.")
     @PostMapping("/refresh")
     public ResponseEntity<TokenRefreshResponseDto> refresh(
             @org.springframework.web.bind.annotation.CookieValue(value = "refreshToken", required = false) String refreshToken) {
-        TokenRefreshResponseDto response = userService.refreshAccessToken(refreshToken);
-        return ResponseEntity.ok(response);
+        AuthTokenResult result = userService.refreshAccessToken(refreshToken);
+        TokenRefreshResponseDto body = TokenRefreshResponseDto.builder()
+                .accessToken(result.getAccessToken())
+                .msg(result.getMsg())
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(result.getRefreshToken()).toString())
+                .body(body);
     }
 
     @Operation(summary = "직급(UserType) 목록 조회", description = "전체 직급(UserType) 목록을 조회합니다.")

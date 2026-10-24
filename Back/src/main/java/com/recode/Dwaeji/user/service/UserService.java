@@ -4,7 +4,7 @@ import com.recode.Dwaeji.user.dto.*;
 import org.springframework.data.domain.Page;
 
 public interface UserService {
-    LoginResponseDto login(LoginRequestDto loginRequestDto, String clientIp);
+    AuthTokenResult login(LoginRequestDto loginRequestDto, String clientIp);
 
     void signup(SignupRequestDto signupRequestDto);
 
@@ -36,7 +36,7 @@ public interface UserService {
 
     void updateSensitiveInfo(String requesterId, Long targetUserIdx, SensitiveInfoDto dto);
 
-    TokenRefreshResponseDto refreshAccessToken(String refreshToken);
+    AuthTokenResult refreshAccessToken(String refreshToken);
 
     Page<UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir);
 

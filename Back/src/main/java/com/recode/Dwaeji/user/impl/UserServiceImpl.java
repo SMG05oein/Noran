@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +38,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    /** 계정당 동시 유지 가능한 리프레시 토큰(기기 세션) 수 */
+    private static final int MAX_REFRESH_TOKENS_PER_USER = 3;
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -58,7 +62,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public LoginResponseDto login(LoginRequestDto loginRequestDto, String clientIp) {
+    public AuthTokenResult login(LoginRequestDto loginRequestDto, String clientIp) {
         if (loginRequestDto.getUserId() != null) {
             loginRequestDto.setUserId(loginRequestDto.getUserId().toLowerCase());
         }
@@ -98,14 +102,26 @@ public class UserServiceImpl implements UserService {
         String refreshTokenStr = jwtUtil.createRefreshToken(user.getUserId());
         String msg = "성공적으로 로그인 되었습니다!";
 
-        // Refresh 토큰 저장
-        // 기존 Refresh 토큰이 있다면 삭제
-        refreshTokenRepository.deleteByUser_UserIdx(user.getUserIdx());
+        // 계정당 최대 3개 세션 유지. 만료분 정리 후 초과 시 가장 오래된 세션부터 제거
+        LocalDateTime now = LocalDateTime.now();
+        List<RefreshToken> existingTokens =
+                refreshTokenRepository.findByUser_UserIdxOrderByRfIdxAsc(user.getUserIdx());
+        List<RefreshToken> activeTokens = new ArrayList<>();
+        for (RefreshToken existing : existingTokens) {
+            if (existing.getRfExpiryDate().isBefore(now)) {
+                refreshTokenRepository.delete(existing);
+            } else {
+                activeTokens.add(existing);
+            }
+        }
+        while (activeTokens.size() >= MAX_REFRESH_TOKENS_PER_USER) {
+            refreshTokenRepository.delete(activeTokens.remove(0));
+        }
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .rfToken(refreshTokenStr)
-                .rfExpiryDate(LocalDateTime.now().plusDays(3))
+                .rfExpiryDate(now.plusDays(7))
                 .build();
         refreshTokenRepository.save(refreshToken);
 
@@ -114,7 +130,7 @@ public class UserServiceImpl implements UserService {
         user.setLastLoginDate(LocalDateTime.now());
         userRepository.save(user);
 
-        return LoginResponseDto.builder()
+        return AuthTokenResult.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenStr)
                 .msg(msg)
@@ -714,20 +730,24 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public TokenRefreshResponseDto refreshAccessToken(String refreshToken) {
+    @Transactional
+    public AuthTokenResult refreshAccessToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 없습니다.");
         }
 
         try {
-            // 1. 토큰 검증 및 userId 추출 (만료되었거나 변조되었으면 Exception 발생)
-            io.jsonwebtoken.Claims claims = jwtUtil.extractToken(refreshToken);
-            String userId = claims.getSubject();
+            // 1. 토큰 검증 (만료되었거나 변조되었으면 Exception 발생)
+            jwtUtil.extractToken(refreshToken);
 
             // 2. DB에 존재하는 리프레시 토큰인지 확인
             RefreshToken storedToken = refreshTokenRepository.findByRfToken(refreshToken)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다."));
+
+            if (storedToken.getRfExpiryDate().isBefore(LocalDateTime.now())) {
+                refreshTokenRepository.delete(storedToken);
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.");
+            }
 
             // 3. User 정보 조회 및 권한/근무지 획득
             User user = storedToken.getUser();
@@ -737,10 +757,18 @@ public class UserServiceImpl implements UserService {
             String role = user.getUserType() != null ? user.getUserType().getUtName() : "알바생";
             String authType = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "노란돼지";
 
-            // 4. 새로운 액세스 토큰 생성
+            // 4. 액세스·리프레시 재발급 (같은 세션 행 교체 → 슬롯 수 유지, 만료 슬라이딩)
             String newAccessToken = jwtUtil.createAccessToken(user.getUserId(), role, authType);
+            String newRefreshToken = jwtUtil.createRefreshToken(user.getUserId());
+            storedToken.setRfToken(newRefreshToken);
+            storedToken.setRfExpiryDate(LocalDateTime.now().plusDays(7));
+            refreshTokenRepository.save(storedToken);
 
-            return new TokenRefreshResponseDto(newAccessToken, "새로운 액세스 토큰이 발급되었습니다.");
+            return AuthTokenResult.builder()
+                    .accessToken(newAccessToken)
+                    .refreshToken(newRefreshToken)
+                    .msg("새로운 액세스 토큰이 발급되었습니다.")
+                    .build();
 
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.");

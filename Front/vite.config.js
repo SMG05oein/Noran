@@ -1,17 +1,54 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import packageJson from './package.json'
+
+const appVersion = `v${packageJson.version}`
+
+/** dist/assets/version.json — fetch('/assets/version.json') 로 구버전 감지 */
+function versionJsonPlugin() {
+  return {
+    name: 'generate-version-json',
+    writeBundle(outputOptions) {
+      const outDir = outputOptions.dir || resolve(process.cwd(), 'dist')
+      const assetsDir = resolve(outDir, 'assets')
+      mkdirSync(assetsDir, { recursive: true })
+      writeFileSync(
+        resolve(assetsDir, 'version.json'),
+        JSON.stringify({
+          version: appVersion,
+          buildTime: new Date().toISOString(),
+        })
+      )
+    },
+  }
+}
 
 export default defineConfig({
   define: {
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(`v${packageJson.version}`)
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion)
   },
   plugins: [
     react(),
+    versionJsonPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons.svg', 'pig.png'], // 캐싱할 파일명 업데이트
+      includeAssets: ['favicon.svg', 'icons.svg', 'pig.png'],
+      workbox: {
+        // index.html은 navigateFallback용으로 프리캐시에 있어야 함 (제외 시 non-precached-url)
+        globIgnores: ['**/assets/version.json'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/version\.json$/i,
+            handler: 'NetworkOnly',
+          },
+        ],
+      },
       manifest: {
         name: '노란돼지 근무관리',
         short_name: '노란돼지',
@@ -19,14 +56,12 @@ export default defineConfig({
         theme_color: '#FBBF24',
         background_color: '#ffffff',
         display: 'standalone',
-
-        // 🌟 여기가 핵심입니다! pig.png 하나로 퉁치기
         icons: [
           {
             src: 'pig.png',
-            sizes: '192x192 512x512', // 띄어쓰기로 여러 사이즈 동시 지정 가능
+            sizes: '192x192 512x512',
             type: 'image/png',
-            purpose: 'any maskable' // 안드로이드, 아이폰 화면에 맞게 꽉 차게 조절
+            purpose: 'any maskable'
           }
         ]
       }

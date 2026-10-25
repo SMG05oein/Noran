@@ -1,0 +1,121 @@
+.app-update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: rgba(52, 40, 35, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+[data-bs-theme='dark'] .app-update-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.app-update-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 400px;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--color-surface, #fff);
+  border: 1.5px solid var(--color-border, #e8dece);
+  box-shadow:
+    0 4px 6px rgba(52, 40, 35, 0.06),
+    0 16px 40px rgba(52, 40, 35, 0.16);
+  animation: app-update-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.app-update-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--color-primary-light, rgba(159, 78, 59, 0.12));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.app-update-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.app-update-icon__ring {
+  position: absolute;
+  inset: 4px;
+  border-radius: 11px;
+  border: 2px solid transparent;
+  border-top-color: var(--color-primary, #9f4e3b);
+  animation: app-update-spin 0.7s linear infinite;
+}
+
+.app-update-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-update-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-main, #342823);
+  letter-spacing: -0.01em;
+}
+
+.app-update-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #81756e);
+  line-height: 1.45;
+}
+
+.app-update-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary, #9f4e3b);
+  background: var(--color-primary-light, rgba(159, 78, 59, 0.12));
+  vertical-align: 1px;
+}
+
+@keyframes app-update-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes app-update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 768px) {
+  .app-update-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+}

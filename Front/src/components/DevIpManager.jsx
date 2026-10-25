@@ -270,7 +270,7 @@ const DevIpManager = () => {
           />
           <IpSection
             type="SERVICE"
-            title="서비스(dwaeji.jp) 접근 차단 IP"
+            title="서비스(dwaeji.kr) 접근 차단 IP"
             rows={data.serviceIps || []}
             myIp={data.myIp}
             blockEnabled={!!data.serviceBlockEnabled}

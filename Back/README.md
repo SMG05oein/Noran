@@ -71,9 +71,26 @@ Windows:
 
 ## 인증
 
-대부분의 API는 `Authorization: Bearer <JWT>` 가 필요합니다. 세션은 `STATELESS`입니다.
+대부분의 API는 `Authorization: Bearer <액세스 토큰>` 이 필요합니다. 세션은 `STATELESS`입니다.
 
-인증 없이 호출 가능한 경로:
+### 회원 토큰 흐름
+
+| 토큰 | 전달 방식 | 수명 |
+| --- | --- | --- |
+| Access | JSON body + `Authorization` 헤더 | 20분 |
+| Refresh | **HttpOnly 쿠키만** (`refreshToken`). 응답 body에는 포함하지 않음 | 자동로그인 ON **30일** / OFF·미전달 **7일** |
+
+- `POST /api/user/login` body: `{ "userId", "userPw", "autoLogin" }`  
+  - `autoLogin: true` → RT 30일, `false`/`null` → RT 7일  
+  - 성공 시 액세스 토큰은 body, 리프레시는 `Set-Cookie` (HttpOnly, Secure, SameSite=None)
+- `POST /api/user/refresh`  
+  - 쿠키의 RT로 검증 후 **액세스 + 리프레시 모두 재발급**(로테이션)  
+  - 만료는 **JWT `exp`만** 판정. DB `rf_expiry_date`는 행 정리·슬롯 관리용  
+  - RT JWT의 `ttlDays` 클레임으로 로그인 시 TTL(30/7)을 유지하며 슬라이딩 연장  
+  - 새 RT는 다시 HttpOnly 쿠키로만 전달 (`withCredentials` 필요)
+- 계정당 활성 리프레시 세션(기기) **최대 3개**. 로그인 시 만료 행 정리 후, 초과하면 가장 오래된 세션부터 삭제  
+
+### 인증 없이 호출 가능한 경로
 
 - `POST /api/user/login`
 - `POST /api/user/signup`

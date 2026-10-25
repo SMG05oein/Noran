@@ -22,14 +22,12 @@ public class UserController {
 
     private final UserService userService;
 
-    private static final long REFRESH_COOKIE_MAX_AGE_SECONDS = 7L * 24 * 60 * 60;
-
-    private ResponseCookie refreshTokenCookie(String refreshToken) {
+    private ResponseCookie refreshTokenCookie(String refreshToken, long maxAgeSeconds) {
         return ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .maxAge(REFRESH_COOKIE_MAX_AGE_SECONDS)
+                .maxAge(maxAgeSeconds)
                 .sameSite("None")
                 .build();
     }
@@ -52,7 +50,8 @@ public class UserController {
                 .build();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(result.getRefreshToken()).toString())
+                .header(HttpHeaders.SET_COOKIE,
+                        refreshTokenCookie(result.getRefreshToken(), result.getRefreshCookieMaxAgeSeconds()).toString())
                 .body(body);
     }
 
@@ -206,7 +205,8 @@ public class UserController {
                 .build();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(result.getRefreshToken()).toString())
+                .header(HttpHeaders.SET_COOKIE,
+                        refreshTokenCookie(result.getRefreshToken(), result.getRefreshCookieMaxAgeSeconds()).toString())
                 .body(body);
     }
 

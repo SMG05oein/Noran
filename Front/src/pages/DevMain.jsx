@@ -34,7 +34,7 @@ const formatRequestPage = (err) => {
   const page = (err?.requestPage || '').trim();
   if (!page) return '알 수 없음';
   if (/^https?:\/\//i.test(page)) return page;
-  // BE 표시용 `dwaeji.jp/dev/dashboard` → `https://dwaeji.jp/dev/dashboard`
+  // BE 표시용 `dwaeji.kr/dev/dashboard` → `https://dwaeji.kr/dev/dashboard`
   if (/^[a-z0-9.-]+\.[a-z]{2,}([/?#]|$)/i.test(page)) {
     return `https://${page}`;
   }

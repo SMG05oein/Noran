@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import useAuthStore from './store/useAuthStore';
 import useThemeStore from './store/useThemeStore';
 import useVerifyUser from './hooks/useVerifyUser';
+import AppUpdateWatcher from './components/AppUpdateWatcher';
 import GNB from './components/GNB';
 import AdminGNB from './components/AdminGNB';
 import BottomNav from './components/BottomNav';
@@ -103,7 +104,6 @@ function App() {
   const navigate = useNavigate();
   const { theme } = useThemeStore();
   const { isInitializing } = useVerifyUser();
-
   // HTML의 data-bs-theme 속성을 테마 상태와 동기화
   useEffect(() => {
     document.documentElement.setAttribute('data-bs-theme', theme);
@@ -123,6 +123,7 @@ function App() {
 
   return (
     <>
+      <AppUpdateWatcher />
       <PwaInstallBanner />
       <NoticeModal />
       <ServerDownOverlay />

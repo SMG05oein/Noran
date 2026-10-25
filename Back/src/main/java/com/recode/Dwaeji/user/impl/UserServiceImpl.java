@@ -98,8 +98,13 @@ public class UserServiceImpl implements UserService {
         String role = user.getUserType() != null ? user.getUserType().getUtName() : "알바생";
         String authType = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "노란돼지";
 
+        boolean autoLogin = Boolean.TRUE.equals(loginRequestDto.getAutoLogin());
+        int refreshTtlDays = autoLogin
+                ? JwtUtil.REFRESH_TTL_DAYS_AUTO_LOGIN
+                : JwtUtil.REFRESH_TTL_DAYS_DEFAULT;
+
         String accessToken = jwtUtil.createAccessToken(user.getUserId(), role, authType);
-        String refreshTokenStr = jwtUtil.createRefreshToken(user.getUserId());
+        String refreshTokenStr = jwtUtil.createRefreshToken(user.getUserId(), refreshTtlDays);
         String msg = "성공적으로 로그인 되었습니다!";
 
         // 계정당 최대 3개 세션 유지. 만료분 정리 후 초과 시 가장 오래된 세션부터 제거
@@ -121,7 +126,7 @@ public class UserServiceImpl implements UserService {
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .rfToken(refreshTokenStr)
-                .rfExpiryDate(now.plusDays(7))
+                .rfExpiryDate(now.plusDays(refreshTtlDays))
                 .build();
         refreshTokenRepository.save(refreshToken);
 
@@ -135,6 +140,7 @@ public class UserServiceImpl implements UserService {
                 .refreshToken(refreshTokenStr)
                 .msg(msg)
                 .isTempUser(user.getIsTempUser() != null ? user.getIsTempUser() : 0)
+                .refreshCookieMaxAgeSeconds(refreshTtlDays * 24L * 60 * 60)
                 .build();
     }
 
@@ -738,16 +744,12 @@ public class UserServiceImpl implements UserService {
 
         try {
             // 1. 토큰 검증 (만료되었거나 변조되었으면 Exception 발생)
-            jwtUtil.extractToken(refreshToken);
+            io.jsonwebtoken.Claims claims = jwtUtil.extractToken(refreshToken);
+            int refreshTtlDays = jwtUtil.getRefreshTtlDays(claims);
 
-            // 2. DB에 존재하는 리프레시 토큰인지 확인
+            // 2. DB에 존재하는 세션인지 확인 (만료 판단은 JWT exp만 사용, rf_expiry_date는 정리용)
             RefreshToken storedToken = refreshTokenRepository.findByRfToken(refreshToken)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다."));
-
-            if (storedToken.getRfExpiryDate().isBefore(LocalDateTime.now())) {
-                refreshTokenRepository.delete(storedToken);
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.");
-            }
 
             // 3. User 정보 조회 및 권한/근무지 획득
             User user = storedToken.getUser();
@@ -757,17 +759,18 @@ public class UserServiceImpl implements UserService {
             String role = user.getUserType() != null ? user.getUserType().getUtName() : "알바생";
             String authType = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "노란돼지";
 
-            // 4. 액세스·리프레시 재발급 (같은 세션 행 교체 → 슬롯 수 유지, 만료 슬라이딩)
+            // 4. 액세스·리프레시 재발급 (같은 세션 행 교체, 로그인 시 TTL 유지하며 슬라이딩)
             String newAccessToken = jwtUtil.createAccessToken(user.getUserId(), role, authType);
-            String newRefreshToken = jwtUtil.createRefreshToken(user.getUserId());
+            String newRefreshToken = jwtUtil.createRefreshToken(user.getUserId(), refreshTtlDays);
             storedToken.setRfToken(newRefreshToken);
-            storedToken.setRfExpiryDate(LocalDateTime.now().plusDays(7));
+            storedToken.setRfExpiryDate(LocalDateTime.now().plusDays(refreshTtlDays));
             refreshTokenRepository.save(storedToken);
 
             return AuthTokenResult.builder()
                     .accessToken(newAccessToken)
                     .refreshToken(newRefreshToken)
                     .msg("새로운 액세스 토큰이 발급되었습니다.")
+                    .refreshCookieMaxAgeSeconds(refreshTtlDays * 24L * 60 * 60)
                     .build();
 
         } catch (io.jsonwebtoken.ExpiredJwtException e) {

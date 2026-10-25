@@ -3,6 +3,16 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 export const releaseHistory = [
   {
+    version: '0.9.18',
+    date: '2026-10-25',
+    features: [
+      '로그인 정책 강화',
+    ],
+    fixes: [
+      '자동로그인이 비정상적으로 풀리는 버그 수정'
+    ]
+  },
+  {
     version: '0.9.17',
     date: '2026-10-20',
     features: [

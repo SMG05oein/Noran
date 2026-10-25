@@ -42,7 +42,7 @@ const Login = () => {
     try {
       localStorage.setItem('isAutoLogin', autoLogin ? 'true' : 'false');
       
-      const response = await authLogin(userId, password);
+      const response = await authLogin(userId, password, autoLogin);
       if (response.success) {
         const token = response.data.accessToken;
         const infoRes = await fetchMyInfo(token);

@@ -18,4 +18,6 @@ public class AuthTokenResult {
     private String refreshToken;
     private String msg;
     private Integer isTempUser;
+    /** HttpOnly 쿠키 maxAge (초) */
+    private long refreshCookieMaxAgeSeconds;
 }

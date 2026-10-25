@@ -16,6 +16,7 @@ import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
 import com.recode.Dwaeji.work_record.repository.WorkRecordHistoryRepository;
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
+import com.recode.Dwaeji.alarm.service.AlarmPurgeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -62,6 +63,7 @@ public class UserServiceImpl implements UserService {
     private final GatheringCommentRepository gatheringCommentRepository;
     private final GatheringPostRepository gatheringPostRepository;
     private final JokeRepository jokeRepository;
+    private final AlarmPurgeService alarmPurgeService;
 
     @Override
     @Transactional
@@ -447,6 +449,7 @@ public class UserServiceImpl implements UserService {
         // 논리적 삭제
         targetUser.setUserIsActive(0);
         targetUser.setUserWithdrawnAt(LocalDateTime.now());
+        alarmPurgeService.purgeAllForUser(targetUserIdx);
     }
 
     @Override
@@ -458,6 +461,7 @@ public class UserServiceImpl implements UserService {
         // 논리적 삭제
         requester.setUserIsActive(0);
         requester.setUserWithdrawnAt(LocalDateTime.now());
+        alarmPurgeService.purgeAllForUser(requester.getUserIdx());
     }
 
     @Override
@@ -570,6 +574,9 @@ public class UserServiceImpl implements UserService {
         gatheringCommentRepository.deleteByPost_User_UserIdx(targetUserIdx); // 사용자가 쓴 글에 달린 타인의 댓글 먼저 삭제
         gatheringPostRepository.deleteByUser_UserIdx(targetUserIdx);
         jokeRepository.deleteByUser_UserIdx(targetUserIdx);
+
+        // 웹 푸시 구독·알람 설정 파기
+        alarmPurgeService.purgeAllForUser(targetUserIdx);
 
         // 4. 실제 사용자 물리 삭제
         userRepository.delete(targetUser);

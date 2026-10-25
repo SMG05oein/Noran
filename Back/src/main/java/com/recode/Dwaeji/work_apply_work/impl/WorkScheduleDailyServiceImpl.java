@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import com.recode.Dwaeji.work_apply_work.database.WorkApply;
 import com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
+import com.recode.Dwaeji.alarm.service.AlarmDispatchService;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +39,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
     private final WorkApplyRepository workApplyRepository;
     private final UserRepository userRepository;
     private final WorkPlaceRepository workPlaceRepository;
+    private final AlarmDispatchService alarmDispatchService;
 
     private User getRequester(String requesterId) {
         return userRepository.findByUserId(requesterId)
@@ -254,6 +256,21 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         // 6. CONFIRM만: 신청만 있고 출근 없으면 미출근 행 생성
         if (assignMode.convertsUnassignedApplies()) {
             upsertUnassignedForUnassignedApplicants(startDate, endDate, workPlaceIdx, workPlaceMap.get(workPlaceIdx), toSave);
+        }
+
+        // 7. CONFIRM만: 출근+확정 대상에게 웹 푸시
+        if (assignMode == AssignMode.CONFIRM) {
+            Set<Long> notifyUserIdxes = new HashSet<>();
+            for (WorkScheduleDaily s : toSave) {
+                if (s.getUser() != null
+                        && s.getWsdStatus() == ApplyStatus.출근
+                        && Boolean.TRUE.equals(s.getWsdIsConfirmed())) {
+                    notifyUserIdxes.add(s.getUser().getUserIdx());
+                }
+            }
+            if (!notifyUserIdxes.isEmpty()) {
+                alarmDispatchService.dispatchAssignConfirmAlarms(notifyUserIdxes, startDate, workPlaceIdx);
+            }
         }
 
         return assignMode;

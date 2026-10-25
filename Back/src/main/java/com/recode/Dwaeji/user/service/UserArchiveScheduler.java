@@ -25,6 +25,7 @@ import com.recode.Dwaeji.joke.repository.JokeRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
+import com.recode.Dwaeji.alarm.service.AlarmPurgeService;
 
 @Slf4j
 @Service
@@ -42,6 +43,7 @@ public class UserArchiveScheduler {
     private final GatheringCommentRepository gatheringCommentRepository;
     private final GatheringPostRepository gatheringPostRepository;
     private final JokeRepository jokeRepository;
+    private final AlarmPurgeService alarmPurgeService;
     @Autowired
     @Lazy
     private UserArchiveScheduler self;
@@ -89,6 +91,7 @@ public class UserArchiveScheduler {
         gatheringCommentRepository.deleteByPost_User_UserIdx(userIdx);
         gatheringPostRepository.deleteByUser_UserIdx(userIdx);
         jokeRepository.deleteByUser_UserIdx(userIdx);
+        alarmPurgeService.purgeAllForUser(userIdx);
 
         // 사용자 완전 파기
         userRepository.delete(user);

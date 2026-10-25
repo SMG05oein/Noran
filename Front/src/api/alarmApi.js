@@ -72,3 +72,13 @@ export const deleteAllPushSubscriptions = async () => {
     return { success: false, error: errMsg(error, '전체 구독 해제에 실패했습니다.'), status: error.response?.status };
   }
 };
+
+/** 개발/검증용: 로그인 사용자 구독으로 테스트 푸시 1회 발송 */
+export const sendTestAlarm = async () => {
+  try {
+    const response = await apiClient.post(`${BASE}/test`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: errMsg(error, '테스트 알람 발송에 실패했습니다.'), status: error.response?.status };
+  }
+};

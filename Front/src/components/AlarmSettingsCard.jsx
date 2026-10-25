@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap';
 import { RiNotification3Line, RiShareForwardLine } from 'react-icons/ri';
-import { fetchAlarmPreferences, updateAlarmPreferences } from '../api/alarmApi';
+import { fetchAlarmPreferences, sendTestAlarm, updateAlarmPreferences } from '../api/alarmApi';
 import useWebPush from '../hooks/useWebPush';
 
 const DEFAULT_PREFS = {
@@ -50,6 +50,7 @@ const AlarmSettingsCard = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -199,7 +200,19 @@ const AlarmSettingsCard = () => {
     }
   };
 
-  const busy = loading || saving || pushBusy;
+  const handleTestAlarm = async () => {
+    setMsg({ type: '', text: '' });
+    setTesting(true);
+    const res = await sendTestAlarm();
+    setTesting(false);
+    if (res.success) {
+      setMsg({ type: 'success', text: res.data?.message || '테스트 알람을 보냈습니다. 알림을 확인해 주세요.' });
+    } else {
+      setMsg({ type: 'danger', text: res.error || '테스트 알람 발송에 실패했습니다.' });
+    }
+  };
+
+  const busy = loading || saving || pushBusy || testing;
   const showPermissionHint = permission === 'denied';
 
   return (
@@ -316,6 +329,22 @@ const AlarmSettingsCard = () => {
                       />
                     </div>
                   ))}
+                </div>
+
+                <div className="mt-3 pt-3 border-top">
+                  <Button
+                    size="sm"
+                    variant="outline-warning"
+                    className="fw-bold rounded-3"
+                    disabled={busy || !subscribed}
+                    onClick={handleTestAlarm}
+                  >
+                    {testing ? <Spinner as="span" animation="border" size="sm" /> : '테스트 알람 보내기'}
+                  </Button>
+                  <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>
+                    이 기기가 연결된 상태에서, 서버가 실제 웹 푸시를 보내는지 확인합니다.
+                    {!subscribed && ' (먼저 이 기기를 연결해 주세요)'}
+                  </div>
                 </div>
               </div>
             )}

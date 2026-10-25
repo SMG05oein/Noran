@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.recode.Dwaeji.user.database.User;
 
 public interface WorkApplyDailyRepository extends JpaRepository<WorkApplyDaily, Long> {
 
@@ -25,11 +26,11 @@ public interface WorkApplyDailyRepository extends JpaRepository<WorkApplyDaily, 
 
     @Modifying(clearAutomatically = true)
     @Query("DELETE FROM WorkApplyDaily w WHERE w.user = :user AND w.wadDate BETWEEN :startDate AND :endDate")
-    void deleteByUserAndWadDateBetween(@Param("user") com.recode.Dwaeji.user.database.User user,
+    void deleteByUserAndWadDateBetween(@Param("user") User user,
                                        @Param("startDate") LocalDate startDate,
                                        @Param("endDate") LocalDate endDate);
 
-    void deleteByUserAndWadDateIn(com.recode.Dwaeji.user.database.User user, List<LocalDate> dates);
+    void deleteByUserAndWadDateIn(User user, List<LocalDate> dates);
 
     void deleteByUser_UserIdx(Long userIdx);
 }

@@ -25,6 +25,9 @@ import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.recode.Dwaeji.work_apply_work.database.WorkApply;
+import com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto;
+import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +35,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
     private final WorkScheduleDailyRepository scheduleRepository;
     private final WorkApplyDailyRepository applyRepository;
-    private final com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository workApplyRepository;
+    private final WorkApplyRepository workApplyRepository;
     private final UserRepository userRepository;
     private final WorkPlaceRepository workPlaceRepository;
 
@@ -397,14 +400,14 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
         // 주간 비고 가져오기 (WorkApply는 주의 월요일 기준으로 저장된다)
         LocalDate weekStart = rangeStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        List<com.recode.Dwaeji.work_apply_work.database.WorkApply> weeklyApplies;
+        List<WorkApply> weeklyApplies;
         if (targetUserIdx != null) {
             weeklyApplies = workApplyRepository.findByUserIdxAndWaDateBetweenFetch(targetUserIdx, weekStart, rangeEnd);
         } else {
             weeklyApplies = workApplyRepository.findByWaDateFetch(weekStart);
         }
         Map<Long, String> weeklyRemarksMap = new HashMap<>();
-        for (com.recode.Dwaeji.work_apply_work.database.WorkApply wa : weeklyApplies) {
+        for (WorkApply wa : weeklyApplies) {
             weeklyRemarksMap.put(wa.getUser().getUserIdx(), wa.getWaRemarks());
         }
 
@@ -412,10 +415,10 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         Set<String> processedKeys = new HashSet<>();
 
         // 1. 해당 지점 소속 알바생 + 타지점 소속이지만 이 지점에 신청/배정된 알바생 수집
-        Map<Long, com.recode.Dwaeji.user.database.User> targetUserMap = new HashMap<>();
+        Map<Long, User> targetUserMap = new HashMap<>();
         if (workPlaceIdx != null) {
-            List<com.recode.Dwaeji.user.database.User> homeUsers = userRepository.findByWorkPlace_WpIdx(workPlaceIdx);
-            for (com.recode.Dwaeji.user.database.User u : homeUsers) {
+            List<User> homeUsers = userRepository.findByWorkPlace_WpIdx(workPlaceIdx);
+            for (User u : homeUsers) {
                 if (u.getUserIsActive() != null && (u.getUserIsActive() == 1 || u.getUserIsActive() == 2) && !isAdmin(u)) {
                     targetUserMap.put(u.getUserIdx(), u);
                 }
@@ -426,7 +429,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
         // 2. 관리자가 특정 지점을 조회하는 경우, targetUsers에 대해 기간 전체 그리드를 무조건 생성
         if (workPlaceIdx != null && targetUserIdx == null) {
-            for (com.recode.Dwaeji.user.database.User u : targetUserMap.values()) {
+            for (User u : targetUserMap.values()) {
                 Long uid = u.getUserIdx();
                 for (LocalDate d = rangeStart; !d.isAfter(rangeEnd); d = d.plusDays(1)) {
                     String key = uid + "_" + d;
@@ -499,7 +502,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto> getDayAssignments(String requesterId, LocalDate date, Long workPlaceIdx) {
+    public List<DailyScheduleDto> getDayAssignments(String requesterId, LocalDate date, Long workPlaceIdx) {
         User requester = getRequester(requesterId);
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "조회 권한이 없습니다.");
@@ -518,7 +521,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                         .thenComparing(s -> s.getUser() != null ? s.getUser().getUserName() : null, Comparator.nullsLast(String::compareTo)))
                 .map(s -> {
                     Long seq = userRepository.findNameSeqByUserIdx(s.getUser().getUserIdx());
-                    return com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto.builder()
+                    return DailyScheduleDto.builder()
                             .userIdx(s.getUser().getUserIdx())
                             .userName(s.getUser().getUserName())
                             .nameSeq(seq != null ? seq : 1L)
@@ -555,9 +558,9 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         allDates.addAll(applyMap.keySet());
         allDates.addAll(scheduleMap.keySet());
 
-        List<com.recode.Dwaeji.work_apply_work.database.WorkApply> monthlyApplies = workApplyRepository.findByUserIdxAndWaDateBetweenFetch(requester.getUserIdx(), extendedStartDate, extendedEndDate);
+        List<WorkApply> monthlyApplies = workApplyRepository.findByUserIdxAndWaDateBetweenFetch(requester.getUserIdx(), extendedStartDate, extendedEndDate);
         Map<LocalDate, String> monthlyRemarksMap = new HashMap<>();
-        for (com.recode.Dwaeji.work_apply_work.database.WorkApply wa : monthlyApplies) {
+        for (WorkApply wa : monthlyApplies) {
             monthlyRemarksMap.put(wa.getWaDate(), wa.getWaRemarks());
         }
 
@@ -575,7 +578,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         return results;
     }
 
-    private List<WorkScheduleDailyResponseDto> mergeAppliesAndSchedules(List<WorkApplyDaily> applyList, List<WorkScheduleDaily> scheduleList, String waRemarks, Long defaultUserIdx, com.recode.Dwaeji.user.database.User defaultUser, LocalDate d) {
+    private List<WorkScheduleDailyResponseDto> mergeAppliesAndSchedules(List<WorkApplyDaily> applyList, List<WorkScheduleDaily> scheduleList, String waRemarks, Long defaultUserIdx, User defaultUser, LocalDate d) {
         List<WorkScheduleDailyResponseDto> res = new ArrayList<>();
         if (applyList.isEmpty() && scheduleList.isEmpty()) {
             if (defaultUserIdx != null && defaultUser != null && d != null) {

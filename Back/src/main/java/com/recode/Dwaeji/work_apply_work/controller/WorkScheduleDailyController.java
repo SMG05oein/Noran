@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import com.recode.Dwaeji.work_apply_work.database.AssignMode;
+import com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto;
 
 @Tag(name = "근무 일정(일 단위) API", description = "복수 근무지를 지원하는 일 단위 근무 일정 API")
 @RestController
@@ -59,7 +61,7 @@ public class WorkScheduleDailyController {
             @RequestParam(required = false) String assignMode,
             @RequestParam(defaultValue = "false") boolean confirmed,
             @RequestBody List<WorkScheduleDailyRequestDto> requestDtos) {
-        com.recode.Dwaeji.work_apply_work.database.AssignMode mode =
+        AssignMode mode =
                 scheduleService.createSchedule(userDetails.getUsername(), startDate, endDate, workPlaceIdx, requestDtos, assignMode, confirmed);
         String msg = switch (mode) {
             case DRAFT -> "임시 저장이 완료되었습니다.";
@@ -97,7 +99,7 @@ public class WorkScheduleDailyController {
 
     @Operation(summary = "일별 출근 명단 조회 (관리자용)", description = "선택한 날짜·지점의 출근 인원을 반환합니다. 임시 저장(미확정) 배정도 포함합니다.")
     @GetMapping("/daily")
-    public ResponseEntity<List<com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto>> getDayAssignments(
+    public ResponseEntity<List<DailyScheduleDto>> getDayAssignments(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Long workPlaceIdx) {

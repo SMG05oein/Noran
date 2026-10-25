@@ -38,6 +38,15 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.recode.Dwaeji.common.excel.ExcelDarkTheme;
+import com.recode.Dwaeji.user.database.UserType;
+import com.recode.Dwaeji.user.database.WorkPlace;
+import com.recode.Dwaeji.user.repository.UserTypeRepository;
+import com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto;
+import com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto;
+import com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto;
+import com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto;
+import com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto;
 
 @Service
 @RequiredArgsConstructor
@@ -54,7 +63,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private final WorkScheduleDailyRepository workScheduleDailyRepository;
     private final WorkApplyDailyRepository workApplyDailyRepository;
     private final WorkPlaceRepository workPlaceRepository;
-    private final com.recode.Dwaeji.user.repository.UserTypeRepository userTypeRepository;
+    private final UserTypeRepository userTypeRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Value("${work-record.edit-deadline-day-of-month:1}")
     private int editDeadlineDayOfMonth;
@@ -221,7 +230,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             assertEditable(requestDto.getWrDate());
         }
 
-        com.recode.Dwaeji.user.database.WorkPlace workPlace;
+        WorkPlace workPlace;
         if (requestDto.getWorkPlaceIdx() != null) {
             workPlace = workPlaceRepository.findById(requestDto.getWorkPlaceIdx())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다."));
@@ -433,9 +442,9 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         LocalDate newDate = requestDto.getWrDate() != null ? requestDto.getWrDate() : record.getWrDate();
-        com.recode.Dwaeji.user.database.WorkPlace newWp = record.getWorkPlace();
+        WorkPlace newWp = record.getWorkPlace();
         if (requestDto.getWorkPlaceIdx() != null) {
-            com.recode.Dwaeji.user.database.WorkPlace resolved = workPlaceRepository.findById(requestDto.getWorkPlaceIdx()).orElse(null);
+            WorkPlace resolved = workPlaceRepository.findById(requestDto.getWorkPlaceIdx()).orElse(null);
             if (resolved != null) {
                 newWp = resolved;
             }
@@ -568,7 +577,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해당 이력은 삭제 기록이 아닙니다.");
         }
 
-        com.recode.Dwaeji.user.database.WorkPlace restoreWp = history.getTargetUser().getWorkPlace();
+        WorkPlace restoreWp = history.getTargetUser().getWorkPlace();
         if (restoreWp != null
                 && workRecordRepository.existsByUser_UserIdxAndWrDateAndWorkPlace_WpIdx(
                 history.getTargetUser().getUserIdx(), history.getWrDate(), restoreWp.getWpIdx())) {
@@ -734,7 +743,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         // SXSSF: 행 윈도우만 메모리 유지 (OOM 방지). autoSize/전체 캔버스 apply 는 SXSSF와 맞지 않아 미사용.
         try (SXSSFWorkbook workbook = new SXSSFWorkbook(100)) {
             String[] headers = {"No", "날짜", "이름", "근무지", "출근 시간", "퇴근 시간", "휴게 시간", "총근무시간"};
-            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
+            var dark = ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
             // 동명이인: 동일 실명 활성 인원 수 (시트 공통)
             Map<Long, Long> nameCountByUserIdx = new HashMap<>();
@@ -794,7 +803,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             Sheet sheet,
             String[] headers,
             List<WorkRecord> records,
-            com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark,
+            ExcelDarkTheme.Styles dark,
             Map<Long, Long> nameCountByUserIdx) {
         int[] colWidths = {8, 14, 18, 16, 12, 12, 12, 14};
         Row headerRow = sheet.createRow(0);
@@ -849,8 +858,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto validateExcelUsers(
-            String requesterId, com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto) {
+    public ExcelValidateResponseDto validateExcelUsers(
+            String requesterId, ExcelValidateRequestDto requestDto) {
         User requester = getRequester(requesterId);
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 엑셀 검증을 수행할 수 있습니다.");
@@ -863,12 +872,12 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
         List<String> duplicateNames = new ArrayList<>();
         List<String> invalidWorkPlaces = new ArrayList<>();
-        List<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.ExistingUserDto> existingUsers = new ArrayList<>();
+        List<ExcelValidateResponseDto.ExistingUserDto> existingUsers = new ArrayList<>();
         List<String> newUsers = new ArrayList<>();
 
         // 1. 시트명(근무지명) 검증: 활성 여부(wp_is_active) 조건 없이 전체 근무지 테이블에서 조회
         if (requestDto.getWorkPlaceNames() != null) {
-            List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
+            List<WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
             Set<String> existingWpNames = allWorkPlaces.stream()
                     .map(w -> w.getWpName() != null ? w.getWpName().trim() : "")
                     .filter(s -> !s.isEmpty())
@@ -899,7 +908,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 } else if (matched.size() == 1) {
                     User u = matched.get(0);
                     String wpName = u.getWorkPlace() != null ? u.getWorkPlace().getWpName() : null;
-                    existingUsers.add(new com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.ExistingUserDto(
+                    existingUsers.add(new ExcelValidateResponseDto.ExistingUserDto(
                             u.getUserName(), u.getUserIdx(), wpName));
                 } else {
                     newUsers.add(name);
@@ -908,14 +917,14 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         // 3. 중복 근무기록(기존 기록) 사전 점검 (records가 전달된 경우)
-        List<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.DuplicateRecordDto> existingRecords = new ArrayList<>();
+        List<ExcelValidateResponseDto.DuplicateRecordDto> existingRecords = new ArrayList<>();
         if (requestDto.getRecords() != null && !requestDto.getRecords().isEmpty()) {
-            List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
-            Map<String, com.recode.Dwaeji.user.database.WorkPlace> wpByName = allWorkPlaces.stream()
+            List<WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
+            Map<String, WorkPlace> wpByName = allWorkPlaces.stream()
                     .filter(w -> w.getWpName() != null)
                     .collect(Collectors.toMap(w -> w.getWpName().trim(), w -> w, (k1, k2) -> k1));
 
-            for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+            for (AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
                 String name = item.getUserName() != null ? item.getUserName().trim() : "";
                 if (name.isEmpty() || duplicateNames.contains(name)) {
                     continue;
@@ -935,7 +944,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 }
 
                 // 근무지 찾기
-                com.recode.Dwaeji.user.database.WorkPlace recordWp = null;
+                WorkPlace recordWp = null;
                 if (item.getWorkPlaceName() != null && !item.getWorkPlaceName().trim().isEmpty()) {
                     recordWp = wpByName.get(item.getWorkPlaceName().trim());
                 }
@@ -949,7 +958,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
                     if (existingOpt.isPresent()) {
                         WorkRecord ex = existingOpt.get();
-                        existingRecords.add(com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.DuplicateRecordDto.builder()
+                        existingRecords.add(ExcelValidateResponseDto.DuplicateRecordDto.builder()
                                 .workDate(wrDate.toString())
                                 .userName(user.getUserName())
                                 .workPlaceName(recordWp.getWpName())
@@ -966,16 +975,16 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         // 4. 행 단위 유효성 검증 (날짜/시간 형식, 시간 논리, 야간 종료 한도)
-        List<com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.InvalidRowDto> invalidRows = new ArrayList<>();
+        List<ExcelValidateResponseDto.InvalidRowDto> invalidRows = new ArrayList<>();
         if (requestDto.getRecords() != null) {
             DateTimeFormatter fmt1 = DateTimeFormatter.ofPattern("H:mm");
             DateTimeFormatter fmt2 = DateTimeFormatter.ofPattern("HH:mm");
             int seq = 0;
-            for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+            for (AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
                 seq++;
                 String reason = findExcelRowError(item, fmt1, fmt2);
                 if (reason != null) {
-                    invalidRows.add(com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.InvalidRowDto.builder()
+                    invalidRows.add(ExcelValidateResponseDto.InvalidRowDto.builder()
                             .row(item.getRow() != null ? item.getRow() : seq)
                             .userName(item.getUserName() != null ? item.getUserName().trim() : "")
                             .reason(reason)
@@ -984,7 +993,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             }
         }
 
-        return com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto.builder()
+        return ExcelValidateResponseDto.builder()
                 .unregisteredUsers(new ArrayList<>(newUsers))
                 .invalidRows(invalidRows)
                 .duplicateNames(duplicateNames)
@@ -1002,7 +1011,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
      * 엑셀 한 행의 날짜/시간 유효성을 검사하여 실패 사유를 반환한다. 정상이면 null.
      */
     private String findExcelRowError(
-            com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item,
+            AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item,
             DateTimeFormatter fmt1, DateTimeFormatter fmt2) {
         if (item.getUserName() == null || item.getUserName().trim().isEmpty()) {
             return "근무자 이름이 비어 있습니다.";
@@ -1044,8 +1053,8 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
     @Override
     @Transactional
-    public com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(
-            String requesterId, com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto) {
+    public AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(
+            String requesterId, AdminWorkRecordExcelUploadRequestDto requestDto) {
         User requester = getRequester(requesterId);
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 엑셀 근무기록을 일괄 등록할 수 있습니다.");
@@ -1068,19 +1077,19 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
     }
 
-    private com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcelInternal(
+    private AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcelInternal(
             User requester,
-            com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto) {
+            AdminWorkRecordExcelUploadRequestDto requestDto) {
         // 0. 전체 근무지 맵 구성 (active 조건 없이 전체 조회: 시트명 매칭용)
-        List<com.recode.Dwaeji.user.database.WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
-        Map<String, com.recode.Dwaeji.user.database.WorkPlace> wpByName = allWorkPlaces.stream()
+        List<WorkPlace> allWorkPlaces = workPlaceRepository.findAll();
+        Map<String, WorkPlace> wpByName = allWorkPlaces.stream()
                 .filter(w -> w.getWpName() != null)
                 .collect(Collectors.toMap(w -> w.getWpName().trim(), w -> w, (k1, k2) -> k1));
 
         // 1. 유저명별 지점 매핑 맵 구성
         Map<String, Long> userWpMap = new HashMap<>();
         if (requestDto.getUserWorkPlaces() != null) {
-            for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.UserWorkPlaceMappingDto m : requestDto.getUserWorkPlaces()) {
+            for (AdminWorkRecordExcelUploadRequestDto.UserWorkPlaceMappingDto m : requestDto.getUserWorkPlaces()) {
                 if (m.getUserName() != null && !m.getUserName().trim().isEmpty() && m.getWorkPlaceIdx() != null) {
                     userWpMap.put(m.getUserName().trim(), m.getWorkPlaceIdx());
                 }
@@ -1088,7 +1097,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         // 2. 레코드에 등장하는 시트명(근무지명) 검증
-        for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+        for (AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
             if (item.getWorkPlaceName() != null && !item.getWorkPlaceName().trim().isEmpty()) {
                 String wpName = item.getWorkPlaceName().trim();
                 if (!wpByName.containsKey(wpName)) {
@@ -1117,7 +1126,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 resolvedUsers.put(name, matched.get(0));
                 existingUsersCount++;
             } else {
-                com.recode.Dwaeji.user.database.WorkPlace targetWorkPlace = null;
+                WorkPlace targetWorkPlace = null;
                 Long explicitWpIdx = userWpMap.get(name);
                 if (explicitWpIdx != null) {
                     targetWorkPlace = workPlaceRepository.findById(explicitWpIdx)
@@ -1125,7 +1134,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                 } else {
                     String userSheetWp = requestDto.getRecords().stream()
                             .filter(r -> name.equals(r.getUserName() != null ? r.getUserName().trim() : ""))
-                            .map(com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto::getWorkPlaceName)
+                            .map(AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto::getWorkPlaceName)
                             .filter(Objects::nonNull)
                             .map(String::trim)
                             .filter(s -> !s.isEmpty())
@@ -1143,7 +1152,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, name + "의 소속 근무지 정보를 확인할 수 없습니다.");
                 }
 
-                com.recode.Dwaeji.user.database.UserType albaType = userTypeRepository.findById(5L)
+                UserType albaType = userTypeRepository.findById(5L)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "기본 알바생 직급(5)을 찾을 수 없습니다."));
 
                 String initialTempId = "temp_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
@@ -1186,7 +1195,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         boolean shouldOverwrite = Boolean.TRUE.equals(requestDto.getOverwriteExisting());
 
         int rowSeq = 0;
-        for (com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
+        for (AdminWorkRecordExcelUploadRequestDto.ExcelRecordItemDto item : requestDto.getRecords()) {
             rowSeq++;
             String rowReason = findExcelRowError(item, timeFmt, timeFmtHh);
             if (rowReason != null) {
@@ -1219,7 +1228,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             validateWorkTimes(startTime, endTime, restTime);
 
             // 근무지 결정: 시트명(workPlaceName) -> 유저 소속 지점 -> 기본 지점
-            com.recode.Dwaeji.user.database.WorkPlace recordWp = null;
+            WorkPlace recordWp = null;
             if (item.getWorkPlaceName() != null && !item.getWorkPlaceName().trim().isEmpty()) {
                 recordWp = wpByName.get(item.getWorkPlaceName().trim());
             }
@@ -1296,7 +1305,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         String message = String.format("총 %d건 처리 완료 (신규 %d건, 덮어쓰기 %d건, 건너뜀 %d건)",
                 totalHandled, insertedRecordsCount, updatedRecordsCount, skippedRecordsCount);
 
-        return com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto.builder()
+        return AdminWorkRecordExcelUploadResponseDto.builder()
                 .newUsersCount(newUsersCount)
                 .existingUsersCount(existingUsersCount)
                 .userRecordCounts(userRecordCounts)
@@ -1327,7 +1336,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto> getUnrecordedWorkSchedules(String requesterId, int year, int month, Long workPlaceIdx) {
+    public List<UnrecordedWorkDto> getUnrecordedWorkSchedules(String requesterId, int year, int month, Long workPlaceIdx) {
         User requester = getRequester(requesterId);
         if (!isAdmin(requester)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자만 미작성 근무 인원을 조회할 수 있습니다.");
@@ -1369,7 +1378,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         // 4. 배정(출근) 대비 기록 없는 인원 추출
-        List<com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto> result = new ArrayList<>();
+        List<UnrecordedWorkDto> result = new ArrayList<>();
         for (WorkScheduleDaily schedule : schedules) {
             if (schedule.getWsdStatus() != ApplyStatus.출근) {
                 continue;
@@ -1384,7 +1393,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             if (!recordKeys.contains(key)) {
                 User worker = schedule.getUser();
                 String wpName = schedule.getWorkPlace() != null ? schedule.getWorkPlace().getWpName() : null;
-                result.add(com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto.builder()
+                result.add(UnrecordedWorkDto.builder()
                         .wsdIdx(schedule.getWsdIdx())
                         .userIdx(worker.getUserIdx())
                         .userName(worker.getUserName())
@@ -1401,7 +1410,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
         }
 
         // 정렬: 날짜 오름차순, 이름 오름차순
-        result.sort(Comparator.comparing(com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto::getWorkDate)
+        result.sort(Comparator.comparing(UnrecordedWorkDto::getWorkDate)
                 .thenComparing(dto -> dto.getUserName() != null ? dto.getUserName() : ""));
 
         return result;

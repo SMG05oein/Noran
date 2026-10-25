@@ -9,6 +9,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.recode.Dwaeji.common.converter.CryptoConverter;
 
 @Entity
 @Table(name = "User", comment = "사용자")
@@ -61,7 +62,7 @@ public class User {
     @Column(name = "user_temp_pw", length = 255, comment = "임시 비밀번호")
     private String userTempPw; // 임시 비번 (암호화 안 함)
 
-    @Convert(converter = com.recode.Dwaeji.common.converter.CryptoConverter.class)
+    @Convert(converter = CryptoConverter.class)
     @Column(name = "user_account_number", length = 255, comment = "계좌번호")
     private String userAccountNumber;
 

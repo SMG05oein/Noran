@@ -33,6 +33,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.recode.Dwaeji.user.database.UserType;
+import com.recode.Dwaeji.user.database.WorkPlace;
+import com.recode.Dwaeji.work_record.database.WorkRecord;
 
 @Slf4j
 @Service
@@ -178,10 +181,10 @@ public class UserServiceImpl implements UserService {
 
         // 연관 엔티티 조회
         // 강제로 근무 형태를 5로 고정
-        com.recode.Dwaeji.user.database.UserType userType = userTypeRepository.findById(5L)
+        UserType userType = userTypeRepository.findById(5L)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "기본 근무 형태(ID: 5)를 시스템에서 찾을 수 없습니다."));
 
-        com.recode.Dwaeji.user.database.WorkPlace workPlace = workPlaceRepository.findById(signupRequestDto.getFkWorkPlaceIdx())
+        WorkPlace workPlace = workPlaceRepository.findById(signupRequestDto.getFkWorkPlaceIdx())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다."));
 
         User user = User.builder()
@@ -249,11 +252,11 @@ public class UserServiceImpl implements UserService {
         }
 
         // 3. 소속 지점 조회
-        com.recode.Dwaeji.user.database.WorkPlace workPlace = workPlaceRepository.findById(dto.getFkWorkPlaceIdx())
+        WorkPlace workPlace = workPlaceRepository.findById(dto.getFkWorkPlaceIdx())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다."));
 
         // 4. UserType 결정 (WORKER: ID=5 고정, ADMIN: fkUtIdx 사용 기본값=1)
-        com.recode.Dwaeji.user.database.UserType userType;
+        UserType userType;
         if ("ADMIN".equalsIgnoreCase(dto.getRole())) {
             Long utIdx = dto.getFkUtIdx() != null ? dto.getFkUtIdx() : 1L;
             userType = userTypeRepository.findById(utIdx)
@@ -335,13 +338,13 @@ public class UserServiceImpl implements UserService {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인의 직급은 변경할 수 없습니다.");
                 }
             } else {
-                com.recode.Dwaeji.user.database.UserType userType = userTypeRepository.findById(userUpdateDto.getFkUtIdx())
+                UserType userType = userTypeRepository.findById(userUpdateDto.getFkUtIdx())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무 형태입니다."));
                 targetUser.setUserType(userType);
             }
         }
         if (userUpdateDto.getFkWorkPlaceIdx() != null) {
-            com.recode.Dwaeji.user.database.WorkPlace workPlace = workPlaceRepository.findById(userUpdateDto.getFkWorkPlaceIdx())
+            WorkPlace workPlace = workPlaceRepository.findById(userUpdateDto.getFkWorkPlaceIdx())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무지입니다."));
             targetUser.setWorkPlace(workPlace);
         }
@@ -387,7 +390,7 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업데이트할 사용자가 선택되지 않았습니다.");
         }
 
-        com.recode.Dwaeji.user.database.UserType bulkUserType = null;
+        UserType bulkUserType = null;
         if (dto.getFkUtIdx() != null) {
             bulkUserType = userTypeRepository.findById(dto.getFkUtIdx())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 근무 형태입니다."));
@@ -491,7 +494,7 @@ public class UserServiceImpl implements UserService {
                 ? targetUser.getWorkPlace().getWpName().trim()
                 : "미소속";
 
-        List<com.recode.Dwaeji.work_record.database.WorkRecord> workRecords = workRecordRepository.findByUser_UserIdx(targetUserIdx);
+        List<WorkRecord> workRecords = workRecordRepository.findByUser_UserIdx(targetUserIdx);
 
         StringBuilder sb = new StringBuilder();
         sb.append("================================================================================\n");
@@ -515,7 +518,7 @@ public class UserServiceImpl implements UserService {
         sb.append(" - work_place (NN, fk_work_place_idx): ").append(targetUser.getWorkPlace() != null ? targetUser.getWorkPlace().getWpIdx() : "1").append(" (").append(targetWpName).append(")\n");
         sb.append("--------------------------------------------------------------------------------\n");
         sb.append("2. 근무 기록 (WorkRecord) 목록 (총 ").append(workRecords.size()).append("건)\n");
-        for (com.recode.Dwaeji.work_record.database.WorkRecord wr : workRecords) {
+        for (WorkRecord wr : workRecords) {
             String recordWp = wr.getWorkPlace() != null ? wr.getWorkPlace().getWpName() : targetWpName;
             Long recordWpIdx = wr.getWorkPlace() != null ? wr.getWorkPlace().getWpIdx() : (targetUser.getWorkPlace() != null ? targetUser.getWorkPlace().getWpIdx() : null);
             sb.append(String.format(" [WR] wr_idx=%d | user_idx=%d | date=%s | wpIdx=%s(%s) | start=%s | end=%s | rest=%s | remarks=%s\n",

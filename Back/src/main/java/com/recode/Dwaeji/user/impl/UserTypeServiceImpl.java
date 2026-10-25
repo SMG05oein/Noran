@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.recode.Dwaeji.user.database.User;
 
 @Service
 @RequiredArgsConstructor
@@ -23,10 +24,10 @@ public class UserTypeServiceImpl implements UserTypeService {
     private final UserRepository userRepository;
 
     private void checkManageRolePermission(String requesterId) {
-        com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
+        User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
 
-        com.recode.Dwaeji.user.database.UserType ut = requester.getUserType();
+        UserType ut = requester.getUserType();
         if (ut == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "직급 정보가 없습니다.");
         }
@@ -81,7 +82,7 @@ public class UserTypeServiceImpl implements UserTypeService {
     public UserTypeDto updateUserType(String requesterId, Long utIdx, UserTypeRequestDto requestDto) {
         checkManageRolePermission(requesterId);
 
-        com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
+        User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
         Long myUtIdx = requester.getUserType() != null ? requester.getUserType().getUtIdx() : null;
         if (java.util.Objects.equals(myUtIdx, utIdx)) {
@@ -115,7 +116,7 @@ public class UserTypeServiceImpl implements UserTypeService {
     public void deleteUserType(String requesterId, Long utIdx) {
         checkManageRolePermission(requesterId);
 
-        com.recode.Dwaeji.user.database.User requester = userRepository.findByUserId(requesterId)
+        User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
         Long myUtIdx = requester.getUserType() != null ? requester.getUserType().getUtIdx() : null;
         if (java.util.Objects.equals(myUtIdx, utIdx)) {

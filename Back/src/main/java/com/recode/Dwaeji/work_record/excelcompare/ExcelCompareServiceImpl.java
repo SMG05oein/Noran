@@ -34,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.recode.Dwaeji.common.excel.ExcelDarkTheme;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
 
     private static void writeTemplateSheet(
             XSSFWorkbook workbook,
-            com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark,
+            ExcelDarkTheme.Styles dark,
             List<String> cols,
             String baseName,
             Set<String> usedSheetNames,
@@ -87,7 +88,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
         }
         int lastDataRow = demos.length;
         sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, lastDataRow, 0, cols.size() - 1));
-        com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, lastDataRow, cols.size());
+        ExcelDarkTheme.apply(sheet, dark, lastDataRow, cols.size());
     }
 
     private static boolean workplaceAndTimesEqual(ExcelCompareParsedRow excel, WorkRecord db) {
@@ -170,17 +171,17 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
      */
     private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildStatusStyles(Workbook workbook) {
         Map<String, byte[]> colors = Map.of(
-                "USER_NOT_FOUND", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(15, 15, 15),
-                "AMBIGUOUS", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(75, 40, 95),
-                "MISSING_IN_DB", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(110, 36, 36),
-                "ONLY_IN_DB", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(160, 80, 20),
-                "MISMATCH_TIME", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(90, 75, 20),
-                "MISMATCH_WORKPLACE", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(130, 40, 90),
-                "MATCH", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(28, 75, 42)
+                "USER_NOT_FOUND", ExcelDarkTheme.rgbBytes(15, 15, 15),
+                "AMBIGUOUS", ExcelDarkTheme.rgbBytes(75, 40, 95),
+                "MISSING_IN_DB", ExcelDarkTheme.rgbBytes(110, 36, 36),
+                "ONLY_IN_DB", ExcelDarkTheme.rgbBytes(160, 80, 20),
+                "MISMATCH_TIME", ExcelDarkTheme.rgbBytes(90, 75, 20),
+                "MISMATCH_WORKPLACE", ExcelDarkTheme.rgbBytes(130, 40, 90),
+                "MATCH", ExcelDarkTheme.rgbBytes(28, 75, 42)
         );
         Map<String, org.apache.poi.ss.usermodel.CellStyle> styles = new HashMap<>();
         for (Map.Entry<String, byte[]> e : colors.entrySet()) {
-            styles.put(e.getKey(), com.recode.Dwaeji.common.excel.ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
+            styles.put(e.getKey(), ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
         }
         return styles;
     }
@@ -190,13 +191,13 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
      */
     private static Map<String, org.apache.poi.ss.usermodel.CellStyle> buildTimeDiffStyles(Workbook workbook) {
         Map<String, byte[]> colors = Map.of(
-                "primary", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 110, 253),   // #0d6efd
-                "warning", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(255, 193, 7),  // #ffc107
-                "info", com.recode.Dwaeji.common.excel.ExcelDarkTheme.rgbBytes(13, 202, 240)     // #0dcaf0
+                "primary", ExcelDarkTheme.rgbBytes(13, 110, 253),   // #0d6efd
+                "warning", ExcelDarkTheme.rgbBytes(255, 193, 7),  // #ffc107
+                "info", ExcelDarkTheme.rgbBytes(13, 202, 240)     // #0dcaf0
         );
         Map<String, org.apache.poi.ss.usermodel.CellStyle> styles = new HashMap<>();
         for (Map.Entry<String, byte[]> e : colors.entrySet()) {
-            styles.put(e.getKey(), com.recode.Dwaeji.common.excel.ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
+            styles.put(e.getKey(), ExcelDarkTheme.createBodyStyle(workbook, e.getValue()));
         }
         return styles;
     }
@@ -259,7 +260,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             // 시트명 = 근무지, 시트 순서 = wpIdx 오름차순
             List<WorkPlace> places = workPlaceRepository.findAll(Sort.by(Sort.Direction.ASC, "wpIdx"));
             List<String> cols = ExcelCompareHeaders.REQUIRED;
-            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
+            var dark = ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
 
             if (places.isEmpty()) {
@@ -786,7 +787,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
                             .thenComparing(Map.Entry::getKey, Comparator.nullsLast(String::compareTo)))
                     .collect(Collectors.toList());
 
-            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
+            var dark = ExcelDarkTheme.create(workbook);
             Map<String, org.apache.poi.ss.usermodel.CellStyle> statusStyles = buildStatusStyles(workbook);
             Set<String> usedSheetNames = new HashSet<>();
             Map<String, org.apache.poi.ss.usermodel.CellStyle> timeDiffStyles = buildTimeDiffStyles(workbook);

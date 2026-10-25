@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.recode.Dwaeji.developer.dto.DevChangePwRequestDto;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +71,7 @@ public class DeveloperAuthService {
                 .build();
     }
 
-    public void changePassword(String devId, com.recode.Dwaeji.developer.dto.DevChangePwRequestDto request) {
+    public void changePassword(String devId, DevChangePwRequestDto request) {
         Developer developer = developerRepository.findByDevId(devId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "개발자 계정을 찾을 수 없습니다."));
 

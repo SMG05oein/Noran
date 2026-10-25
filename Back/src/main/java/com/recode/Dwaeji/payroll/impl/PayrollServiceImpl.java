@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.recode.Dwaeji.common.excel.ExcelDarkTheme;
 
 @Service
 @RequiredArgsConstructor
@@ -233,7 +234,7 @@ public class PayrollServiceImpl implements PayrollService {
 
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
             String[] headers = {"이름", "세전", ""};
-            var dark = com.recode.Dwaeji.common.excel.ExcelDarkTheme.create(workbook);
+            var dark = ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
             for (Map.Entry<Long, List<WorkRecord>> entry : byWpIdx.entrySet()) {
                 List<PayrollRowDto> sheetRows = aggregateByUser(entry.getValue(), true);
@@ -276,7 +277,7 @@ public class PayrollServiceImpl implements PayrollService {
             org.apache.poi.ss.usermodel.Sheet sheet,
             String[] headers,
             List<PayrollRowDto> rows,
-            com.recode.Dwaeji.common.excel.ExcelDarkTheme.Styles dark) {
+            ExcelDarkTheme.Styles dark) {
         org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
         for (int i = 0; i < headers.length; i++) {
             headerRow.createCell(i).setCellValue(headers[i]);
@@ -302,7 +303,7 @@ public class PayrollServiceImpl implements PayrollService {
             int currentWidth = sheet.getColumnWidth(i);
             sheet.setColumnWidth(i, (int) (currentWidth * 1.3));
         }
-        com.recode.Dwaeji.common.excel.ExcelDarkTheme.apply(sheet, dark, Math.max(rowNum - 1, 0), headers.length);
+        ExcelDarkTheme.apply(sheet, dark, Math.max(rowNum - 1, 0), headers.length);
     }
 
     private static class Agg {

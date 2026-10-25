@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import com.recode.Dwaeji.gathering.database.GatheringTag;
 
 @Repository
 public interface GatheringPostRepository extends JpaRepository<GatheringPost, Long> {
@@ -41,8 +42,8 @@ public interface GatheringPostRepository extends JpaRepository<GatheringPost, Lo
     @org.springframework.data.jpa.repository.Modifying
     @Query("UPDATE GatheringPost p SET p.tag = :defaultTag WHERE p.tag = :targetTag")
     int updateTagByTag(
-            @Param("targetTag") com.recode.Dwaeji.gathering.database.GatheringTag targetTag,
-            @Param("defaultTag") com.recode.Dwaeji.gathering.database.GatheringTag defaultTag
+            @Param("targetTag") GatheringTag targetTag,
+            @Param("defaultTag") GatheringTag defaultTag
     );
 
     void deleteByUser_UserIdx(Long userIdx);

@@ -4,6 +4,11 @@ import com.recode.Dwaeji.work_record.dto.WorkRecordHistoryResponseDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordRequestDto;
 import com.recode.Dwaeji.work_record.dto.WorkRecordResponseDto;
 import org.springframework.data.domain.Page;
+import com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto;
+import com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto;
+import com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto;
+import com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto;
+import com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto;
 
 public interface WorkRecordService {
     WorkRecordResponseDto createWorkRecord(String requesterId, WorkRecordRequestDto requestDto);
@@ -24,9 +29,9 @@ public interface WorkRecordService {
 
     byte[] downloadExcel(String requesterId, int year, int month, Long workPlaceIdx);
 
-    com.recode.Dwaeji.work_record.dto.ExcelValidateResponseDto validateExcelUsers(String requesterId, com.recode.Dwaeji.work_record.dto.ExcelValidateRequestDto requestDto);
+    ExcelValidateResponseDto validateExcelUsers(String requesterId, ExcelValidateRequestDto requestDto);
 
-    com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(String requesterId, com.recode.Dwaeji.work_record.dto.AdminWorkRecordExcelUploadRequestDto requestDto);
+    AdminWorkRecordExcelUploadResponseDto uploadWorkRecordsFromExcel(String requesterId, AdminWorkRecordExcelUploadRequestDto requestDto);
 
-    java.util.List<com.recode.Dwaeji.work_record.dto.UnrecordedWorkDto> getUnrecordedWorkSchedules(String requesterId, int year, int month, Long workPlaceIdx);
+    java.util.List<UnrecordedWorkDto> getUnrecordedWorkSchedules(String requesterId, int year, int month, Long workPlaceIdx);
 }

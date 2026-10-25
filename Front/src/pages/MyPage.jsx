@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { RiUser3Line, RiLockPasswordLine, RiBankCardLine, RiStore2Line, RiShieldCheckLine, RiEdit2Line } from 'react-icons/ri';
 import './Main.css';
 import Loading from '../components/Loading';
+import AlarmSettingsCard from '../components/AlarmSettingsCard';
 
 const MyPage = () => {
   const { user, logout } = useAuthStore();
@@ -328,6 +329,8 @@ const MyPage = () => {
 
       {error && <Alert variant="danger" className="rounded-3 py-2">{error}</Alert>}
       {success && <Alert variant="success" className="rounded-3 py-2">{success}</Alert>}
+
+      <AlarmSettingsCard />
 
       {/* 기본 정보 (수정 불가) */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">

@@ -64,6 +64,12 @@ const PrivacyPolicyContent = () => {
                   <span className="small text-muted">(※ 법정 최소 보관기간 1년 이상 준수하며, 서비스 부정이용 방지 및 보안 분쟁 대비를 위해 5년간 보관)</span>
                 </td>
               </tr>
+              <tr>
+                <td><strong>근무 관련 웹 푸시 알람</strong><br />(근무 기록 누락·배정 확정·신청 마감 안내)</td>
+                <td><strong>(선택)</strong> 웹 푸시 구독 정보(endpoint, keys)</td>
+                <td className="text-center"><strong>알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기</strong></td>
+                <td className="text-center">정보주체의 동의 (개인정보보호법 제15조 제1항 제1호)<br /><span className="small text-muted">미사용 시 서비스 이용에 불이익 없음</span></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -257,7 +263,7 @@ const PrivacyPolicyContent = () => {
       <div className="mb-4">
         <h5 className="fw-bold mb-3 text-dark">12. 개인정보 처리방침의 변경 및 고지</h5>
         <p className="small text-muted">
-          이 개인정보 처리방침은 <strong>2026년 10월 22일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
+          이 개인정보 처리방침은 <strong>2026년 10월 25일</strong>부터 적용됩니다. 법령, 정책 또는 보안기술의 변경에 따라 내용의 추가, 삭제 및 수정이 있을 시에는 변경되는 개인정보 처리방침을 시행하기 <strong>최소 7일 전 홈페이지 공지를 원칙으로 하되, 중대한 변경 시에는 30일전 공지하고 이메일 또는 카카오톡 등 개별 연락을 추가로 제공할 수 있습니다.</strong>
           <br />다만, 긴급한 서버 이전, 보안 사고 대응 등 불가피한 사유가 있는 경우에는 시행 후 지체 없이 공지할 수 있습니다.
           <br />또한 버전의 의미는 앞 자리는 핵심 내용의 변경 및 추가, 삭제가 있을 시며 뒷 자리는 경미한 내용 수정을 의미합니다.
         </p>
@@ -267,6 +273,17 @@ const PrivacyPolicyContent = () => {
         <h5 className="fw-bold mb-3 text-dark">13. 개정 이력</h5>
         <RevisionHistory
           histories={[
+            {
+              version: 'v2.1',
+              date: '2026-10-25',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>
+                    <strong>개정 사유:</strong> 근무 관련 웹 푸시 알람 기능 도입에 따라, 선택 수집 항목으로 웹 푸시 구독 정보(endpoint, keys)를 추가하고 보유·파기 기준(알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기)을 명시함
+                  </li>
+                </ul>
+              )
+            },
             {
               version: 'v2.0',
               date: '2026-10-22',
@@ -296,13 +313,13 @@ const PrivacyPolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 10월 22일
+          공고일: 2026년 10월 25일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 10월 22일
+          시행일: 2026년 10월 25일
         </p>
         <p className="small text-muted mb-0">
-          버전: v2.0
+          버전: v2.1
         </p>
       </div>
     </div>

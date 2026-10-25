@@ -34,20 +34,20 @@ export default defineConfig({
     react(),
     versionJsonPlugin(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons.svg', 'pig.png'],
-      workbox: {
+      injectManifest: {
         // index.html은 navigateFallback용으로 프리캐시에 있어야 함 (제외 시 non-precached-url)
         globIgnores: ['**/assets/version.json'],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-        runtimeCaching: [
-          {
-            urlPattern: /\/assets\/version\.json$/i,
-            handler: 'NetworkOnly',
-          },
-        ],
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
+        // injectManifest 개발 SW에 SPA 폴백용 index 포함
+        navigateFallback: 'index.html',
       },
       manifest: {
         name: '노란돼지 근무관리',

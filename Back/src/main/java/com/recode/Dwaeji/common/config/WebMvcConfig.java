@@ -65,9 +65,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         config.addAllowedOrigin("http://localhost:5173");
         config.addAllowedOrigin("https://dwaeji.kr");
         config.addAllowedOrigin("https://www.dwaeji.kr");
-        config.addAllowedOrigin("https://www2.dwaeji.kr");
         config.addAllowedOrigin("https://api.dwaeji.kr");
-        config.addAllowedOrigin("https://apit.dwaeji.kr");
         config.addAllowedHeader("*");
         config.addAllowedMethod("GET");
         config.addAllowedMethod("POST");

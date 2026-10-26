@@ -8,6 +8,7 @@ for (let h = 10; h <= 23; h++) {
   TIME_OPTIONS.push(`${hour}:00`);
   TIME_OPTIONS.push(`${hour}:30`);
 }
+TIME_OPTIONS.push('00:00');
 
 const LIST_OPTIONS = ['미출근', ...TIME_OPTIONS];
 const BULK_LIST_OPTIONS = ['오픈', '마감', '미출근', ...TIME_OPTIONS];

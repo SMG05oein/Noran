@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Container, Button, Spinner, Form, Modal, Badge } from 'react-bootstrap';
+import { Container, Button, Spinner, Form, Modal, Badge, Offcanvas } from 'react-bootstrap';
 import { fetchWorkRequests, saveWorkSchedules } from '../api/workApi';
 import { fetchWorkPlaces, fetchAllUsers } from '../api/authApi';
 import { addDays, format, startOfWeek, endOfWeek, subWeeks, addWeeks, getWeekOfMonth, parseISO, getYear, getMonth, getDate, isSunday, isSaturday, getDay } from 'date-fns';
@@ -10,7 +10,7 @@ import { downloadWeeklyAssignExcel } from '../utils/weeklyAssignExcel';
 import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
 import AssignTimeInput, { TIME_OPTIONS, BULK_LIST_OPTIONS } from '../components/AssignTimeInput';
 import { openStartTimeForDate, toDateStr, normalizeScheduleStatus, resolveOriginFlags, resetShiftFields, withBaseline, isShiftDirty } from '../utils/shiftReset';
-import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine, RiQuestionLine, RiTimeLine } from 'react-icons/ri';
+import { RiDownload2Line, RiUserAddLine, RiRefreshLine, RiSearchLine, RiAddLine, RiCloseLine, RiQuestionLine, RiTimeLine, RiMore2Line } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 import StatusChip from '../components/ui/StatusChip';
 import SegmentedFilter from '../components/ui/SegmentedFilter';
@@ -166,6 +166,17 @@ const AdminWeeklyAssign = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [dayFilter, setDayFilter] = useState('ALL');
   const [mobileDayIdx, setMobileDayIdx] = useState(0);
+  const [onlyApplied, setOnlyApplied] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [mobileTimeSheet, setMobileTimeSheet] = useState({
+    show: false,
+    uid: null,
+    userName: '',
+    dateStr: '',
+    shiftId: null
+  });
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
 
   const [addedWorkerUserIdxs, setAddedWorkerUserIdxs] = useState([]);
   const [showAddWorkerModal, setShowAddWorkerModal] = useState(false);
@@ -933,6 +944,47 @@ const AdminWeeklyAssign = () => {
   const mobileDate = weekDays[mobileDayIdx] || weekDays[0];
   const mobileDateStr = mobileDate ? format(mobileDate, 'yyyy-MM-dd') : '';
 
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartX.current;
+    const diffY = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      if (diffX < 0) {
+        setMobileDayIdx(prev => Math.min(prev + 1, 6));
+      } else {
+        setMobileDayIdx(prev => Math.max(prev - 1, 0));
+      }
+    }
+  };
+
+  const mobileDisplayUsers = useMemo(() => {
+    if (!onlyApplied) return renderUsers;
+    return renderUsers.filter(u => {
+      const uid = toUserIdx(u.userIdx || u.id);
+      const dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
+      const firstShift = dayShifts[0];
+      if (!firstShift) return false;
+      const hadApply = !!(firstShift.originHadApply || firstShift.wsdStatus === '신청' || firstShift.originOpenApplied);
+      const isAttending = firstShift.wsdStatus === '출근' || !!firstShift.wsdStartTime || !!firstShift.wsdIsOpen || !!firstShift.wsdIsClose;
+      return hadApply || isAttending;
+    });
+  }, [renderUsers, onlyApplied, editSchedules, mobileDateStr]);
+
+  const activeSheetShift = useMemo(() => {
+    if (!mobileTimeSheet.show || !mobileTimeSheet.uid) return null;
+    const userShifts = editSchedules[mobileTimeSheet.uid]?.[mobileTimeSheet.dateStr] || [];
+    return userShifts.find(s => s._id === mobileTimeSheet.shiftId) || userShifts[0] || null;
+  }, [mobileTimeSheet, editSchedules]);
+
   return (
     <div className="admin-container ui-page wat-page">
       <Container fluid className="px-3 px-md-4 py-3">
@@ -960,31 +1012,33 @@ const AdminWeeklyAssign = () => {
           </Button>
         </PageHeader>
 
-        <div className="ui-toolbar-card">
-          {branches.length > 0 && (
-            <Form.Select
-              className="wat-branch-select"
-              value={selectedWpIdx || ''}
-              onChange={(e) => setSelectedWpIdx(e.target.value)}
-            >
-              {branches.map(b => (
-                <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
-              ))}
-            </Form.Select>
-          )}
+        <div className="ui-toolbar-card wat-toolbar-card">
+          <div className="wat-toolbar-top-row">
+            {branches.length > 0 && (
+              <Form.Select
+                className="wat-branch-select"
+                value={selectedWpIdx || ''}
+                onChange={(e) => setSelectedWpIdx(e.target.value)}
+              >
+                {branches.map(b => (
+                  <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>
+                ))}
+              </Form.Select>
+            )}
 
-          <WeekNavigator
-            labelTop={`${format(currentWeekStart, 'yyyy')}년 ${getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차`}
-            labelBottom={`${format(currentWeekStart, 'MM/dd')} ~ ${format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MM/dd')}`}
-            dateValue={format(currentWeekStart, 'yyyy-MM-dd')}
-            onPickDate={handlePickWeekDate}
-            onPrev={handlePrevWeek}
-            onNext={handleNextWeek}
-            showThisWeek={!isThisWeek}
-            onThisWeek={handleGoThisWeek}
-          />
+            <WeekNavigator
+              labelTop={`${format(currentWeekStart, 'yyyy')}년 ${getWeekOfMonth(currentWeekStart, { weekStartsOn: 1 })}주차`}
+              labelBottom={`${format(currentWeekStart, 'MM/dd')} ~ ${format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'MM/dd')}`}
+              dateValue={format(currentWeekStart, 'yyyy-MM-dd')}
+              onPickDate={handlePickWeekDate}
+              onPrev={handlePrevWeek}
+              onNext={handleNextWeek}
+              showThisWeek={!isThisWeek}
+              onThisWeek={handleGoThisWeek}
+            />
+          </div>
 
-          <div className="d-flex flex-wrap align-items-center gap-2">
+          <div className="wat-toolbar-bottom-row d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div className="wat-toolbar-day-filter align-items-center gap-1">
               <span className="small fw-bold text-muted me-1">요일:</span>
               <SegmentedFilter
@@ -993,7 +1047,7 @@ const AdminWeeklyAssign = () => {
                 onChange={setDayFilter}
               />
             </div>
-            <div className="d-flex align-items-center gap-1">
+            <div className="d-flex align-items-center gap-1 wat-toolbar-status-filter">
               <span className="small fw-bold text-muted me-1">출퇴근:</span>
               <SegmentedFilter
                 options={FILTERS.map(f => ({ value: f.value, label: f.name }))}
@@ -1001,6 +1055,14 @@ const AdminWeeklyAssign = () => {
                 onChange={setFilterType}
               />
             </div>
+            <button
+              type="button"
+              className={`wat-mobile-only-applied-btn ${onlyApplied ? 'is-active' : ''}`}
+              onClick={() => setOnlyApplied(prev => !prev)}
+              aria-pressed={onlyApplied}
+            >
+              {onlyApplied ? '✓ 신청자만' : '신청자만 보기'}
+            </button>
           </div>
         </div>
 
@@ -1022,82 +1084,192 @@ const AdminWeeklyAssign = () => {
                 const peak = peakByDate[dateStr] || 0;
                 const applied = appliedCountByDate[dateStr] || 0;
                 const isDayFiltered = dayFilter !== 'ALL' && Number(dayFilter) === idx;
+                const isShortage = peak > 0 && applied < peak;
                 return (
                   <button
                     key={dateStr}
                     type="button"
-                    className={`wat-day-tab ${mobileDayIdx === idx ? 'active' : ''} ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''} ${isDayFiltered ? 'wat-tab-filtered' : ''}`}
+                    className={`wat-day-tab ${mobileDayIdx === idx ? 'active' : ''} ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''} ${isDayFiltered ? 'wat-tab-filtered' : ''} ${isShortage ? 'is-shortage' : ''}`}
                     onClick={() => setMobileDayIdx(idx)}
+                    aria-label={`${format(date, 'MM/dd')} ${'월화수목금토일'[idx]}요일 신청 ${applied}명, 피크 ${peak}명${isShortage ? ' (인원 부족)' : ''}`}
                   >
                     <div className="wat-tab-day-name">{'월화수목금토일'[idx]}</div>
                     <div className="wat-tab-date">{format(date, 'MM/dd')}</div>
                     <div className="wat-tab-chips">
-                      <span className={`wat-apply-chip ${applied === 0 ? 'is-zero' : ''}`}>신{applied}</span>
-                      <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`}>P{peak}</span>
+                      <span className={`wat-apply-chip ${applied === 0 ? 'is-zero' : ''} ${isShortage ? 'is-shortage' : ''}`} title={`신청 ${applied}명`}>
+                        신{applied}
+                      </span>
+                      <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`} title={`피크 ${peak}명`}>
+                        P{peak}
+                      </span>
                     </div>
                   </button>
                 );
               })}
             </div>
 
-            <div className="wat-mobile-list" data-html2canvas-ignore="true">
-              {renderUsers.map(u => {
+            <div
+              className="wat-mobile-list"
+              data-html2canvas-ignore="true"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {mobileDisplayUsers.map(u => {
                 const uid = toUserIdx(u.userIdx);
                 const userRemark = schedules.find(s => toUserIdx(s.userIdx) === uid && s.wsdRemarks)?.wsdRemarks || '';
                 const other = isOtherBranchWorker(u);
                 const onLeave = isOnLeave(u);
-                const dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
+                let dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
+                if (dayShifts.length === 0) {
+                  dayShifts = [createEmptyShift(uid, mobileDateStr, currentWorkPlaceIdx, null)];
+                }
                 const firstShift = dayShifts[0];
                 const hadApply = firstShift ? !!(firstShift.originHadApply || firstShift.wsdStatus === '신청') : false;
                 const openApply = firstShift ? !!firstShift.originOpenApplied : false;
+
                 return (
-                  <div key={uid} className={`wat-mobile-card${onLeave ? ' is-leave' : ''}`}>
-                    <div className="wat-mobile-card-head">
-                      <div className="wat-worker-info">
-                        <div className="wat-worker-title-row">
-                          <span className="wat-worker-name">{u.userName}</span>
-                          {Number(u.nameSeq) > 1 && u.userIdx != null && (
-                            <Badge bg="secondary" className="align-middle">#{u.userIdx}</Badge>
-                          )}
-                          {onLeave && (
-                            <Badge bg="warning" text="dark" className="align-middle">휴직</Badge>
-                          )}
-                          {other && (
-                            <Badge bg="secondary" className="align-middle">{u.workPlaceName || '타 지점'}</Badge>
-                          )}
-                          {openApply ? (
-                            <span className="wat-badge-applied-open">오픈 신청</span>
-                          ) : hadApply ? (
-                            <span className="wat-badge-applied">신청</span>
-                          ) : (
-                            <span className="wat-badge-unapplied">미신청</span>
-                          )}
-                        </div>
+                  <div key={uid} className={`wat-mobile-row${onLeave ? ' is-leave' : ''}`}>
+                    <div className="wat-mobile-row-left">
+                      <div className="wat-mobile-name-line">
+                        <span className="wat-worker-name">{u.userName}</span>
+                        {Number(u.nameSeq) > 1 && u.userIdx != null && (
+                          <Badge bg="secondary" className="wat-tag-mini">#{u.userIdx}</Badge>
+                        )}
+                        {onLeave && (
+                          <Badge bg="warning" text="dark" className="wat-tag-mini">휴직</Badge>
+                        )}
+                        {other && (
+                          <Badge bg="secondary" className="wat-tag-mini">{u.workPlaceName || '타지점'}</Badge>
+                        )}
                       </div>
-                      <div className="wat-mobile-card-actions">
+                      <div className="wat-mobile-badge-line">
+                        {openApply ? (
+                          <span className="wat-badge-applied-open">오픈 신청</span>
+                        ) : hadApply ? (
+                          <span className="wat-badge-applied">신청</span>
+                        ) : firstShift?.wsdStatus === '출근' ? (
+                          <span className="wat-badge-assigned">출근</span>
+                        ) : firstShift?.wsdStatus === '미출근' ? (
+                          <span className="wat-badge-unassigned">미출근</span>
+                        ) : (
+                          <span className="wat-badge-unapplied">미신청</span>
+                        )}
                         {renderRowBulkInput(u)}
                         {other && (
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="wat-icon-btn"
+                          <button
+                            type="button"
+                            className="wat-mini-remove-btn"
                             title="타지점 알바생 제거"
                             aria-label="타지점 알바생 제거"
                             onClick={() => handleRemoveOtherWorker(u)}
                           >
-                            <RiCloseLine size={16} />
-                          </Button>
+                            <RiCloseLine size={15} />
+                          </button>
                         )}
                       </div>
+                      {/* 비고: 전문이 아닌 1줄 말줄임 표시 + 탭 시 전체 보기 팝업 */}
+                      {userRemark && (
+                        <div
+                          className="wat-mobile-remark-line"
+                          onClick={() => setRemarkModal({ show: true, userName: u.userName, text: userRemark })}
+                          role="button"
+                          tabIndex={0}
+                          title={userRemark}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setRemarkModal({ show: true, userName: u.userName, text: userRemark });
+                            }
+                          }}
+                        >
+                          <span className="wat-mobile-remark-tag">비고</span>
+                          <span className="wat-mobile-remark-text">{userRemark}</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="wat-mobile-card-body">
-                      {renderDayCell(uid, mobileDateStr)}
+
+                    <div className="wat-mobile-row-right">
+                      {dayShifts.map(shift => {
+                        const openHint = !!shift.originOpenApplied && !shift.wsdIsOpen;
+                        return (
+                          <div key={shift._id} className="wat-mobile-shift-group">
+                            {/* 되돌리기 버튼: 오픈 옆에 배치 */}
+                            {canResetShift(shift) && (
+                              <button
+                                type="button"
+                                className="wat-mobile-reset-btn"
+                                title="되돌리기"
+                                aria-label="되돌리기"
+                                onClick={() => handleRemoveShift(uid, mobileDateStr, shift._id)}
+                              >
+                                <RiRefreshLine size={16} />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              className={`wat-toggle-chip wat-chip-open ${shift.wsdIsOpen ? 'is-active' : ''} ${openHint ? 'is-hint' : ''}`}
+                              onClick={() => {
+                                const nextVal = !shift.wsdIsOpen;
+                                handleUpdateShift(uid, mobileDateStr, shift._id, {
+                                  wsdIsOpen: nextVal,
+                                  ...(nextVal ? {
+                                    wsdStatus: '출근',
+                                    wsdStartTime: shift.wsdStartTime || openStartTimeForDate(mobileDateStr)
+                                  } : {})
+                                });
+                              }}
+                              aria-label={`${u.userName} 오픈 토글`}
+                              aria-pressed={!!shift.wsdIsOpen}
+                              title={openHint ? '오픈 신청됨 — 탭하면 오픈 출근' : '오픈 토글'}
+                            >
+                              오픈
+                            </button>
+
+                            <button
+                              type="button"
+                              className={`wat-toggle-chip wat-chip-close ${shift.wsdIsClose ? 'is-active' : ''}`}
+                              onClick={() => {
+                                const nextVal = !shift.wsdIsClose;
+                                handleUpdateShift(uid, mobileDateStr, shift._id, {
+                                  wsdIsClose: nextVal,
+                                  ...(nextVal ? { wsdStatus: '출근' } : {})
+                                });
+                              }}
+                              aria-label={`${u.userName} 마감 토글`}
+                              aria-pressed={!!shift.wsdIsClose}
+                              title="마감 토글"
+                            >
+                              마감
+                            </button>
+
+                            <button
+                              type="button"
+                              className={`wat-mobile-time-trigger assign-status-input ${getShiftTone(shift)}`}
+                              onClick={() => {
+                                setMobileTimeSheet({
+                                  show: true,
+                                  uid,
+                                  userName: u.userName,
+                                  dateStr: mobileDateStr,
+                                  shiftId: shift._id
+                                });
+                              }}
+                              aria-label={`${u.userName} 근무 시간 또는 상태 선택`}
+                            >
+                              {shift.wsdStartTime || displayShiftStatus(shift)}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
               })}
-              {renderUsers.length === 0 && (
-                <div className="text-center text-muted py-4 small">표시할 알바생이 없습니다.</div>
+              {mobileDisplayUsers.length === 0 && (
+                <div className="text-center text-muted py-4 small">
+                  {onlyApplied ? '해당 날짜에 신청 또는 배정된 알바생이 없습니다.' : '표시할 알바생이 없습니다.'}
+                </div>
               )}
             </div>
 
@@ -1211,43 +1383,78 @@ const AdminWeeklyAssign = () => {
         )}
 
         <StickyActionBar
+          className="wat-sticky-action-bar"
           right={
             <>
-              <Button variant="success" onClick={handleDownloadExcel} disabled={excelDownloading || loading}>
-                {excelDownloading ? <Spinner size="sm" className="me-1" /> : <RiDownload2Line className="me-1" />}
-                엑셀
-              </Button>
-              <Button variant="outline-primary" onClick={() => {
-                setSelectedOtherUserIdx('');
-                setWorkerSearchTerm('');
-                setShowAddWorkerModal(true);
-              }}>
-                <RiUserAddLine className="me-1" /> 타지점
-              </Button>
-              <Button
-                variant="outline-secondary"
-                onClick={() => handleSaveAll('DRAFT')}
-                disabled={saving || loading}
-                title="저장만 합니다. 알바생에게 공개되지 않습니다."
-              >
-                {saving ? <Spinner size="sm" /> : '임시 저장'}
-              </Button>
-              <Button
-                variant="outline-success"
-                onClick={() => handleSaveAll('PARTIAL')}
-                disabled={saving || loading}
-                title="배정된 날만 공개됩니다. 미배정 날은 신청 상태로 유지됩니다."
-              >
-                {saving ? <Spinner size="sm" /> : '임시 배정'}
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => handleSaveAll('CONFIRM')}
-                disabled={saving || loading}
-                title="모든 날을 확정합니다. 미배정 신청은 미출근으로 처리됩니다."
-              >
-                {saving ? <Spinner size="sm" /> : '배정 확정'}
-              </Button>
+              {/* 데스크톱(> 425px): 5개 버튼 전체 노출 */}
+              <div className="wat-desktop-actions">
+                <Button variant="success" onClick={handleDownloadExcel} disabled={excelDownloading || loading}>
+                  {excelDownloading ? <Spinner size="sm" className="me-1" /> : <RiDownload2Line className="me-1" />}
+                  엑셀
+                </Button>
+                <Button variant="outline-primary" onClick={() => {
+                  setSelectedOtherUserIdx('');
+                  setWorkerSearchTerm('');
+                  setShowAddWorkerModal(true);
+                }}>
+                  <RiUserAddLine className="me-1" /> 타지점
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  onClick={() => handleSaveAll('DRAFT')}
+                  disabled={saving || loading}
+                  title="저장만 합니다. 알바생에게 공개되지 않습니다."
+                >
+                  {saving ? <Spinner size="sm" /> : '임시 저장'}
+                </Button>
+                <Button
+                  variant="outline-success"
+                  onClick={() => handleSaveAll('PARTIAL')}
+                  disabled={saving || loading}
+                  title="배정된 날만 공개됩니다. 미배정 날은 신청 상태로 유지됩니다."
+                >
+                  {saving ? <Spinner size="sm" /> : '임시 배정'}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => handleSaveAll('CONFIRM')}
+                  disabled={saving || loading}
+                  title="모든 날을 확정합니다. 미배정 신청은 미출근으로 처리됩니다."
+                >
+                  {saving ? <Spinner size="sm" /> : '배정 확정'}
+                </Button>
+              </div>
+
+              {/* 모바일(<= 425px): 주요 액션 2개 + 더보기 바텀시트 트리거 */}
+              <div className="wat-mobile-actions">
+                <Button
+                  variant="outline-secondary"
+                  className="wat-mobile-more-btn"
+                  onClick={() => setShowMoreSheet(true)}
+                  aria-label="더보기 메뉴 열기"
+                  title="더보기"
+                >
+                  <RiMore2Line size={20} />
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  className="wat-mobile-draft-btn"
+                  onClick={() => handleSaveAll('DRAFT')}
+                  disabled={saving || loading}
+                  title="저장만 합니다. 알바생에게 공개되지 않습니다."
+                >
+                  {saving ? <Spinner size="sm" /> : '임시 저장'}
+                </Button>
+                <Button
+                  variant="primary"
+                  className="wat-mobile-confirm-btn"
+                  onClick={() => handleSaveAll('CONFIRM')}
+                  disabled={saving || loading}
+                  title="모든 날을 확정합니다. 미배정 신청은 미출근으로 처리됩니다."
+                >
+                  {saving ? <Spinner size="sm" /> : '배정 확정'}
+                </Button>
+              </div>
             </>
           }
         />
@@ -1432,6 +1639,211 @@ const AdminWeeklyAssign = () => {
             </Button>
           </Modal.Footer>
         </Modal>
+
+        {/* 모바일 더보기 바텀시트 */}
+        <Offcanvas
+          show={showMoreSheet}
+          onHide={() => setShowMoreSheet(false)}
+          placement="bottom"
+          className="wat-more-offcanvas"
+        >
+          <div className="wat-sheet-drag-handle" />
+          <Offcanvas.Header closeButton className="pb-2 pt-1 border-bottom">
+            <Offcanvas.Title className="fw-bold fs-6">더보기 메뉴</Offcanvas.Title>
+          </Offcanvas.Header>
+          <Offcanvas.Body className="p-3 d-flex flex-column gap-2">
+            <Button
+              variant="light"
+              className="wat-sheet-menu-item"
+              onClick={() => {
+                setShowMoreSheet(false);
+                handleDownloadExcel();
+              }}
+              disabled={excelDownloading || loading}
+            >
+              <div className="wat-sheet-menu-icon is-green">
+                {excelDownloading ? <Spinner size="sm" /> : <RiDownload2Line size={20} />}
+              </div>
+              <div className="wat-sheet-menu-text">
+                <span className="wat-sheet-menu-title">주간 배정표 엑셀 다운로드</span>
+                <span className="wat-sheet-menu-desc">현재 주의 전체 배정 상태를 엑셀 파일로 저장</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="light"
+              className="wat-sheet-menu-item"
+              onClick={() => {
+                setShowMoreSheet(false);
+                setSelectedOtherUserIdx('');
+                setWorkerSearchTerm('');
+                setShowAddWorkerModal(true);
+              }}
+            >
+              <div className="wat-sheet-menu-icon is-blue">
+                <RiUserAddLine size={20} />
+              </div>
+              <div className="wat-sheet-menu-text">
+                <span className="wat-sheet-menu-title">타 지점 알바생 추가</span>
+                <span className="wat-sheet-menu-desc">다른 매장의 알바생을 이번 주 그리드에 파견 추가</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="light"
+              className="wat-sheet-menu-item"
+              onClick={() => {
+                setShowMoreSheet(false);
+                handleSaveAll('PARTIAL');
+              }}
+              disabled={saving || loading}
+            >
+              <div className="wat-sheet-menu-icon is-teal">
+                <RiTimeLine size={20} />
+              </div>
+              <div className="wat-sheet-menu-text">
+                <span className="wat-sheet-menu-title">임시 배정 (출근 확정만 공개)</span>
+                <span className="wat-sheet-menu-desc">출근 배정된 날만 알바생에게 공개, 미배정 날은 신청 유지</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="light"
+              className="wat-sheet-menu-item"
+              onClick={() => {
+                setShowMoreSheet(false);
+                setShowGuideModal(true);
+              }}
+            >
+              <div className="wat-sheet-menu-icon is-gray">
+                <RiQuestionLine size={20} />
+              </div>
+              <div className="wat-sheet-menu-text">
+                <span className="wat-sheet-menu-title">주간 스케줄 배정 사용 방법</span>
+                <span className="wat-sheet-menu-desc">배정 규칙 및 저장 모드 가이드 확인</span>
+              </div>
+            </Button>
+          </Offcanvas.Body>
+        </Offcanvas>
+
+        {/* 모바일 시간/상태 선택 바텀시트 */}
+        <Offcanvas
+          show={mobileTimeSheet.show}
+          onHide={() => setMobileTimeSheet(prev => ({ ...prev, show: false }))}
+          placement="bottom"
+          className="wat-time-offcanvas"
+        >
+          <div className="wat-sheet-drag-handle" />
+          <Offcanvas.Header closeButton className="pb-2 pt-1 border-bottom">
+            <Offcanvas.Title className="fw-bold fs-6">
+              <span className="text-primary">{mobileTimeSheet.userName}</span>님 근무 시간 / 상태 선택
+            </Offcanvas.Title>
+          </Offcanvas.Header>
+          <Offcanvas.Body className="p-3">
+            {/* 1. 빠른 상태 프리셋 */}
+            {(() => {
+              const sheetDateStr = mobileTimeSheet.dateStr || mobileDateStr || '';
+              const openTime = sheetDateStr ? openStartTimeForDate(sheetDateStr) : '10:00';
+              return (
+                <>
+                  <div className="mb-3">
+                    <div className="small fw-bold text-muted mb-2">상태 변경</div>
+                    <div className="wat-time-sheet-presets">
+                      <button
+                        type="button"
+                        className={`wat-sheet-preset-btn ${activeSheetShift?.wsdIsOpen ? 'active-open' : ''}`}
+                        onClick={() => {
+                          if (!activeSheetShift) return;
+                          handleUpdateShift(mobileTimeSheet.uid, sheetDateStr, activeSheetShift._id, {
+                            wsdStartTime: openStartTimeForDate(sheetDateStr),
+                            wsdStatus: '출근',
+                            wsdIsOpen: true
+                          });
+                          setMobileTimeSheet(prev => ({ ...prev, show: false }));
+                        }}
+                      >
+                        오픈 ({openTime})
+                      </button>
+                      <button
+                        type="button"
+                        className={`wat-sheet-preset-btn ${activeSheetShift?.wsdIsClose ? 'active-close' : ''}`}
+                        onClick={() => {
+                          if (!activeSheetShift) return;
+                          handleUpdateShift(mobileTimeSheet.uid, sheetDateStr, activeSheetShift._id, {
+                            wsdStatus: '출근',
+                            wsdIsClose: true
+                          });
+                          setMobileTimeSheet(prev => ({ ...prev, show: false }));
+                        }}
+                      >
+                        마감
+                      </button>
+                      <button
+                        type="button"
+                        className={`wat-sheet-preset-btn ${activeSheetShift?.wsdStatus === '미출근' ? 'active-off' : ''}`}
+                        onClick={() => {
+                          if (!activeSheetShift) return;
+                          handleUpdateShift(mobileTimeSheet.uid, sheetDateStr, activeSheetShift._id, {
+                            wsdStartTime: '',
+                            wsdStatus: '미출근',
+                            wsdIsOpen: false,
+                            wsdIsClose: false
+                          });
+                          setMobileTimeSheet(prev => ({ ...prev, show: false }));
+                        }}
+                      >
+                        미출근
+                      </button>
+                      <button
+                        type="button"
+                        className="wat-sheet-preset-btn text-muted"
+                        onClick={() => {
+                          if (!activeSheetShift) return;
+                          handleUpdateShift(mobileTimeSheet.uid, sheetDateStr, activeSheetShift._id, {
+                            wsdStartTime: '',
+                            wsdStatus: null,
+                            wsdIsOpen: false,
+                            wsdIsClose: false
+                          });
+                          setMobileTimeSheet(prev => ({ ...prev, show: false }));
+                        }}
+                      >
+                        선택 취소(빈값)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. 출근 시작 시간 그리드 */}
+                  <div>
+                    <div className="small fw-bold text-muted mb-2">출근 시작 시간 선택 (10:00 ~ 00:00)</div>
+                    <div className="wat-time-sheet-grid">
+                      {TIME_OPTIONS.map(time => {
+                        const isSelected = activeSheetShift?.wsdStartTime === time;
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            className={`wat-sheet-time-slot ${isSelected ? 'is-selected' : ''}`}
+                            onClick={() => {
+                              if (!activeSheetShift) return;
+                              handleUpdateShift(mobileTimeSheet.uid, sheetDateStr, activeSheetShift._id, {
+                                wsdStartTime: time,
+                                wsdStatus: '출근'
+                              });
+                              setMobileTimeSheet(prev => ({ ...prev, show: false }));
+                            }}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </Offcanvas.Body>
+        </Offcanvas>
       </Container>
       {ExcelDownloadProgressModal}
     </div>

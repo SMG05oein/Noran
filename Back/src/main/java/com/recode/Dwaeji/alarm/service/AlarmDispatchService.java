@@ -156,11 +156,19 @@ public class AlarmDispatchService {
     }
 
     /**
-     * 배정 CONFIRM 직후 호출. 출근+확정 대상 유저에게만 발송.
+     * 배정 CONFIRM 직후 호출. updatedAfterConfirm=false 최초 확정 / true 확정 후 수정.
      */
     @Transactional
-    public void dispatchAssignConfirmAlarms(Collection<Long> userIdxes, LocalDate weekStart, Long workPlaceIdx) {
-        if (!webPushSender.isReady() || userIdxes == null || userIdxes.isEmpty()) {
+    public void dispatchAssignConfirmAlarms(
+            Collection<Long> userIdxes,
+            LocalDate weekStart,
+            Long workPlaceIdx,
+            boolean updatedAfterConfirm) {
+        if (!webPushSender.isReady()) {
+            log.warn("[alarm] ASSIGN_CONFIRM skipped: WebPushSender not ready (VAPID?)");
+            return;
+        }
+        if (userIdxes == null || userIdxes.isEmpty()) {
             return;
         }
         List<Long> distinct = userIdxes.stream().filter(Objects::nonNull).distinct().toList();
@@ -170,19 +178,25 @@ public class AlarmDispatchService {
 
         List<AlarmPreference> enabled = alarmPreferenceRepository.findAssignConfirmEnabledForUsers(distinct);
         if (enabled.isEmpty()) {
+            log.info("[alarm] ASSIGN_CONFIRM skipped: no user with assignConfirmEnabled among {}", distinct);
             return;
         }
 
-        String weekKey = weekStart != null ? weekStart.format(DATE_FMT) : "unknown";
-        String wpKey = workPlaceIdx != null ? String.valueOf(workPlaceIdx) : "all";
+        String title = updatedAfterConfirm ? "근무 배정이 수정되었습니다" : "근무 배정이 확정되었습니다";
+        String body = updatedAfterConfirm
+                ? "확정된 근무 배정이 변경되었습니다. 확인해 주세요."
+                : "이번 주 근무 배정을 확인해 주세요.";
 
         for (AlarmPreference pref : enabled) {
             Long userIdx = pref.getUser().getUserIdx();
-            String dedupe = "ASSIGN_CONFIRM:" + weekKey + ":" + wpKey;
-            if (!tryClaim(userIdx, AlarmType.ASSIGN_CONFIRM, dedupe)) {
+            List<PushSubscriptionEntity> subs = pushSubscriptionRepository.findByUser_UserIdx(userIdx);
+            if (subs.isEmpty()) {
+                log.info("[alarm] ASSIGN_CONFIRM skip userIdx={}: no push subscription", userIdx);
                 continue;
             }
-            send(userIdx, "근무 배정이 확정되었습니다", "이번 주 근무 배정을 확인해 주세요.", "/calendar");
+            log.info("[alarm] ASSIGN_CONFIRM sending userIdx={} updated={} weekStart={} wpIdx={} subs={}",
+                    userIdx, updatedAfterConfirm, weekStart, workPlaceIdx, subs.size());
+            sendToSubscriptions(subs, title, body, "/");
         }
     }
 

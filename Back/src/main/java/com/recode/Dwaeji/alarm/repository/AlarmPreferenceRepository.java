@@ -15,12 +15,13 @@ public interface AlarmPreferenceRepository extends JpaRepository<AlarmPreference
 
     void deleteByUser_UserIdx(Long userIdx);
 
+    /** 재직(1)·휴직(2)만 — 퇴사(0) 제외. 스케줄 조회와 동일. */
     @Query("""
             SELECT p FROM AlarmPreference p
             JOIN FETCH p.user u
             WHERE p.missingRecordEnabled = true
               AND p.missingRecordTime = :time
-              AND u.userIsActive = 1
+              AND (u.userIsActive = 1 OR u.userIsActive = 2)
             """)
     List<AlarmPreference> findMissingRecordDue(@Param("time") LocalTime time);
 
@@ -28,7 +29,7 @@ public interface AlarmPreferenceRepository extends JpaRepository<AlarmPreference
             SELECT p FROM AlarmPreference p
             JOIN FETCH p.user u
             WHERE p.applyDeadlineEnabled = true
-              AND u.userIsActive = 1
+              AND (u.userIsActive = 1 OR u.userIsActive = 2)
               AND (
                    (:dow = 5 AND p.applyDeadlineFriTime = :time)
                 OR (:dow = 6 AND p.applyDeadlineSatTime = :time)
@@ -42,7 +43,7 @@ public interface AlarmPreferenceRepository extends JpaRepository<AlarmPreference
             JOIN FETCH p.user u
             WHERE p.assignConfirmEnabled = true
               AND u.userIdx IN :userIdxes
-              AND u.userIsActive = 1
+              AND (u.userIsActive = 1 OR u.userIsActive = 2)
             """)
     List<AlarmPreference> findAssignConfirmEnabledForUsers(@Param("userIdxes") List<Long> userIdxes);
 }

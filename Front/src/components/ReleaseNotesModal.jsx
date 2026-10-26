@@ -6,9 +6,10 @@ export const releaseHistory = [
     version: '0.9.19',
     date: '2026-10-25',
     features: [
-      '마이페이지 웹 푸시 알람 설정(기기 연결·근무 누락/배정 확정/신청 마감)',
+      '약관들 변경'
     ],
-    fixes: []
+    fixes: [
+    ]
   },
   {
     version: '0.9.18',

@@ -1,0 +1,52 @@
+# ===== IDE =====
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===== Java / Gradle =====
+*.class
+*.jar
+*.war
+*.ear
+*.log
+build/
+.gradle/
+gradle/
+.gitattributes
+out/
+!**/src/main/**/build/
+!**/src/test/**/build/
+!gradle/wrapper/gradle-wrapper.jar
+application.properties
+secret
+policy/
+
+# ===== Node.js =====
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Environment / Secrets =====
+.env
+.env.*
+*.local
+SecKey
+
+# ===== Misc =====
+*.swp
+*.swo
+*~
+
+# ===== Front =====
+_redirects

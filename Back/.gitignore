@@ -1,11 +1,21 @@
-HELP.md
-.gradle
+### Build / IDE ###
+.gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
 
-### STS ###
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
 .apt_generated
 .classpath
 .factorypath
@@ -13,60 +23,54 @@ build/
 .settings
 .springBeans
 .sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 
-### VS Code ###
-.vscode/
-
-watch_deploy.sh
-deploy.sh
-secret
-.idea
-
-src/main/java/com/recode/Dweahi
-JwtFilter.java
-JwtUtil.java
-
-.agents
-.cursor
-
-/src/main/resources/logback-spring.xml
-
-/src/main/java/com/recode/Dwaeji/JwtUtil.java
-/src/main/java/com/recode/Dwaeji/JwtFilter.java
+### Local agent / editor ###
+.agents/
+.cursor/
 .editorconfig
-sync*
 
-excel-compare-qa.md
-
-excel-samples/
-
-logs/
-storage/
-
-/src/main/resources
-
-PrivatePolicy.md
-
+### Docs (README만 추적) ###
 *.md
 !README.md
+HELP.md
 
-secret_2
+### Secrets / credentials (절대 커밋 금지) ###
+secret
+secret_*
+secre*
+SecKey
+Seckey
+*.pem
+*.key
+*.p12
+*.jks
+.env
+.env.*
+
+### Deploy / ops scripts (환경변수·경로 포함) ###
+deploy.sh
+watch_deploy.sh
+sync*
+
+### Runtime / local data ###
+logs/
+storage/
+excel-samples/
+excel-compare-qa.md
+
+### App config & security (로컬 전용) ###
+/src/main/resources/
+src/main/java/com/recode/Dwaeji/policy/
+**/JwtUtil.java
+**/JwtFilter.java
+src/main/java/com/recode/Dweahi/
+
+### Policy documents ###
+*Policy*
+*policy*
+PrivatePolicy.md

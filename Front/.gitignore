@@ -24,8 +24,13 @@ dist-ssr
 *.sln
 *.sw?
 
+.env
+.env.*
 .env.local
 .editorconfig
 .sync*
 .agents
 .cursor
+
+# Misc
+_redirects

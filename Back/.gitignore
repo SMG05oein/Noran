@@ -1,7 +1,7 @@
 ### Build / IDE ###
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
+gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 bin/
@@ -34,12 +34,12 @@ out/
 .cursor/
 .editorconfig
 
-### Docs (READMEë§Œ ì¶”ì ) ###
+### Docs (README¸¸ ÃßÀû) ###
 *.md
 !README.md
 HELP.md
 
-### Secrets / credentials (ì ˆëŒ€ ì»¤ë°‹ ê¸ˆì§€) ###
+### Secrets / credentials (Àı´ë Ä¿¹Ô ±İÁö) ###
 secret
 secret_*
 secre*
@@ -52,7 +52,7 @@ Seckey
 .env
 .env.*
 
-### Deploy / ops scripts (í™˜ê²½ë³€ìˆ˜Â·ê²½ë¡œ í¬í•¨) ###
+### Deploy / ops scripts (È¯°æº¯¼ö¡¤°æ·Î Æ÷ÇÔ) ###
 deploy.sh
 watch_deploy.sh
 sync*
@@ -63,7 +63,7 @@ storage/
 excel-samples/
 excel-compare-qa.md
 
-### App config & security (ë¡œì»¬ ì „ìš©) ###
+### App config & security (·ÎÄÃ Àü¿ë) ###
 /src/main/resources/
 src/main/java/com/recode/Dwaeji/policy/
 **/JwtUtil.java

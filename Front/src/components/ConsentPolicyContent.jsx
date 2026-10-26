@@ -48,7 +48,7 @@ const ConsentPolicyContent = () => {
             </tr>
             <tr>
               <td className="text-center text-primary fw-bold">선택</td>
-              <td><strong>근무 관련 웹 푸시 알람</strong><br /><span className="small text-muted">(근무 기록 누락·배정 확정·신청 마감 안내만)</span></td>
+              <td><strong>근무 관련 웹 푸시 알람</strong><br /></td>
               <td>웹 푸시 구독 정보(endpoint, keys)</td>
               <td>알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기합니다. 미사용 시 서비스 이용에 불이익이 없습니다.</td>
             </tr>
@@ -169,7 +169,7 @@ const ConsentPolicyContent = () => {
           <strong>공고일:</strong> 2026년 10월 25일
         </p>
         <p className="small text-muted mb-1">
-          <strong>시행일:</strong> 2026년 10월 25일
+          <strong>시행일:</strong> 2026년 11월 01일
         </p>
         <p className="small text-muted mb-0">
           <strong>버전:</strong> v2.1

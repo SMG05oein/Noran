@@ -40,7 +40,17 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">4. 출퇴근 기록의 정확성</h5>
+        <h5 className="fw-bold mb-3 text-dark">4. 근무 관련 웹 푸시 알람 (선택)</h5>
+        <p className="small text-muted">
+          ① 시스템은 근무 기록 누락, 근무 배정 확정, 근무 신청 마감 임박 안내를 위해 <strong>웹 푸시 알람</strong> 기능을 제공할 수 있습니다.<br />
+          ② 웹 푸시 알람은 <strong>선택 기능</strong>이며, 직원이 마이페이지에서 허용·해제할 수 있습니다. 사용하지 않더라도 시스템 이용 및 근무·급여 처리에 <strong>불이익은 없습니다</strong>.<br />
+          ③ 알람을 받으려면 브라우저(또는 홈 화면에 추가한 앱)의 알림 권한 허용과 해당 기기의 연결이 필요합니다. 권한을 거부하더라도 나머지 시스템 기능은 정상적으로 이용할 수 있습니다.<br />
+          ④ 웹 푸시 구독 정보(endpoint, keys)의 수집·이용·보유·파기는 개인정보처리방침 및 개인정보 수집·이용 동의서에 따릅니다.
+        </p>
+      </div>
+
+      <div className="mb-4">
+        <h5 className="fw-bold mb-3 text-dark">5. 출퇴근 기록의 정확성</h5>
         <p className="small text-muted">
           ① 직원은 실제 근무한 시간과 일치하도록 출퇴근 및 휴게시간을 성실하게 기록하여야 합니다.<br />
           ② 사실과 다른 근태 기록을 등록하여 급여 등 부당한 이익을 취해서는 안 되며, 고의로 허위 기록을 등록한 사실이 확인되는 경우 근로계약 및 관계 법령에 따른 조치의 대상이 될 수 있습니다.<br />
@@ -49,7 +59,7 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">5. 급여 정보의 성격</h5>
+        <h5 className="fw-bold mb-3 text-dark">6. 급여 정보의 성격</h5>
         <p className="small text-muted">
           ① 시스템에 표시되는 예상 급여는 직원의 참고 편의를 위해 제공되는 계산 결과이며, 실제 지급되는 급여와 다를 수 있습니다.<br />
           ② 실제 급여는 근로계약 및 관계 법령(근로기준법, 소득세법 등)에 따라 지급되며, 화면상 예상 금액과 실제 지급액에 차이가 있으며 급여에 대한 문의는 급여담당자에게 문의하여야 합니다.
@@ -57,7 +67,7 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">6. 개인정보의 처리 및 퇴사자 관리 정책</h5>
+        <h5 className="fw-bold mb-3 text-dark">7. 개인정보의 처리 및 퇴사자 관리 정책</h5>
         <p className="small text-muted">
           ① 시스템을 통해 수집·처리되는 개인정보의 항목, 목적, 보유기간 등은 매장의 개인정보처리방침 및 개인정보 수집·이용 동의서에 따릅니다.<br />
           ② <strong>퇴사자 처리 및 보존 정책:</strong> 직원이 퇴사하는 경우 시스템 접근 권한은 즉시 차단(비활성화)됩니다. 단, 관련 법령(근로기준법, 세무 관련 법령 등)상 의무 보존기간에 따라 최대 5년간 근태 및 급여 기록이 안전하게 보관됩니다. 이때 개인정보 보호를 위해 <strong>퇴사 후 1년이 경과한 정보는 시스템에서 자동으로 마스킹 처리되며, 최고 관리자 및 권한이 있는 자만 원본을 열람</strong>할 수 있습니다.<br />
@@ -66,7 +76,7 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">7. 금지행위</h5>
+        <h5 className="fw-bold mb-3 text-dark">8. 금지행위</h5>
         <p className="small text-muted">
           직원은 시스템 이용과 관련하여 다음 행위를 하여서는 안 됩니다.<br />
           ① 타인의 계정으로 로그인하거나 타인의 근태를 대리로 기록하는 행위<br />
@@ -77,7 +87,7 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">8. 급여 처리의 주체 및 시스템 오류 처리와 신고의 권한</h5>
+        <h5 className="fw-bold mb-3 text-dark">9. 급여 처리의 주체 및 시스템 오류 처리와 신고의 권한</h5>
         <p className="small text-muted">
           ① 이 시스템은 직원의 근태 기록 관리 및 예상 급여를 표시하는 도구일 뿐이며, 실제 급여의 계산 및 지급 업무는 수행하지 않습니다. 실제 급여의 계산 및 지급은 매장이 위탁한 세무대리인이 근태 기록을 기초로 별도로 처리합니다.<br />
           ② 시스템 화면상의 오류(근태 기록 표시 오류, 예상 급여 계산 오류 등)를 발견한 경우, 직원은 매장(급여담당자) 또는 시스템 담당자에게 신고하여야 하며, 확인된 시스템 오류는 지체 없이(5일 이내) 수정됩니다. 단, 시스템에 지대한 영향을 미치는 오류일 경우 시스템 담당자는 별도의 비상 조치를 취할 수 있습니다.<br />
@@ -86,23 +96,23 @@ const SystemUsagePolicyContent = () => {
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">9. 보안 관리 및 부정이용 방지</h5>
+        <h5 className="fw-bold mb-3 text-dark">10. 보안 관리 및 부정이용 방지</h5>
         <p className="small text-muted">
           ① 시스템은 계정 도용, 대리 출석 등 부정이용을 방지하고 안전한 이용 환경을 제공하기 위해 접속 IP 주소 및 로그인 일시를 수집하여 보관합니다.<br />
           ② 수집된 접속 기록은 오직 보안 및 부정이용 확인 목적으로만 사용되며, 외부에 제공되지 않습니다.<br />
-          ③ 직원이 제7조(금지행위)를 위반하여 시스템을 부정하게 이용한 정황이 발견될 경우, 매장은 보관 중인 접속 기록을 근거로 소명 요청 및 시스템 이용 제한 등의 조치를 취할 수 있습니다.
+          ③ 직원이 제8조(금지행위)를 위반하여 시스템을 부정하게 이용한 정황이 발견될 경우, 매장은 보관 중인 접속 기록을 근거로 소명 요청 및 시스템 이용 제한 등의 조치를 취할 수 있습니다.
         </p>
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">10. 문의 및 이의제기</h5>
+        <h5 className="fw-bold mb-3 text-dark">11. 문의 및 이의제기</h5>
         <p className="small text-muted">
           시스템 이용 중 발생하는 문의, 오류 신고, 근태·급여 관련 이의제기는 시스템 담당자(근태·급여 제외) 또는 관리자에게 직접 연락하여 처리합니다.
         </p>
       </div>
 
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">11. 이용규정 변경 및 버전 정보</h5>
+        <h5 className="fw-bold mb-3 text-dark">12. 이용규정 변경 및 버전 정보</h5>
         <p className="small text-muted">
           ① 매장은 규정 내용을 변경하는 경우 시행 전에 직원에게 안내합니다.<br />
           ② 변경 전 최소 3일 전에 고지합니다. 다만 근태 기록 수정기한 등 이미 진행 중인 절차에 영향을 미치는 변경은 해당 주기(주)가 끝난 이후부터 적용합니다.<br />
@@ -111,9 +121,20 @@ const SystemUsagePolicyContent = () => {
       </div>
       
       <div className="mb-4">
-        <h5 className="fw-bold mb-3 text-dark">12. 개정 이력</h5>
+        <h5 className="fw-bold mb-3 text-dark">13. 개정 이력</h5>
         <RevisionHistory 
           histories={[
+            {
+              version: 'v1.1',
+              date: '2026-10-26',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>
+                    <strong>개정 사유:</strong> 근무 관련 웹 푸시 알람(선택) 기능 도입에 따라, 알람의 종류·선택성·미사용 시 불이익 없음을 이용규정에 명시함
+                  </li>
+                </ul>
+              )
+            },
             {
               version: 'v1.0',
               date: '2026-09-26',
@@ -131,13 +152,13 @@ const SystemUsagePolicyContent = () => {
           최초 시행일: 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          공고일: 2026년 09월 26일
+          공고일: 2026년 10월 25일
         </p>
         <p className="small text-muted mb-1">
-          시행일: 2026년 09월 26일
+          시행일: 2026년 11월 01일
         </p>
         <p className="small text-muted mb-0">
-          버전: v1.0
+          버전: v1.1
         </p>
       </div>
     </div>

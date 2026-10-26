@@ -47,6 +47,12 @@ const ConsentPolicyContent = () => {
               <td>선택 항목 동의 철회 또는 회원 탈퇴 시 지체 없이 파기합니다.</td>
             </tr>
             <tr>
+              <td className="text-center text-primary fw-bold">선택</td>
+              <td><strong>근무 관련 웹 푸시 알람</strong><br /></td>
+              <td>웹 푸시 구독 정보(endpoint, keys)</td>
+              <td>알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기합니다. 미사용 시 서비스 이용에 불이익이 없습니다.</td>
+            </tr>
+            <tr>
               <td className="text-center fw-bold text-danger">필수</td>
               <td><strong>서비스 부정이용 방지 및 보안 관리</strong></td>
               <td>접속 IP 주소, 최근 로그인 일시</td>
@@ -113,13 +119,24 @@ const ConsentPolicyContent = () => {
       <p className="small text-muted mb-4">
         귀하는 위 개인정보 수집·이용 및 국외 이전에 대한 동의를 거부할 권리가 있습니다.<br />
         * <strong>필수 항목(국외 이전 포함) 동의 거부 시:</strong> 서비스의 본질적인 기능(회원가입, 스케줄 관리, 급여 정산 등) 제공이 불가능하므로 <strong>회원가입 및 서비스 이용이 제한</strong>되거나, 기존 회원은 <strong>탈퇴·삭제</strong> 처리됩니다.<br />
-        * <strong>선택 항목 동의 거부 시:</strong> 동의하지 않으셔도 기본적인 서비스 이용에는 불이익이 없으나, 이메일 공지 등의 <strong>일부 부가 기능 이용이 제한</strong>될 수 있습니다.
+        * <strong>선택 항목 동의 거부 시:</strong> 동의하지 않으셔도 기본적인 서비스 이용에는 불이익이 없으나, 이메일 공지·웹 푸시 알람 등의 <strong>일부 부가 기능 이용이 제한</strong>될 수 있습니다.
       </p>
 
       <h5 className="fw-bold mt-4 mb-3 text-dark">4. 개정 이력</h5>
       <div className="mb-4">
         <RevisionHistory
           histories={[
+            {
+              version: 'v2.1',
+              date: '2026-10-25',
+              content: (
+                <ul className="mb-0 ps-3 mt-1">
+                  <li>
+                    <strong>개정 사유:</strong> 근무 관련 웹 푸시 알람(선택) 도입 — 수집 항목에 웹 푸시 구독 정보(endpoint, keys)를 추가하고, 보유기간을 알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기로 명시함
+                  </li>
+                </ul>
+              )
+            },
             {
               version: 'v2.0',
               date: '2026-10-22',
@@ -149,13 +166,13 @@ const ConsentPolicyContent = () => {
           <strong>최초 시행일:</strong> 2026년 09월 26일
         </p>
         <p className="small text-muted mb-1">
-          <strong>공고일:</strong> 2026년 10월 22일
+          <strong>공고일:</strong> 2026년 10월 25일
         </p>
         <p className="small text-muted mb-1">
-          <strong>시행일:</strong> 2026년 10월 22일
+          <strong>시행일:</strong> 2026년 11월 01일
         </p>
         <p className="small text-muted mb-0">
-          <strong>버전:</strong> v2.0
+          <strong>버전:</strong> v2.1
         </p>
       </div>
     </div>

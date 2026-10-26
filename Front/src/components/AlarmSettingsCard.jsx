@@ -1,8 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap';
-import { RiNotification3Line, RiShareForwardLine } from 'react-icons/ri';
+import {
+  RiArrowDownSLine,
+  RiCalendarCheckLine,
+  RiFileList3Line,
+  RiNotification3Line,
+  RiShareForwardLine,
+  RiTimeLine,
+} from 'react-icons/ri';
 import { fetchAlarmPreferences, sendTestAlarm, updateAlarmPreferences } from '../api/alarmApi';
 import useWebPush from '../hooks/useWebPush';
+import './AlarmSettingsCard.css';
 
 const DEFAULT_PREFS = {
   missingRecordEnabled: false,
@@ -26,7 +34,6 @@ const normalizeTime = (value, fallback) => {
 const anyEnabled = (p) =>
   !!(p?.missingRecordEnabled || p?.assignConfirmEnabled || p?.applyDeadlineEnabled);
 
-/** 마스터 ON/OFF → API 세 타입 일괄 */
 const withMaster = (base, enabled) => ({
   ...base,
   missingRecordEnabled: enabled,
@@ -44,13 +51,13 @@ const AlarmSettingsCard = () => {
     setError: setPushError,
     iosNeedsInstall,
     connectThisDevice,
-    disconnectThisDevice,
     disconnectAllDevices,
   } = useWebPush();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
@@ -69,7 +76,6 @@ const AlarmSettingsCard = () => {
         applyDeadlineSatTime: normalizeTime(res.data.applyDeadlineSatTime, '22:00'),
         applyDeadlineSunTime: normalizeTime(res.data.applyDeadlineSunTime, '12:00'),
       };
-      // UI는 마스터 하나로 통일 — 하나라도 ON이면 세 타입 모두 ON으로 맞춤 표시
       setPrefs(withMaster(loaded, anyEnabled(loaded)));
     } else {
       setMsg({ type: 'danger', text: res.error || '알람 설정을 불러오지 못했습니다.' });
@@ -128,13 +134,11 @@ const AlarmSettingsCard = () => {
     }
 
     setSaving(false);
+    // 성공 토스트는 쓰지 않음 — 거부/실패(warn)만 표시
     if (warnMsg) {
       setMsg({ type: 'warning', text: warnMsg });
-    } else {
-      setMsg({
-        type: 'success',
-        text: successMsg || '알람 설정이 저장되었습니다.',
-      });
+    } else if (!successMsg) {
+      setMsg({ type: '', text: '' });
     }
     return true;
   };
@@ -142,8 +146,8 @@ const AlarmSettingsCard = () => {
   const handleMasterToggle = async (enabled) => {
     const next = withMaster(prefs, enabled);
     setPrefs(next);
+    if (enabled) setOpen(true);
 
-    let successMsg = null;
     let warnMsg = null;
 
     if (enabled && !subscribed) {
@@ -156,22 +160,20 @@ const AlarmSettingsCard = () => {
           '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
       } else {
         const connectRes = await connectThisDevice();
-        if (connectRes.success) {
-          successMsg = '알람을 켰습니다. 이 기기에서 받을 준비가 되었습니다.';
-        } else if (connectRes.code === 'PERMISSION_DENIED') {
-          warnMsg =
-            '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
-        } else {
-          warnMsg = connectRes.error
-            ? `설정은 저장했지만 기기 등록에 실패했습니다: ${connectRes.error}`
-            : '설정은 저장했지만 기기 등록에 실패했습니다.';
+        if (!connectRes.success) {
+          if (connectRes.code === 'PERMISSION_DENIED') {
+            warnMsg =
+              '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
+          } else {
+            warnMsg = connectRes.error
+              ? `설정은 저장했지만 기기 등록에 실패했습니다: ${connectRes.error}`
+              : '설정은 저장했지만 기기 등록에 실패했습니다.';
+          }
         }
       }
-    } else if (!enabled) {
-      successMsg = '알람을 껐습니다. 모든 기기 구독이 해제됩니다.';
     }
 
-    await persistPrefs(next, { successMsg, warnMsg });
+    await persistPrefs(next, { warnMsg });
   };
 
   const saveTimePatch = async (patch) => {
@@ -183,20 +185,13 @@ const AlarmSettingsCard = () => {
   const handleConnect = async () => {
     setMsg({ type: '', text: '' });
     const res = await connectThisDevice();
-    if (res.success) {
-      setMsg({ type: 'success', text: '이 기기에서 알람을 받도록 연결했습니다.' });
-    } else if (res.code !== 'PERMISSION_DENIED') {
+    if (!res.success && res.code !== 'PERMISSION_DENIED') {
       setMsg({ type: 'danger', text: res.error || '연결에 실패했습니다.' });
-    }
-  };
-
-  const handleDisconnect = async () => {
-    setMsg({ type: '', text: '' });
-    const res = await disconnectThisDevice();
-    if (res.success) {
-      setMsg({ type: 'success', text: '이 기기 알람 연결을 해제했습니다. (다른 기기 연결은 유지)' });
-    } else {
-      setMsg({ type: 'danger', text: res.error || '해제에 실패했습니다.' });
+    } else if (!res.success && res.code === 'PERMISSION_DENIED') {
+      setMsg({
+        type: 'warning',
+        text: '알림 권한이 거부되어 있습니다. 브라우저 설정에서 허용한 뒤 다시 시도해 주세요.',
+      });
     }
   };
 
@@ -213,190 +208,206 @@ const AlarmSettingsCard = () => {
   };
 
   const busy = loading || saving || pushBusy || testing;
-  const showPermissionHint = permission === 'denied';
+  // 알람은 켜졌는데 이 기기 구독이 없을 때만 (거부·실패·iOS 등)
+  const showDeviceRecovery = alarmsOn && !subscribed;
+
+  useEffect(() => {
+    if (showDeviceRecovery) setOpen(true);
+  }, [showDeviceRecovery]);
+
+  const deviceStatusText = (() => {
+    if (permission === 'denied') return '알림 권한이 거부되어 있습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
+    if (iosNeedsInstall) return '홈 화면에 추가한 앱에서만 알람을 받을 수 있습니다.';
+    if (!supported) return '이 브라우저는 웹 푸시를 지원하지 않습니다.';
+    return '이 기기 등록에 실패했습니다. 「다시 받기」로 다시 시도해 주세요.';
+  })();
 
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-4">
       <Card.Body className="p-4">
-        <div className="fw-bold text-muted small mb-2 d-flex align-items-center gap-1">
-          <RiNotification3Line className="text-primary" /> 알람 설정
-        </div>
-        <p className="text-muted small mb-3">
-          허용 시 근무 기록 누락·배정 확정·신청 마감 안내를 모두 받습니다.
-          알림 권한과 이 기기 등록이 함께 진행됩니다. 사용하지 않아도 불이익은 없습니다.
-        </p>
-
-        {(msg.text || pushError) && (
-          <Alert
-            variant={msg.type === 'success' ? 'success' : msg.type === 'warning' ? 'warning' : 'danger'}
-            className="rounded-3 py-2 small"
-          >
-            {msg.text || pushError}
-          </Alert>
-        )}
-
-        {iosNeedsInstall && (
-          <Alert variant="info" className="rounded-3 py-2 small">
-            <div className="fw-bold mb-1">iPhone·iPad에서는 홈 화면 추가 후 알람을 받을 수 있습니다</div>
-            <div className="d-flex align-items-start gap-1">
-              <RiShareForwardLine className="mt-1 flex-shrink-0" />
-              <span>Safari 하단 공유 버튼 → <strong>홈 화면에 추가</strong> 후, 추가된 앱에서 다시 켜 주세요.</span>
-            </div>
-          </Alert>
-        )}
-
-        {!supported && !iosNeedsInstall && (
-          <Alert variant="secondary" className="rounded-3 py-2 small mb-3">
-            이 브라우저는 웹 푸시 알람을 지원하지 않습니다. 설정은 저장할 수 있으나 이 기기에서는 수신할 수 없습니다.
-          </Alert>
-        )}
-
-        {showPermissionHint && (
-          <Alert variant="warning" className="rounded-3 py-2 small mb-3">
-            알림 권한이 거부되어 있습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.
-            권한을 거부해도 다른 기능은 정상 이용할 수 있습니다.
-          </Alert>
-        )}
-
         {loading ? (
-          <div className="text-center py-3">
+          <div className="text-center py-2">
             <Spinner animation="border" size="sm" />
           </div>
         ) : (
-          <fieldset disabled={busy}>
-            <Form.Check
-              type="switch"
-              id="alarm-master"
-              className="mb-3"
-              label={<span className="fw-bold">알람 허용</span>}
-              checked={alarmsOn}
-              onChange={(e) => handleMasterToggle(e.target.checked)}
-            />
-            <ul className="text-muted small ps-3 mb-4">
-              <li>근무 기록 누락 — 설정한 시각에 안내</li>
-              <li>근무 배정 확정 — 확정 즉시 안내</li>
-              <li>근무 신청 마감 임박 — 금·토·일 설정 시각에 안내</li>
-            </ul>
-
-            {alarmsOn && (
-              <div
-                className="p-3 rounded-3 mb-4"
-                style={{ backgroundColor: 'var(--color-input-bg)', border: '1px solid var(--color-input-border)' }}
+          <fieldset disabled={busy} className="alarm-fieldset">
+            <div className={`alarm-bar${alarmsOn ? ' alarm-bar--on' : ''}${open ? ' alarm-bar--open' : ''}`}>
+              <button
+                type="button"
+                className="alarm-bar__toggle"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                aria-controls="alarm-settings-panel"
               >
-                <div className="fw-bold small mb-3" style={{ color: 'var(--color-input-text)' }}>
-                  알림 시각
-                </div>
+                <RiArrowDownSLine className={`alarm-bar__chevron${open ? ' alarm-bar__chevron--open' : ''}`} />
+                <RiNotification3Line className="alarm-bar__icon" />
+                <span className="alarm-bar__label">알람 설정</span>
+              </button>
+              <Form.Check
+                type="switch"
+                id="alarm-master"
+                checked={alarmsOn}
+                onChange={(e) => handleMasterToggle(e.target.checked)}
+                aria-label="알람 허용"
+                className="alarm-bar__switch"
+              />
+            </div>
 
-                <Form.Group className="mb-3" style={{ maxWidth: 200 }}>
-                  <Form.Label className="fw-bold text-muted small mb-1">근무 기록 누락</Form.Label>
-                  <Form.Control
-                    type="time"
-                    value={prefs.missingRecordTime}
-                    onChange={(e) => setPrefs((p) => ({ ...p, missingRecordTime: e.target.value }))}
-                    onBlur={(e) =>
-                      saveTimePatch({ missingRecordTime: normalizeTime(e.target.value, '22:00') })
-                    }
-                    className="custom-input"
-                  />
-                  <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>
-                    기본 익일 22:00
-                  </div>
-                </Form.Group>
-
-                <div className="fw-bold text-muted small mb-2">근무 신청 마감 임박</div>
-                <p className="text-muted mb-2" style={{ fontSize: '0.75rem' }}>
-                  요일은 금·토·일로 고정되며 시각만 변경할 수 있습니다.
-                </p>
-                <div className="d-flex flex-column gap-2">
-                  {[
-                    { key: 'applyDeadlineFriTime', label: '금요일', defaultTime: '22:00' },
-                    { key: 'applyDeadlineSatTime', label: '토요일', defaultTime: '22:00' },
-                    { key: 'applyDeadlineSunTime', label: '일요일', defaultTime: '12:00' },
-                  ].map(({ key, label, defaultTime }) => (
-                    <div key={key} className="d-flex align-items-center gap-2 flex-wrap">
-                      <span className="fw-bold text-muted small" style={{ width: 52 }}>
-                        {label}
-                      </span>
-                      <Form.Control
-                        type="time"
-                        value={prefs[key]}
-                        onChange={(e) => setPrefs((p) => ({ ...p, [key]: e.target.value }))}
-                        onBlur={(e) =>
-                          saveTimePatch({ [key]: normalizeTime(e.target.value, defaultTime) })
-                        }
-                        className="custom-input"
-                        style={{ maxWidth: 160 }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-3 pt-3 border-top">
-                  <Button
-                    size="sm"
-                    variant="outline-warning"
-                    className="fw-bold rounded-3"
-                    disabled={busy || !subscribed}
-                    onClick={handleTestAlarm}
+            {open && (
+              <div id="alarm-settings-panel" className="alarm-panel">
+                {(msg.text || pushError) && (
+                  <Alert
+                    variant={msg.type === 'success' ? 'success' : msg.type === 'warning' ? 'warning' : 'danger'}
+                    className="rounded-3 py-2 small mb-3"
                   >
-                    {testing ? <Spinner as="span" animation="border" size="sm" /> : '테스트 알람 보내기'}
-                  </Button>
-                  <div className="text-muted mt-1" style={{ fontSize: '0.75rem' }}>
-                    이 기기가 연결된 상태에서, 서버가 실제 웹 푸시를 보내는지 확인합니다.
-                    {!subscribed && ' (먼저 이 기기를 연결해 주세요)'}
+                    {msg.text || pushError}
+                  </Alert>
+                )}
+
+                {iosNeedsInstall && (
+                  <Alert variant="info" className="rounded-3 py-2 small mb-3">
+                    <div className="fw-bold mb-1">iPhone·iPad에서는 홈 화면 추가 후 알람을 받을 수 있습니다</div>
+                    <div className="d-flex align-items-start gap-1">
+                      <RiShareForwardLine className="mt-1 flex-shrink-0" />
+                      <span>Safari 하단 공유 버튼 → <strong>홈 화면에 추가</strong> 후, 추가된 앱에서 다시 켜 주세요.</span>
+                    </div>
+                  </Alert>
+                )}
+
+                {!alarmsOn ? (
+                  <p className="alarm-panel__hint">
+                    스위치를 켜면 아래 세 가지 근무 알람을 모두 받습니다.
+                  </p>
+                ) : (
+                  <div className="alarm-blocks">
+                    <section className="alarm-block">
+                      <div className="alarm-block__head">
+                        <span className="alarm-block__icon" aria-hidden>
+                          <RiFileList3Line />
+                        </span>
+                        <div>
+                          <h3 className="alarm-block__title">1. 근무 기록이 없을 때</h3>
+                          <p className="alarm-block__desc">
+                            전날 확정된 근무의 출퇴근 기록이 없으면, 아래 시각에 알려 드립니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="alarm-block__control">
+                        <span className="alarm-block__control-label">알림 받을 시각</span>
+                        <Form.Control
+                          type="time"
+                          value={prefs.missingRecordTime}
+                          onChange={(e) => setPrefs((p) => ({ ...p, missingRecordTime: e.target.value }))}
+                          onBlur={(e) =>
+                            saveTimePatch({ missingRecordTime: normalizeTime(e.target.value, '22:00') })
+                          }
+                          className="custom-input alarm-times__input"
+                        />
+                      </div>
+                    </section>
+
+                    <section className="alarm-block">
+                      <div className="alarm-block__head">
+                        <span className="alarm-block__icon" aria-hidden>
+                          <RiCalendarCheckLine />
+                        </span>
+                        <div>
+                          <h3 className="alarm-block__title">2. 근무 배정이 확정됐을 때</h3>
+                          <p className="alarm-block__desc">
+                            관리자가 배정을 확정하는 즉시 알림이 갑니다. 시각은 따로 정할 수 없습니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="alarm-block__note">확정되는 순간 바로 알림</div>
+                    </section>
+
+                    <section className="alarm-block">
+                      <div className="alarm-block__head">
+                        <span className="alarm-block__icon" aria-hidden>
+                          <RiTimeLine />
+                        </span>
+                        <div>
+                          <h3 className="alarm-block__title">3. 근무 신청 마감이 다가올 때</h3>
+                          <p className="alarm-block__desc">
+                            아직 신청하지 않았다면 매주 금·토·일에 알려 드립니다. 요일은 바꿀 수 없고, 받을 시각만 정할 수 있습니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="alarm-block__days">
+                        {[
+                          { key: 'applyDeadlineFriTime', label: '금요일', defaultTime: '22:00' },
+                          { key: 'applyDeadlineSatTime', label: '토요일', defaultTime: '22:00' },
+                          { key: 'applyDeadlineSunTime', label: '일요일', defaultTime: '12:00' },
+                        ].map(({ key, label, defaultTime }) => (
+                          <div key={key} className="alarm-block__control">
+                            <span className="alarm-block__control-label">{label} 알림</span>
+                            <Form.Control
+                              type="time"
+                              value={prefs[key]}
+                              onChange={(e) => setPrefs((p) => ({ ...p, [key]: e.target.value }))}
+                              onBlur={(e) =>
+                                saveTimePatch({ [key]: normalizeTime(e.target.value, defaultTime) })
+                              }
+                              className="custom-input alarm-times__input"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <div className="alarm-test">
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        className="fw-bold rounded-3"
+                        disabled={busy || !subscribed}
+                        onClick={handleTestAlarm}
+                      >
+                        {testing ? <Spinner as="span" animation="border" size="sm" /> : '테스트 알람'}
+                      </Button>
+                      <span className="alarm-test__hint">
+                        {subscribed
+                          ? '지금 알림이 오는지 확인해 보세요.'
+                          : '기기 연결이 끝난 뒤 사용할 수 있습니다.'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {showDeviceRecovery && (
+                  <div className="alarm-device">
+                    <div className="alarm-device__left">
+                      <span
+                        className={`alarm-device__dot ${permission === 'denied' || iosNeedsInstall || !supported ? 'alarm-device__dot--warn' : 'alarm-device__dot--off'}`}
+                        aria-hidden
+                      />
+                      <div>
+                        <div className="alarm-device__title">이 기기에서 받을 수 없음</div>
+                        <div className="alarm-device__status">{deviceStatusText}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <Button
+                        size="sm"
+                        variant="outline-primary"
+                        className="fw-bold rounded-3"
+                        disabled={busy || !supported || iosNeedsInstall || permission === 'denied'}
+                        onClick={handleConnect}
+                      >
+                        {pushBusy ? <Spinner as="span" animation="border" size="sm" /> : '다시 받기'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {saving && (
+                  <div className="alarm-saving">
+                    <Spinner animation="border" size="sm" /> 저장 중…
+                  </div>
+                )}
               </div>
             )}
           </fieldset>
-        )}
-
-        {/* 이 기기 상태 */}
-        <div
-          className="p-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2"
-          style={{ backgroundColor: 'var(--color-input-bg)', border: '1px solid var(--color-input-border)' }}
-        >
-          <div className="small" style={{ color: 'var(--color-input-text)' }}>
-            <strong>이 기기</strong>
-            <span className="text-muted ms-2">
-              {subscribed ? '알람 수신 중' : '미등록'}
-              {permission === 'granted' && ' · 권한 허용'}
-              {permission === 'denied' && ' · 권한 거부'}
-              {permission === 'default' && ' · 권한 미설정'}
-            </span>
-            <div className="text-muted mt-1" style={{ fontSize: '0.8rem' }}>
-              다른 기기에서도 알람을 켜면 그 기기가 함께 등록됩니다.
-            </div>
-          </div>
-          <div className="d-flex gap-2">
-            {subscribed ? (
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                className="fw-bold rounded-3"
-                disabled={busy || !supported}
-                onClick={handleDisconnect}
-              >
-                {pushBusy ? <Spinner as="span" animation="border" size="sm" /> : '이 기기만 해제'}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline-primary"
-                className="fw-bold rounded-3"
-                disabled={busy || !supported || iosNeedsInstall || permission === 'denied' || !alarmsOn}
-                onClick={handleConnect}
-              >
-                {pushBusy ? <Spinner as="span" animation="border" size="sm" /> : '다시 받기'}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {saving && (
-          <div className="text-muted small mt-3 d-flex align-items-center gap-2">
-            <Spinner animation="border" size="sm" /> 저장 중…
-          </div>
         )}
       </Card.Body>
     </Card>

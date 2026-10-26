@@ -220,7 +220,6 @@ public class AlarmDispatchService {
     /**
      * 개발/검증용: 로그인 본인 구독으로 테스트 푸시 1회. AlarmSendLog에 남기지 않음.
      */
-    @Transactional(readOnly = true)
     public void sendTestPush(String userId) {
         if (!webPushSender.isReady()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "웹 푸시가 아직 설정되지 않았습니다.");
@@ -231,6 +230,12 @@ public class AlarmDispatchService {
         List<PushSubscriptionEntity> subs = pushSubscriptionRepository.findByUser_UserIdx(userIdx);
         if (subs.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록된 푸시 구독이 없습니다.");
+        }
+        // endpoint/keys를 트랜잭션 밖에서 쓸 수 있게 필드 접근을 강제
+        for (PushSubscriptionEntity sub : subs) {
+            sub.getEndpoint();
+            sub.getP256dh();
+            sub.getAuth();
         }
         sendToSubscriptions(subs, "테스트 알람", "웹 푸시가 정상적으로 연결되었습니다.", "/mypage");
     }

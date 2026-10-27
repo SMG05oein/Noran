@@ -65,7 +65,7 @@ export async function ensureNotificationPermission() {
     throw new Error('이 브라우저는 웹 푸시를 지원하지 않습니다.');
   }
   if (needsIosPwaInstall()) {
-    throw new Error('iOS에서는 홈 화면에 추가한 앱에서만 알람을 받을 수 있습니다.');
+    throw new Error('iOS에서는 홈 화면에 추가한 앱에서만 알림을 받을 수 있습니다.');
   }
   if (Notification.permission === 'granted') return 'granted';
   if (Notification.permission === 'denied') {
@@ -96,7 +96,7 @@ export async function subscribeWebPush(vapidPublicKey, options = {}) {
     throw new Error('이 브라우저는 웹 푸시를 지원하지 않습니다.');
   }
   if (needsIosPwaInstall()) {
-    throw new Error('iOS에서는 홈 화면에 추가한 앱에서만 알람을 받을 수 있습니다.');
+    throw new Error('iOS에서는 홈 화면에 추가한 앱에서만 알림을 받을 수 있습니다.');
   }
   if (!vapidPublicKey) {
     throw new Error('VAPID 공개키가 없습니다.');

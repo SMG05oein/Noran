@@ -65,9 +65,9 @@ const PrivacyPolicyContent = () => {
                 </td>
               </tr>
               <tr>
-                <td><strong>근무 관련 웹 푸시 알람</strong><br />(근무 기록 누락·배정 확정·신청 마감 안내)</td>
+                <td><strong>근무 관련 웹 푸시 알림</strong><br />(근무 기록 누락·배정 확정·신청 마감 안내)</td>
                 <td><strong>(선택)</strong> 웹 푸시 구독 정보(endpoint, keys)</td>
-                <td className="text-center"><strong>알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기</strong></td>
+                <td className="text-center"><strong>알림 해제 또는 퇴사·탈퇴 시 지체 없이 파기</strong></td>
                 <td className="text-center">정보주체의 동의 (개인정보보호법 제15조 제1항 제1호)<br /><span className="small text-muted">미사용 시 서비스 이용에 불이익 없음</span></td>
               </tr>
             </tbody>
@@ -279,7 +279,7 @@ const PrivacyPolicyContent = () => {
               content: (
                 <ul className="mb-0 ps-3 mt-1">
                   <li>
-                    <strong>개정 사유:</strong> 근무 관련 웹 푸시 알람 기능 도입에 따라, 선택 수집 항목으로 웹 푸시 구독 정보(endpoint, keys)를 추가하고 보유·파기 기준(알람 해제 또는 퇴사·탈퇴 시 지체 없이 파기)을 명시함
+                    <strong>개정 사유:</strong> 근무 관련 웹 푸시 알림 기능 도입에 따라, 선택 수집 항목으로 웹 푸시 구독 정보(endpoint, keys)를 추가하고 보유·파기 기준(알림 해제 또는 퇴사·탈퇴 시 지체 없이 파기)을 명시함
                   </li>
                 </ul>
               )

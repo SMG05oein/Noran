@@ -78,7 +78,7 @@ const AlarmSettingsCard = () => {
       };
       setPrefs(withMaster(loaded, anyEnabled(loaded)));
     } else {
-      setMsg({ type: 'danger', text: res.error || '알람 설정을 불러오지 못했습니다.' });
+      setMsg({ type: 'danger', text: res.error || '알림 설정을 불러오지 못했습니다.' });
     }
     setLoading(false);
   }, []);
@@ -152,7 +152,7 @@ const AlarmSettingsCard = () => {
 
     if (enabled && !subscribed) {
       if (iosNeedsInstall) {
-        warnMsg = '설정은 저장되지만, iOS는 홈 화면 추가 후 이 기기에서 알람을 받을 수 있습니다.';
+        warnMsg = '설정은 저장되지만, iOS는 홈 화면 추가 후 이 기기에서 알림을 받을 수 있습니다.';
       } else if (!supported) {
         warnMsg = '설정은 저장되지만, 이 브라우저는 웹 푸시를 지원하지 않아 수신할 수 없습니다.';
       } else if (permission === 'denied') {
@@ -201,14 +201,14 @@ const AlarmSettingsCard = () => {
     const res = await sendTestAlarm();
     setTesting(false);
     if (res.success) {
-      setMsg({ type: 'success', text: res.data?.message || '테스트 알람을 보냈습니다. 알림을 확인해 주세요.' });
+      setMsg({ type: 'success', text: res.data?.message || '테스트 알림을 보냈습니다. 알림을 확인해 주세요.' });
     } else {
-      setMsg({ type: 'danger', text: res.error || '테스트 알람 발송에 실패했습니다.' });
+      setMsg({ type: 'danger', text: res.error || '테스트 알림 발송에 실패했습니다.' });
     }
   };
 
   const busy = loading || saving || pushBusy || testing;
-  // 알람은 켜졌는데 이 기기 구독이 없을 때만 (거부·실패·iOS 등)
+  // 알림은 켜졌는데 이 기기 구독이 없을 때만 (거부·실패·iOS 등)
   const showDeviceRecovery = alarmsOn && !subscribed;
 
   useEffect(() => {
@@ -217,7 +217,7 @@ const AlarmSettingsCard = () => {
 
   const deviceStatusText = (() => {
     if (permission === 'denied') return '알림 권한이 거부되어 있습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
-    if (iosNeedsInstall) return '홈 화면에 추가한 앱에서만 알람을 받을 수 있습니다.';
+    if (iosNeedsInstall) return '홈 화면에 추가한 앱에서만 알림을 받을 수 있습니다.';
     if (!supported) return '이 브라우저는 웹 푸시를 지원하지 않습니다.';
     return '이 기기 등록에 실패했습니다. 「다시 받기」로 다시 시도해 주세요.';
   })();
@@ -241,14 +241,14 @@ const AlarmSettingsCard = () => {
               >
                 <RiArrowDownSLine className={`alarm-bar__chevron${open ? ' alarm-bar__chevron--open' : ''}`} />
                 <RiNotification3Line className="alarm-bar__icon" />
-                <span className="alarm-bar__label">알람 설정</span>
+                <span className="alarm-bar__label">알림 설정</span>
               </button>
               <Form.Check
                 type="switch"
                 id="alarm-master"
                 checked={alarmsOn}
                 onChange={(e) => handleMasterToggle(e.target.checked)}
-                aria-label="알람 허용"
+                aria-label="알림 허용"
                 className="alarm-bar__switch"
               />
             </div>
@@ -266,7 +266,7 @@ const AlarmSettingsCard = () => {
 
                 {iosNeedsInstall && (
                   <Alert variant="info" className="rounded-3 py-2 small mb-3">
-                    <div className="fw-bold mb-1">iPhone·iPad에서는 홈 화면 추가 후 알람을 받을 수 있습니다</div>
+                    <div className="fw-bold mb-1">iPhone·iPad에서는 홈 화면 추가 후 알림을 받을 수 있습니다</div>
                     <div className="d-flex align-items-start gap-1">
                       <RiShareForwardLine className="mt-1 flex-shrink-0" />
                       <span>Safari 하단 공유 버튼 → <strong>홈 화면에 추가</strong> 후, 추가된 앱에서 다시 켜 주세요.</span>
@@ -276,7 +276,7 @@ const AlarmSettingsCard = () => {
 
                 {!alarmsOn ? (
                   <p className="alarm-panel__hint">
-                    스위치를 켜면 아래 세 가지 근무 알람을 모두 받습니다.
+                    스위치를 켜면 아래 세 가지 근무 알림을 모두 받습니다.
                   </p>
                 ) : (
                   <div className="alarm-blocks">
@@ -363,7 +363,7 @@ const AlarmSettingsCard = () => {
                         disabled={busy || !subscribed}
                         onClick={handleTestAlarm}
                       >
-                        {testing ? <Spinner as="span" animation="border" size="sm" /> : '테스트 알람'}
+                        {testing ? <Spinner as="span" animation="border" size="sm" /> : '테스트 알림'}
                       </Button>
                       <span className="alarm-test__hint">
                         {subscribed

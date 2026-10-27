@@ -130,7 +130,7 @@ export default function useWebPush() {
     }
   }, [endpoint, refresh]);
 
-  /** 알람 전체 OFF 시 계정 구독 전부 삭제 + 로컬 해제 */
+  /** 알림 전체 OFF 시 계정 구독 전부 삭제 + 로컬 해제 */
   const disconnectAllDevices = useCallback(async () => {
     setError('');
     try {

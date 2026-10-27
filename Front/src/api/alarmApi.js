@@ -22,7 +22,7 @@ export const fetchAlarmPreferences = async () => {
     const response = await apiClient.get(`${BASE}/preferences`);
     return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, error: errMsg(error, '알람 설정을 불러오지 못했습니다.'), status: error.response?.status };
+    return { success: false, error: errMsg(error, '알림 설정을 불러오지 못했습니다.'), status: error.response?.status };
   }
 };
 
@@ -31,7 +31,7 @@ export const updateAlarmPreferences = async (payload) => {
     const response = await apiClient.put(`${BASE}/preferences`, payload);
     return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, error: errMsg(error, '알람 설정 저장에 실패했습니다.'), status: error.response?.status };
+    return { success: false, error: errMsg(error, '알림 설정 저장에 실패했습니다.'), status: error.response?.status };
   }
 };
 
@@ -47,7 +47,7 @@ export const savePushSubscription = async (subscriptionJson) => {
     });
     return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, error: errMsg(error, '이 기기 알람 연결에 실패했습니다.'), status: error.response?.status };
+    return { success: false, error: errMsg(error, '이 기기 알림 연결에 실패했습니다.'), status: error.response?.status };
   }
 };
 
@@ -59,11 +59,11 @@ export const deletePushSubscription = async (endpoint) => {
     });
     return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, error: errMsg(error, '이 기기 알람 해제에 실패했습니다.'), status: error.response?.status };
+    return { success: false, error: errMsg(error, '이 기기 알림 해제에 실패했습니다.'), status: error.response?.status };
   }
 };
 
-/** 계정 전체 구독 삭제 (알람 전체 OFF) */
+/** 계정 전체 구독 삭제 (알림 전체 OFF) */
 export const deleteAllPushSubscriptions = async () => {
   try {
     const response = await apiClient.delete(`${BASE}/subscriptions/all`);
@@ -79,6 +79,6 @@ export const sendTestAlarm = async () => {
     const response = await apiClient.post(`${BASE}/test`);
     return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, error: errMsg(error, '테스트 알람 발송에 실패했습니다.'), status: error.response?.status };
+    return { success: false, error: errMsg(error, '테스트 알림 발송에 실패했습니다.'), status: error.response?.status };
   }
 };

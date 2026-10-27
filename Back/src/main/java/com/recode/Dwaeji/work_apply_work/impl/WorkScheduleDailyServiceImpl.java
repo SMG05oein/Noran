@@ -100,6 +100,25 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                 && Boolean.TRUE.equals(existing.getWsdIsConfirmed());
     }
 
+    /**
+     * 해당 주·지점에서 이미 확정 출근이 있던 유저.
+     * 확정 후 다른 요일을 새로 넣어도 "수정" 알람으로 보내기 위해 사용한다.
+     */
+    private Set<Long> usersWithConfirmedAttendance(
+            List<WorkScheduleDaily> existingSchedules, Long workPlaceIdx) {
+        Set<Long> users = new HashSet<>();
+        for (WorkScheduleDaily s : existingSchedules) {
+            if (!wasConfirmedAttendance(s) || s.getUser() == null) {
+                continue;
+            }
+            if (!workPlaceIdx.equals(resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser()))) {
+                continue;
+            }
+            users.add(s.getUser().getUserIdx());
+        }
+        return users;
+    }
+
     /** CONFIRM 알람용: 신규이거나 상태/시각/확정/오픈·마감/지점이 달라지면 변경 */
     private boolean isAttendanceConfirmChanged(
             WorkScheduleDaily existing,
@@ -201,7 +220,9 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         // 3. 새로 전달받은 배정과 비교 (Smart Update). 같은 날 다른 지점은 허용.
         List<WorkScheduleDaily> toSave = new ArrayList<>();
         Set<String> requestKeySet = new HashSet<>();
-        // CONFIRM 알람: 최초 확정 vs 확정 후 수정 구분
+        // CONFIRM 알람: 유저 단위로 최초 확정 vs 확정 후 수정 구분
+        // (같은 주에 이미 확정 출근이 있으면, 다른 요일을 새로 넣어도 "수정")
+        Set<Long> alreadyConfirmedUsers = usersWithConfirmedAttendance(existingSchedules, workPlaceIdx);
         Set<Long> newlyConfirmedUserIdxes = new HashSet<>();
         Set<Long> updatedAfterConfirmUserIdxes = new HashSet<>();
         for (WorkScheduleDailyRequestDto dto : dtos) {
@@ -256,7 +277,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                     && dto.getStatus() == ApplyStatus.출근
                     && confirmedFlag
                     && isAttendanceConfirmChanged(matched, dto.getStatus(), resolvedStart, wp, confirmedFlag, resolvedOpen, resolvedClose)) {
-                if (wasConfirmedAttendance(matched)) {
+                if (wasConfirmedAttendance(matched) || alreadyConfirmedUsers.contains(dto.getUserIdx())) {
                     updatedAfterConfirmUserIdxes.add(dto.getUserIdx());
                 } else {
                     newlyConfirmedUserIdxes.add(dto.getUserIdx());

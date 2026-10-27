@@ -183,6 +183,25 @@ public class DeveloperDashboardController {
         }
     }
 
+    @PostMapping("/test-server/restart")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<Map<String, Object>> testServerRestart(
+            @RequestBody DevAuthBodyDto body,
+            @AuthenticationPrincipal UserDetails user,
+            HttpServletRequest request) {
+        executorAuth.require(body.getId(), body.getPw());
+        String actor = user != null ? user.getUsername() : "unknown";
+        String ip = clientIp(request);
+        try {
+            Map<String, Object> result = testServerControlService.restart();
+            auditService.record("dashboard", actor, "test-server-restart", true, "ok", ip);
+            return ResponseEntity.ok(result);
+        } catch (ResponseStatusException e) {
+            auditService.record("dashboard", actor, "test-server-restart", false, e.getReason(), ip);
+            throw e;
+        }
+    }
+
     @PostMapping("/test-server/deploy")
     @PreAuthorize("hasRole('DEVELOPER')")
     public ResponseEntity<Map<String, Object>> testServerDeploy(

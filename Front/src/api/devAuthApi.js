@@ -318,6 +318,15 @@ export const stopTestServer = async (id, pw) => {
   }
 };
 
+export const restartTestServer = async (id, pw) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/dashboard/test-server/restart`, { id, pw });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: extractError(error, '테스트 서버 재실행에 실패했습니다.') };
+  }
+};
+
 export const deployTestServer = async (id, pw) => {
   try {
     const response = await devApiClient.post(`${addUrl}/dashboard/test-server/deploy`, { id, pw });

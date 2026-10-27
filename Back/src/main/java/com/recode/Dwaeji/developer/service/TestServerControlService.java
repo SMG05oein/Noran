@@ -108,6 +108,10 @@ public class TestServerControlService {
         return mutate("stop");
     }
 
+    public Map<String, Object> restart() {
+        return mutate("restart");
+    }
+
     public Map<String, Object> deploy() {
         return mutate("deploy");
     }
@@ -169,7 +173,7 @@ public class TestServerControlService {
     }
 
     private ScriptResult runScript(String cmd) throws Exception {
-        if (!List.of("status", "start", "stop", "deploy").contains(cmd)) {
+        if (!List.of("status", "start", "stop", "restart", "deploy").contains(cmd)) {
             throw new IllegalArgumentException("invalid cmd: " + cmd);
         }
         Path script = Path.of(scriptPath);

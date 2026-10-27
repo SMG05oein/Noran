@@ -9,6 +9,7 @@ import {
   fetchTestServerStatus,
   startTestServer,
   stopTestServer,
+  restartTestServer,
   deployTestServer,
 } from '../api/devAuthApi';
 import { Modal, Form, Alert, Spinner, Button } from 'react-bootstrap';
@@ -80,7 +81,7 @@ const DevMain = () => {
   const [testServerMsg, setTestServerMsg] = useState('');
   const [testServerBusy, setTestServerBusy] = useState(false);
   const [showExecModal, setShowExecModal] = useState(false);
-  const [execAction, setExecAction] = useState(null); // start | stop | deploy
+  const [execAction, setExecAction] = useState(null); // start | stop | restart | deploy
   const [execId, setExecId] = useState('');
   const [execPw, setExecPw] = useState('');
   const [execError, setExecError] = useState('');
@@ -136,14 +137,16 @@ const DevMain = () => {
     const runner =
       execAction === 'start' ? startTestServer
         : execAction === 'stop' ? stopTestServer
-          : deployTestServer;
+          : execAction === 'restart' ? restartTestServer
+            : deployTestServer;
     const res = await runner(execId, execPw);
     if (res.success) {
       setTestServer(res.data);
       setTestServerMsg(
         execAction === 'start' ? '테스트 서버를 실행했습니다.'
           : execAction === 'stop' ? '테스트 서버를 중지했습니다.'
-            : '테스트 서버 JAR를 재기동했습니다.'
+            : execAction === 'restart' ? '테스트 서버를 재실행했습니다.'
+              : '테스트 서버 JAR를 재기동했습니다.'
       );
       setShowExecModal(false);
     } else {
@@ -470,6 +473,15 @@ const DevMain = () => {
                   <button
                     type="button"
                     className="dc-btn"
+                    disabled={testServerBusy || testServer?.controlAvailable === false || !testServer?.jarExists}
+                    onClick={() => openExecModal('restart')}
+                    title="현재 JAR 그대로 끄고 다시 켭니다 (env 수정 후 등)"
+                  >
+                    재실행
+                  </button>
+                  <button
+                    type="button"
+                    className="dc-btn"
                     disabled={testServerBusy || testServer?.controlAvailable === false}
                     onClick={() => openExecModal('deploy')}
                   >
@@ -747,7 +759,8 @@ const DevMain = () => {
           <Modal.Title className="fw-bold">
             {execAction === 'start' ? '테스트 서버 실행'
               : execAction === 'stop' ? '테스트 서버 끄기'
-                : '테스트 서버 JAR 재기동'}
+                : execAction === 'restart' ? '테스트 서버 재실행'
+                  : '테스트 서버 JAR 재기동'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>

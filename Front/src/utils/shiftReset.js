@@ -2,7 +2,9 @@ import { format, parseISO, getYear, getMonth, getDate, getDay } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
 
 export const openStartTimeForDate = (dateStr) => {
+  if (!dateStr) return '10:00';
   const dateObj = parseISO(dateStr);
+  if (Number.isNaN(dateObj.getTime())) return '10:00';
   const dayOfWeek = getDay(dateObj);
   const isHoli = isHoliday(getYear(dateObj), getMonth(dateObj) + 1, getDate(dateObj));
   return (dayOfWeek === 0 || dayOfWeek === 6 || isHoli) ? '10:00' : '16:00';

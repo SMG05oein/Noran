@@ -1,7 +1,7 @@
 /* Weekly assign — page-specific denser grid */
 
 .wat-page {
-  padding-bottom: 5.5rem;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .wat-branch-select {
@@ -490,6 +490,7 @@
   align-items: center;
   font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1.3;
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--color-info) 14%, var(--color-surface));
@@ -502,6 +503,7 @@
   align-items: center;
   font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1.3;
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--color-warning) 16%, var(--color-surface));
@@ -509,11 +511,38 @@
   border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
 }
 
+.wat-badge-assigned {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+
+.wat-badge-unassigned {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 14%, var(--color-surface));
+  color: var(--color-danger, #ef4444);
+  border: 1px solid color-mix(in srgb, var(--color-danger, #ef4444) 35%, transparent);
+}
+
 .wat-badge-unapplied {
   display: inline-flex;
   align-items: center;
   font-size: 0.72rem;
   font-weight: 600;
+  line-height: 1.3;
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-xs);
   background: var(--color-input-bg);
@@ -563,43 +592,539 @@
   height: 30px;
 }
 
-/* 426px 이하 (핸드폰 세로 등): 하루씩 확인하는 모바일 카드 뷰 */
-@media (max-width: 426px) {
+/* 450px 이하 (핸드폰 세로 등): 하루씩 확인하는 모바일 컴팩트 뷰 */
+@media (max-width: 450px) {
   .wat-desktop-grid {
     display: none !important;
   }
 
-  .wat-day-tabs {
-    display: flex !important;
+  .wat-desktop-actions {
+    display: none !important;
   }
 
-  .wat-mobile-list {
+  .wat-mobile-actions {
     display: flex !important;
+    width: 100%;
+    align-items: center;
+    gap: 0.45rem;
+    justify-content: space-between;
   }
 
-  .ui-toolbar-card {
-    padding: 0.75rem;
-    gap: 0.65rem;
+  .wat-mobile-more-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: var(--radius-sm) !important;
+    flex-shrink: 0;
+  }
+
+  .wat-mobile-draft-btn {
+    flex: 1 1 0 !important;
+    height: 44px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0 0.5rem !important;
+    font-size: 0.88rem !important;
+  }
+
+  .wat-mobile-confirm-btn {
+    flex: 1.3 1 0 !important;
+    height: 44px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0 0.5rem !important;
+    margin-left: 0.25rem !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* 상단 툴바 카드 압축 */
+  .wat-toolbar-card {
+    padding: 0.55rem 0.65rem !important;
+    gap: 0.45rem !important;
+    flex-direction: column !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .wat-toolbar-top-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
   }
 
   .wat-branch-select {
-    width: 100%;
+    flex: 0 0 auto !important;
+    min-width: 80px !important;
+    max-width: 110px !important;
+    width: auto !important;
+    padding: 4px 20px 4px 8px !important;
+    font-size: 0.82rem !important;
+    height: 34px !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
   }
 
   .ui-week-nav {
-    width: 100%;
-    justify-content: space-between;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    justify-content: flex-end !important;
+    gap: 2px !important;
+    padding: 2px 4px !important;
+    height: 34px !important;
+  }
+
+  .ui-week-label {
+    min-width: 0 !important;
+    padding: 1px 3px !important;
+    flex: 1 1 auto !important;
+    white-space: nowrap !important;
+  }
+
+  .ui-week-label-top {
+    font-size: 0.74rem !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+  }
+
+  .ui-week-label-bottom {
+    font-size: 0.64rem !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+  }
+
+  .ui-week-nav-arrow {
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .ui-this-week-btn {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 2px 6px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    height: 26px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+  }
+
+  .wat-toolbar-bottom-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
   }
 
   .wat-toolbar-day-filter {
     display: none !important;
   }
+
+  .wat-toolbar-status-filter {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+
+  .wat-toolbar-status-filter .segmented-filter-btn {
+    font-size: 0.74rem !important;
+    padding: 0.22rem 0.5rem !important;
+  }
+
+  .wat-mobile-only-applied-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 30px !important;
+    padding: 0 9px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-pill) !important;
+    border: 1px solid var(--color-border) !important;
+    background: var(--color-surface) !important;
+    color: var(--color-text-muted) !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .wat-mobile-only-applied-btn.is-active {
+    background: var(--color-primary-light) !important;
+    color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    font-weight: 800 !important;
+  }
+
+  /* 범례 한 줄 압축 */
+  .ui-legend {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 0.6rem !important;
+    font-size: 0.7rem !important;
+    justify-content: center !important;
+    padding-bottom: 0.15rem !important;
+    margin-bottom: 0.45rem !important;
+    scrollbar-width: none !important;
+  }
+
+  .ui-legend::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* 요일 바 sticky 고정 및 가로 7등분 */
+  .wat-day-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 2px !important;
+    position: sticky !important;
+    top: 54px !important;
+    z-index: 100 !important;
+    background: var(--color-surface) !important;
+    padding: 0.35rem 0.4rem !important;
+    margin: 0 -0.75rem 0.55rem -0.75rem !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+    overflow: hidden !important;
+  }
+
+  .wat-day-tab {
+    flex: none !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 0.3rem 0.1rem !important;
+    border-radius: var(--radius-xs) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-width: 1.5px !important;
+  }
+
+  .wat-tab-day-name {
+    font-size: 0.82rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .wat-tab-date {
+    font-size: 0.64rem !important;
+    line-height: 1.1 !important;
+    margin-top: 1px !important;
+  }
+
+  .wat-tab-chips {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    margin-top: 2px !important;
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  .wat-day-tab .wat-apply-chip,
+  .wat-day-tab .wat-peak-chip {
+    margin-top: 0 !important;
+    font-size: 0.58rem !important;
+    padding: 0 1px !important;
+    line-height: 1.25 !important;
+    border-radius: 2px !important;
+    white-space: nowrap !important;
+    width: 94% !important;
+    text-align: center !important;
+  }
+
+  .wat-day-tab.is-shortage {
+    border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-border)) !important;
+    background: color-mix(in srgb, var(--color-danger) 4%, var(--color-surface)) !important;
+  }
+
+  .wat-apply-chip.is-shortage {
+    background: var(--color-danger-bg) !important;
+    color: var(--color-danger) !important;
+    border-color: color-mix(in srgb, var(--color-danger) 40%, transparent) !important;
+    font-weight: 800 !important;
+  }
+
+  /* 알바생 컴팩트 행 목록 */
+  .wat-mobile-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+  }
+
+  .wat-mobile-row {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0.38rem 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    box-shadow: var(--shadow-xs);
+    min-height: 52px;
+  }
+
+  .wat-mobile-row:nth-child(even) {
+    background-color: color-mix(in srgb, var(--color-primary) 3.5%, var(--color-surface));
+  }
+
+  .wat-mobile-row.is-leave {
+    opacity: 0.72;
+  }
+
+  .wat-mobile-row-left {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .wat-mobile-name-line {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .wat-mobile-name-line .wat-worker-name {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--color-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 82px;
+  }
+
+  .wat-tag-mini {
+    font-size: 0.6rem !important;
+    padding: 0.12em 0.32em !important;
+    border-radius: 3px !important;
+  }
+
+  .wat-mobile-badge-line {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    flex-wrap: nowrap;
+  }
+
+  /* 비고 요약 라인 (전문 아님, 말줄임 + 탭 시 모달) */
+  .wat-mobile-remark-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 100%;
+    cursor: pointer;
+    margin-top: 2px;
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+    line-height: 1.2;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  .wat-mobile-remark-line:hover .wat-mobile-remark-text,
+  .wat-mobile-remark-line:focus-visible .wat-mobile-remark-text {
+    color: var(--color-primary);
+  }
+
+  .wat-mobile-remark-tag {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 0.6rem;
+    padding: 0.05rem 0.28rem;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    color: var(--color-primary);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
+    line-height: 1.1;
+  }
+
+  .wat-mobile-remark-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+
+  .wat-mini-remove-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--color-danger);
+    cursor: pointer;
+  }
+
+  .wat-mobile-row-right {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    flex-shrink: 0;
+  }
+
+  .wat-mobile-shift-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* 오픈/마감 토글 칩 (터치 44px) */
+  .wat-toggle-chip {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 0.35rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    background: var(--color-input-bg);
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .wat-toggle-chip.wat-chip-open.is-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(var(--color-primary-rgb), 0.3);
+  }
+
+  .wat-toggle-chip.wat-chip-open.is-hint:not(.is-active) {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 30%, transparent);
+  }
+
+  .wat-toggle-chip.wat-chip-close.is-active {
+    background: #a855f7;
+    border-color: #a855f7;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(168, 85, 247, 0.3);
+  }
+
+  /* 시간/상태 트리거 버튼 (터치 44px) */
+  .wat-mobile-time-trigger {
+    min-width: 64px;
+    height: 44px;
+    padding: 0 0.45rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: var(--color-input-bg);
+    color: var(--color-text-main);
+    transition: all 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .wat-mobile-time-trigger.applied {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+  }
+
+  .wat-mobile-time-trigger.assigned {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    border-color: var(--color-success);
+  }
+
+  .wat-mobile-time-trigger.unassigned {
+    background: #3f342e;
+    color: #e5dcd6;
+    border-color: #55443a;
+  }
+
+  .wat-mobile-time-trigger.unapplied {
+    background: var(--color-input-bg);
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+  }
+
+  /* 되돌리기 버튼 (오픈 옆에 44px 터치 높이로 위치) */
+  .wat-mobile-reset-btn {
+    width: 32px;
+    height: 44px;
+    min-width: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-input-bg);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+  }
+
+  .wat-mobile-reset-btn:hover,
+  .wat-mobile-reset-btn:active {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+  }
 }
 
-/* 427px 이상 (Z플립/폴드 펼침, 태블릿, PC 등): 전체 주간 테이블 그리드 */
-@media (min-width: 427px) {
+/* 451px 이상 (태블릿, PC 등): 전체 주간 테이블 그리드 */
+@media (min-width: 451px) {
   .wat-desktop-grid {
     display: block !important;
+  }
+
+  .wat-desktop-actions {
+    display: flex !important;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .wat-mobile-actions,
+  .wat-mobile-only-applied-btn {
+    display: none !important;
+  }
+
+  .wat-toolbar-top-row,
+  .wat-toolbar-bottom-row {
+    display: contents;
   }
 
   .wat-day-tabs,
@@ -610,6 +1135,173 @@
   .wat-toolbar-day-filter {
     display: flex !important;
   }
+}
+
+/* Offcanvas Bottom Sheet Styling (모바일 전용 바텀시트) */
+.wat-more-offcanvas,
+.wat-time-offcanvas {
+  border-top-left-radius: 18px !important;
+  border-top-right-radius: 18px !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text-main) !important;
+  border-top: 1px solid var(--color-border) !important;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.16) !important;
+  z-index: 1055 !important;
+}
+
+.wat-more-offcanvas {
+  height: auto !important;
+  max-height: 85vh !important;
+}
+
+.wat-time-offcanvas {
+  height: auto !important;
+  max-height: 80vh !important;
+}
+
+.wat-sheet-drag-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  margin: 10px auto 4px;
+}
+
+.wat-sheet-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 0.75rem 0.9rem !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text-main) !important;
+  text-align: left !important;
+  transition: all 0.15s ease !important;
+}
+
+.wat-sheet-menu-item:hover,
+.wat-sheet-menu-item:active {
+  background: var(--color-surface-hover) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.wat-sheet-menu-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wat-sheet-menu-icon.is-green {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.wat-sheet-menu-icon.is-blue {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.wat-sheet-menu-icon.is-teal {
+  background: rgba(20, 184, 166, 0.12);
+  color: #14b8a6;
+}
+
+.wat-sheet-menu-icon.is-gray {
+  background: var(--color-input-bg);
+  color: var(--color-text-muted);
+}
+
+.wat-sheet-menu-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wat-sheet-menu-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--color-text-main);
+}
+
+.wat-sheet-menu-desc {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+
+/* 시간 바텀시트 프리셋 & 그리드 */
+.wat-time-sheet-presets {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem;
+}
+
+.wat-sheet-preset-btn {
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text-main);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wat-sheet-preset-btn.active-open {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.wat-sheet-preset-btn.active-close {
+  background: #a855f7;
+  border-color: #a855f7;
+  color: #fff;
+}
+
+.wat-sheet-preset-btn.active-off {
+  background: #3f342e;
+  border-color: #55443a;
+  color: #fff;
+}
+
+.wat-time-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.wat-sheet-time-slot {
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wat-sheet-time-slot.is-selected {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+  font-weight: 800;
+}
+
+[data-bs-theme="dark"] .wat-sheet-preset-btn.active-off {
+  background: #6b5348;
+  border-color: #7d6356;
 }
 
 .wat-page.is-exporting .wat-desktop-grid {

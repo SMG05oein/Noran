@@ -248,17 +248,19 @@ const WorkCalendar = ({ mockRecords = [], selectedDate: externalSelectedDate, in
       {renderDays()}
       {renderCells()}
       
-      {/* 범례(Legend) 하단 카드 배치 */}
-      <div className="cal-legend-bar d-flex justify-content-center align-items-center gap-4 flex-wrap">
-        <span className="cal-legend-item">
-          <RiCheckboxCircleLine className="cal-icon-success" size={18} /> 근무 완료
-        </span>
-        <span className="cal-legend-item">
-          <RiCalendarCheckLine className="cal-icon-primary" size={18} /> 출근
-        </span>
-        <span className="cal-legend-item">
-          <RiErrorWarningLine className="cal-icon-danger" size={18} /> 미기재
-        </span>
+      {/* 범례(Legend) 하단 캡슐 안내 바 배치 */}
+      <div className="cal-legend-wrapper d-flex justify-content-center w-100">
+        <div className="cal-legend-bar">
+          <span className="cal-legend-item">
+            <RiCheckboxCircleLine className="cal-icon-success" size={18} /> 근무 완료
+          </span>
+          <span className="cal-legend-item">
+            <RiCalendarCheckLine className="cal-icon-primary" size={18} /> 출근
+          </span>
+          <span className="cal-legend-item">
+            <RiErrorWarningLine className="cal-icon-danger" size={18} /> 미기재
+          </span>
+        </div>
       </div>
     </div>
   );

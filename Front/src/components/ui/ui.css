@@ -116,6 +116,10 @@
 .ui-week-nav-arrow {
   color: var(--color-text-main) !important;
   text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
 }
 
 .ui-week-label {
@@ -129,16 +133,19 @@
   cursor: pointer;
   padding: 0.2rem 0.45rem;
   color: var(--color-text-main);
+  white-space: nowrap;
 }
 
 .ui-week-label-top {
   font-size: 0.78rem;
   color: var(--color-primary);
+  white-space: nowrap;
 }
 
 .ui-week-label-bottom {
   font-size: 0.8rem;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .ui-this-week-btn {
@@ -146,6 +153,8 @@
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   line-height: 1.4;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .ui-action-bar {

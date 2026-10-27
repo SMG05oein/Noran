@@ -3,6 +3,24 @@ import { Modal, Button, Badge } from 'react-bootstrap';
 
 export const releaseHistory = [
   {
+    version: '0.9.20',
+    date: '2026-10-27',
+    features: [
+      '모바일 환경에 맞춘 UI/UX 변경'
+    ],
+    fixes: [
+    ]
+  },
+  {
+    version: '0.9.19',
+    date: '2026-10-25',
+    features: [
+      '약관들 변경'
+    ],
+    fixes: [
+    ]
+  },
+  {
     version: '0.9.18',
     date: '2026-10-25',
     features: [

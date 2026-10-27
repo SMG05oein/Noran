@@ -34,12 +34,12 @@ out/
 .cursor/
 .editorconfig
 
-### Docs (README¸¸ ÃßÀû) ###
+### Docs (READMEï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½) ###
 *.md
 !README.md
 HELP.md
 
-### Secrets / credentials (Àý´ë Ä¿¹Ô ±ÝÁö) ###
+### Secrets / credentials (ï¿½ï¿½ï¿½ï¿½ Ä¿ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½) ###
 secret
 secret_*
 secre*
@@ -52,8 +52,9 @@ Seckey
 .env
 .env.*
 
-### Deploy / ops scripts (È¯°æº¯¼ö¡¤°æ·Î Æ÷ÇÔ) ###
+### Deploy / ops scripts (È¯ï¿½æº¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½) ###
 deploy.sh
+deploy-test.sh
 watch_deploy.sh
 sync*
 
@@ -63,7 +64,7 @@ storage/
 excel-samples/
 excel-compare-qa.md
 
-### App config & security (·ÎÄÃ Àü¿ë) ###
+### App config & security (ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½) ###
 /src/main/resources/
 src/main/java/com/recode/Dwaeji/policy/
 **/JwtUtil.java

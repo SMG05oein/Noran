@@ -1,7 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDevAuthStore from '../store/useDevAuthStore';
-import { fetchSystemInfo, changeDevPassword, fetchAlertConfig, sendAlertTest } from '../api/devAuthApi';
+import {
+  fetchSystemInfo,
+  changeDevPassword,
+  fetchAlertConfig,
+  sendAlertTest,
+  fetchTestServerStatus,
+  startTestServer,
+  stopTestServer,
+  deployTestServer,
+} from '../api/devAuthApi';
 import { Modal, Form, Alert, Spinner, Button } from 'react-bootstrap';
 import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend,
@@ -67,6 +76,21 @@ const DevMain = () => {
   const [pwError, setPwError] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
 
+  const [testServer, setTestServer] = useState(null);
+  const [testServerMsg, setTestServerMsg] = useState('');
+  const [testServerBusy, setTestServerBusy] = useState(false);
+  const [showExecModal, setShowExecModal] = useState(false);
+  const [execAction, setExecAction] = useState(null); // start | stop | deploy
+  const [execId, setExecId] = useState('');
+  const [execPw, setExecPw] = useState('');
+  const [execError, setExecError] = useState('');
+
+  const refreshTestServer = async () => {
+    const res = await fetchTestServerStatus();
+    if (res.success) setTestServer(res.data);
+    else setTestServerMsg(res.error || '상태 조회 실패');
+  };
+
   useEffect(() => {
     let alive = true;
     const tick = async () => {
@@ -79,14 +103,55 @@ const DevMain = () => {
       const res = await fetchAlertConfig();
       if (alive && res.success) setAlertConfig(res.data);
     };
+    const loadTest = async () => {
+      const res = await fetchTestServerStatus();
+      if (alive && res.success) setTestServer(res.data);
+    };
     tick();
     loadAlerts();
-    const interval = setInterval(tick, 5000);
+    loadTest();
+    const interval = setInterval(() => {
+      tick();
+      loadTest();
+    }, 5000);
     return () => {
       alive = false;
       clearInterval(interval);
     };
   }, []);
+
+  const openExecModal = (action) => {
+    setExecAction(action);
+    setExecId('');
+    setExecPw('');
+    setExecError('');
+    setShowExecModal(true);
+  };
+
+  const handleExecConfirm = async () => {
+    if (!execAction) return;
+    setTestServerBusy(true);
+    setExecError('');
+    setTestServerMsg('');
+    const runner =
+      execAction === 'start' ? startTestServer
+        : execAction === 'stop' ? stopTestServer
+          : deployTestServer;
+    const res = await runner(execId, execPw);
+    if (res.success) {
+      setTestServer(res.data);
+      setTestServerMsg(
+        execAction === 'start' ? '테스트 서버를 실행했습니다.'
+          : execAction === 'stop' ? '테스트 서버를 중지했습니다.'
+            : '테스트 서버 JAR를 재기동했습니다.'
+      );
+      setShowExecModal(false);
+    } else {
+      setExecError(res.error || '요청에 실패했습니다.');
+    }
+    setTestServerBusy(false);
+    await refreshTestServer();
+  };
 
   const refreshAlertConfig = async () => {
     const res = await fetchAlertConfig();
@@ -319,6 +384,100 @@ const DevMain = () => {
                   부하 {health?.cpu?.systemLoadAverage ?? '—'}
                   {health?.cpu?.processCpuLoad != null
                     && ` · 프로세스 ${Math.round(health.cpu.processCpuLoad * 100)}%`}
+                </div>
+              </div>
+            </div>
+
+            <div className="dc-panel" style={{ marginBottom: '1rem' }}>
+              <div className="dc-panel-head">
+                <h2 className="dc-panel-title">테스트 서버</h2>
+                <button
+                  type="button"
+                  className="dc-btn"
+                  disabled={testServerBusy}
+                  onClick={() => refreshTestServer()}
+                >
+                  새로고침
+                </button>
+              </div>
+              <div className="dc-panel-body">
+                <dl className="dc-kv">
+                  <dt>상태</dt>
+                  <dd>
+                    {!testServer ? (
+                      <StatusPill unknown label="조회 중" />
+                    ) : testServer.controlAvailable === false ? (
+                      <StatusPill unknown label="이 인스턴스에서 제어 불가" />
+                    ) : (
+                      <StatusPill
+                        ok={!!testServer.running && !!testServer.healthy}
+                        tone={
+                          testServer.running && testServer.healthy ? 'ok'
+                            : testServer.running ? 'warn'
+                              : 'bad'
+                        }
+                        label={
+                          testServer.running && testServer.healthy ? '실행 중'
+                            : testServer.running ? '실행 중 · 헬스 실패'
+                              : '중지됨'
+                        }
+                      />
+                    )}
+                  </dd>
+                  <dt>포트 / PID</dt>
+                  <dd className="dc-mono">
+                    {testServer?.port ?? '8082'}
+                    {testServer?.pid ? ` · PID ${testServer.pid}` : ''}
+                  </dd>
+                  <dt>URL</dt>
+                  <dd>
+                    {testServer?.wwwUrl ? (
+                      <a href={testServer.wwwUrl} target="_blank" rel="noreferrer">{testServer.wwwUrl}</a>
+                    ) : 'https://testwww.dwaeji.kr'}
+                    {' · '}
+                    {testServer?.apiUrl ? (
+                      <a href={testServer.apiUrl} target="_blank" rel="noreferrer">{testServer.apiUrl}</a>
+                    ) : 'https://testapi.dwaeji.kr'}
+                  </dd>
+                  <dt>스크립트</dt>
+                  <dd className="dc-mono">{testServer?.script || '/home/opc/deploy-test.sh'}</dd>
+                </dl>
+                {testServerMsg && (
+                  <div
+                    className={`dc-alert ${testServerMsg.includes('실패') ? 'dc-alert-bad' : 'dc-alert-ok'}`}
+                    style={{ marginTop: '0.75rem' }}
+                  >
+                    {testServerMsg}
+                  </div>
+                )}
+                <div className="dc-ops-bar" style={{ marginTop: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="dc-btn dc-btn-accent"
+                    disabled={testServerBusy || testServer?.controlAvailable === false || !!testServer?.running}
+                    onClick={() => openExecModal('start')}
+                  >
+                    실행
+                  </button>
+                  <button
+                    type="button"
+                    className="dc-btn"
+                    disabled={testServerBusy || testServer?.controlAvailable === false || !testServer?.running}
+                    onClick={() => openExecModal('stop')}
+                  >
+                    끄기
+                  </button>
+                  <button
+                    type="button"
+                    className="dc-btn"
+                    disabled={testServerBusy || testServer?.controlAvailable === false}
+                    onClick={() => openExecModal('deploy')}
+                  >
+                    JAR 재기동
+                  </button>
+                  <span className="dc-ops-hint">
+                    executor ID/PW 필요. basic auth는 서버 `/etc/nginx/.htpasswd-testwww` 에서 설정.
+                  </span>
                 </div>
               </div>
             </div>
@@ -577,6 +736,54 @@ const DevMain = () => {
               <Button variant="secondary" onClick={() => setShowPwModal(false)}>취소</Button>
               <Button variant="success" type="submit" disabled={pwLoading}>
                 {pwLoading ? <Spinner animation="border" size="sm" /> : '변경'}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+
+      <Modal show={showExecModal} onHide={() => !testServerBusy && setShowExecModal(false)} centered>
+        <Modal.Header closeButton={!testServerBusy}>
+          <Modal.Title className="fw-bold">
+            {execAction === 'start' ? '테스트 서버 실행'
+              : execAction === 'stop' ? '테스트 서버 끄기'
+                : '테스트 서버 JAR 재기동'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {execError && <Alert variant="danger">{execError}</Alert>}
+          <p className="text-muted small mb-3">운영 보호용 executor ID / PW를 입력하세요.</p>
+          <Form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleExecConfirm();
+            }}
+          >
+            <Form.Group className="mb-3">
+              <Form.Label>Executor ID</Form.Label>
+              <Form.Control
+                value={execId}
+                onChange={(e) => setExecId(e.target.value)}
+                autoComplete="username"
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-4">
+              <Form.Label>Executor PW</Form.Label>
+              <Form.Control
+                type="password"
+                value={execPw}
+                onChange={(e) => setExecPw(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </Form.Group>
+            <div className="d-flex justify-content-end gap-2">
+              <Button variant="secondary" disabled={testServerBusy} onClick={() => setShowExecModal(false)}>
+                취소
+              </Button>
+              <Button variant="success" type="submit" disabled={testServerBusy}>
+                {testServerBusy ? <Spinner animation="border" size="sm" /> : '확인'}
               </Button>
             </div>
           </Form>

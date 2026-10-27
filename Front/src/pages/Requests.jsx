@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Card, Form, Button, Modal, Table, Alert, Dropdown, ButtonGroup } from 'react-bootstrap';
 import { format, startOfWeek, addDays, subMonths, addMonths, parseISO, getDay } from 'date-fns';
 import { isHoliday } from 'holiday-kr';
-import { RiFileList3Line, RiEyeLine, RiAddLine, RiDeleteBinLine } from 'react-icons/ri';
+import { RiFileList3Line, RiEyeLine, RiAddLine, RiDeleteBinLine, RiInformationLine } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { getMonthlyWorkApplyWorks, saveWorkApply, updateWorkApply } from '../api/workApi';
@@ -66,6 +66,22 @@ const BatchApplyBar = ({ onBatch }) => (
   </div>
 );
 
+const PlaceChipSelect = ({ workPlaces, value, onChange }) => (
+  <div className="req-place-chip-wrapper">
+    <select
+      className="req-place-select-chip"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label="근무지 선택"
+    >
+      {workPlaces.length === 0 && <option value="">지점 불러오는 중…</option>}
+      {workPlaces.map(wp => (
+        <option key={wp.wpIdx} value={wp.wpIdx}>{wp.wpName}</option>
+      ))}
+    </select>
+  </div>
+);
+
 const PlaceSelect = ({ workPlaces, value, onChange }) => (
   <Form.Group className="mb-3">
     <Form.Label className="fw-bold text-muted small mb-1">근무지</Form.Label>
@@ -82,50 +98,63 @@ const PlaceSelect = ({ workPlaces, value, onChange }) => (
   </Form.Group>
 );
 
-const ApplyWeekGrid = ({ monday, block, onToggleType }) => {
+const ApplyWeekList = ({ monday, block, onToggleType }) => {
   if (!block) return null;
   return (
-    <div className="req-week-scroll">
-      <div className="req-split-grid">
-        {DAYS_ORDER.map((day, i) => {
-          const date = addDays(monday, i);
-          const dayNum = getDay(date);
-          const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
-          const isSat = dayNum === 6 && !isHoly;
-          const applied = block.days[day];
-          const isOpen = applied && block.openShift[day];
-          const isNormal = applied && !isOpen;
-          const colClass = isOpen ? 'has-open' : isNormal ? 'has-applied' : '';
+    <div className="req-vertical-list d-flex flex-column gap-2 mb-3">
+      {DAYS_ORDER.map((day, i) => {
+        const date = addDays(monday, i);
+        const dayNum = getDay(date);
+        const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
+        const isSat = dayNum === 6 && !isHoly;
+        const applied = block.days[day];
+        const isOpen = applied && block.openShift[day];
+        const isNormal = applied && !isOpen;
 
-          return (
-            <div key={day} className={`req-split-col ${colClass}`}>
-              <div className={`req-week-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
+        return (
+          <div
+            key={day}
+            className={`req-vertical-row d-flex align-items-center justify-content-between ${
+              isOpen ? 'row-open' : isNormal ? 'row-normal' : ''
+            }`}
+          >
+            <div className="req-row-date d-flex align-items-center gap-2">
+              <span className={`req-row-day-name fw-bolder ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
                 {DAY_LABELS[dayNum]}
-              </div>
-              <div className="req-week-day-date mb-1">{format(date, 'd')}</div>
-              <div className="req-split-btn-group">
-                <button
-                  type="button"
-                  className={`req-split-btn ${isNormal ? 'active-normal' : ''}`}
-                  onClick={() => onToggleType(day, 'NORMAL')}
-                >
-                  신청
-                </button>
-                <button
-                  type="button"
-                  className={`req-split-btn ${isOpen ? 'active-open' : ''}`}
-                  onClick={() => onToggleType(day, 'OPEN')}
-                >
-                  오픈
-                </button>
-              </div>
+              </span>
+              <span className="req-row-day-number fw-bold text-muted">
+                {format(date, 'd')}
+              </span>
             </div>
-          );
-        })}
-      </div>
+
+            <div className="req-row-btn-group d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className={`req-action-btn ${isNormal ? 'active-normal' : ''}`}
+                onClick={() => onToggleType(day, 'NORMAL')}
+                aria-label={`${DAY_LABELS[dayNum]}요일 ${format(date, 'd')}일 일반 신청`}
+              >
+                신청
+              </button>
+              <button
+                type="button"
+                className={`req-action-btn ${isOpen ? 'active-open' : ''}`}
+                onClick={() => onToggleType(day, 'OPEN')}
+                aria-label={`${DAY_LABELS[dayNum]}요일 ${format(date, 'd')}일 오픈 신청`}
+              >
+                오픈
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
+
+const ApplyWeekGrid = ({ monday, block, onToggleType }) => (
+  <ApplyWeekList monday={monday} block={block} onToggleType={onToggleType} />
+);
 
 const isPublicAssignment = (s) =>
   (s?.wsdStatus === '출근' || s?.wsdStatus === '배정' || s?.wsdStatus === '타지점근무') && s?.wsdIsConfirmed === true;
@@ -148,6 +177,7 @@ const toDateStr = (value) => {
 const displayStatusLabel = (s) => {
   if (isPublicAssignment(s)) return '출근';
   if (s?.wsdStatus === '신청') return '신청';
+  if (s?.wsdStatus === '미출근' || s?.wsdStatus === '미배정') return '미배정';
   return '';
 };
 
@@ -184,6 +214,30 @@ const Requests = () => {
   const [globalRemarks, setGlobalRemarks] = useState('');
   const [editGlobalRemarks, setEditGlobalRemarks] = useState('');
   const [nextWeekAlreadyApplied, setNextWeekAlreadyApplied] = useState(false);
+
+  const [showHelpInfo, setShowHelpInfo] = useState(false);
+  const [showRemarks, setShowRemarks] = useState(false);
+  const [selectedCellDetail, setSelectedCellDetail] = useState(null);
+
+  const { totalAppliedDays, totalOpenDays } = useMemo(() => {
+    let normalCount = 0;
+    let openCount = 0;
+    requestBlocks.forEach(b => {
+      DAYS_ORDER.forEach(day => {
+        if (b.days[day]) {
+          if (b.openShift[day]) {
+            openCount++;
+          } else {
+            normalCount++;
+          }
+        }
+      });
+    });
+    return {
+      totalAppliedDays: normalCount + openCount,
+      totalOpenDays: openCount
+    };
+  }, [requestBlocks]);
 
   const refreshNextWeekApplied = async () => {
     const year = nextMonday.getFullYear();
@@ -561,59 +615,92 @@ const Requests = () => {
   };
 
   return (
-    <Container className="py-4 py-md-5 mb-5">
-      <PageHeader title="근무 신청" />
-      <p className="text-muted small mb-3" style={{ marginTop: '-0.35rem' }}>
-        각 요일의 [신청] 또는 [오픈] 버튼을 탭하여 간편하게 근무를 신청하세요. (선택된 버튼을 다시 누르면 취소됩니다)
-      </p>
+    <Container className="py-4 py-md-5 mb-5 req-container">
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <h2 className="page-title mb-0">근무 신청</h2>
+          <button
+            type="button"
+            className="req-info-toggle-btn text-muted"
+            onClick={() => setShowHelpInfo(prev => !prev)}
+            aria-label="근무 신청 안내 문구 보기"
+            title="근무 신청 안내"
+          >
+            <RiInformationLine size={22} />
+          </button>
+        </div>
+      </div>
+
+      {showHelpInfo && (
+        <Alert variant="info" dismissible onClose={() => setShowHelpInfo(false)} className="py-2 px-3 small mb-3">
+          각 요일의 [신청] 또는 [오픈] 버튼을 탭하여 간편하게 근무를 신청하세요. (선택된 버튼을 다시 누르면 취소됩니다)
+        </Alert>
+      )}
 
       <Card className="req-apply-card mb-4">
-        <Card.Body className="p-3 p-md-4">
+        <Card.Body className="p-0 p-md-4">
           <Form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <div className="req-apply-week-label">신청 주: {weekRangeLabel}</div>
+            {/* 신청 주와 근무지 선택 한 줄 배치 */}
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <div className="req-apply-week-label">
+                신청 주: <span style={{ color: 'var(--color-primary)' }}>{weekRangeLabel}</span>
+              </div>
+              <PlaceChipSelect
+                workPlaces={workPlaces}
+                value={requestBlocks[0]?.workPlaceIdx}
+                onChange={(wpIdx) => updateBlock(requestBlocks[0]?.id, 'workPlaceIdx', wpIdx)}
+              />
             </div>
 
-            {requestBlocks.map((block) => (
+            {requestBlocks.map((block, idx) => (
               <div key={block.id} className="req-apply-block mb-3">
                 {requestBlocks.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="position-absolute top-0 end-0 text-danger p-2"
-                    onClick={() => handleRemoveBlock(block.id)}
-                  >
-                    <RiDeleteBinLine size={20} />
-                  </Button>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="small fw-bold text-muted">지점 #{idx + 1}</span>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-danger p-0 fw-bold small text-decoration-none"
+                      onClick={() => handleRemoveBlock(block.id)}
+                    >
+                      <RiDeleteBinLine size={18} className="me-1" /> 삭제
+                    </Button>
+                  </div>
                 )}
 
-                <PlaceSelect
-                  workPlaces={workPlaces}
-                  value={block.workPlaceIdx}
-                  onChange={(wpIdx) => updateBlock(block.id, 'workPlaceIdx', wpIdx)}
-                />
+                {requestBlocks.length > 1 && (
+                  <PlaceSelect
+                    workPlaces={workPlaces}
+                    value={block.workPlaceIdx}
+                    onChange={(wpIdx) => updateBlock(block.id, 'workPlaceIdx', wpIdx)}
+                  />
+                )}
 
                 <BatchApplyBar
                   onBatch={(scope, type) => handleBatchApply(block.id, scope, type)}
                 />
 
-                <ApplyWeekGrid
+                <ApplyWeekList
                   monday={nextMonday}
                   block={block}
                   onToggleType={(day, type) => handleToggleBlockDayType(block.id, day, type)}
                 />
               </div>
             ))}
-            <Form.Group>
+
+            {/* 비고 입력 필드 바로 노출 */}
+            <Form.Group className="mb-3">
               <Form.Label className="fw-bold text-muted small">비고</Form.Label>
               <Form.Control
-                  type="text"
-                  value={globalRemarks}
-                  onChange={(e) => setGlobalRemarks(e.target.value)}
-                  className="custom-input mb-3"
-                  placeholder="해당 주간에 전달할 메모"
+                type="text"
+                value={globalRemarks}
+                onChange={(e) => setGlobalRemarks(e.target.value)}
+                className="custom-input"
+                placeholder="해당 주간에 전달할 메모"
               />
             </Form.Group>
+
+            {/* 타 지점 추가 신청하기 접이식 버튼 */}
             <Button
               type="button"
               variant="outline-secondary"
@@ -624,23 +711,35 @@ const Requests = () => {
             </Button>
 
             {nextWeekAlreadyApplied && (
-              <Alert variant="warning" className="py-2 small fw-bold">
+              <Alert variant="warning" className="py-2 small fw-bold mb-3">
                 이미 신청한 주입니다. 신규 제출 대신 아래 내역의 「수정」을 이용해 주세요.
               </Alert>
             )}
 
-            <Button disabled={loading || nextWeekAlreadyApplied} type="submit" className="w-100 py-3 fw-bold fs-6 btn-primary">
-              {loading ? '신청 중...' : nextWeekAlreadyApplied ? '이미 신청한 주' : '근무 신청서 제출하기'}
-            </Button>
+            {/* 하단 탭바 위 고정 제출 바 */}
+            <div className="req-sticky-submit-bar">
+              <div className="req-submit-summary text-center mb-1">
+                <span className="req-sum-normal fw-bold">신청 {totalAppliedDays}일</span>
+                <span className="mx-1 text-muted">·</span>
+                <span className="req-sum-open fw-bold">오픈 {totalOpenDays}일</span>
+              </div>
+              <Button
+                disabled={loading || nextWeekAlreadyApplied}
+                type="submit"
+                className="w-100 py-3 fw-bold fs-6 btn-primary req-submit-btn"
+              >
+                {loading ? '신청 중...' : nextWeekAlreadyApplied ? '이미 신청한 주' : '근무 신청서 제출하기'}
+              </Button>
+            </div>
           </Form>
         </Card.Body>
       </Card>
 
-      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
         <div className="d-flex align-items-center gap-2 fw-bold fs-5" style={{ color: 'var(--color-text-main)' }}>
           <RiFileList3Line style={{ color: 'var(--color-primary)' }} /> 내 신청 내역
         </div>
-        <Form.Select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="custom-month-select fw-bold w-auto">
+        <Form.Select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="custom-month-select fw-bold w-auto" aria-label="조회 월 선택">
           {[...Array(12)].map((_, i) => {
             const optDate = addDays(subMonths(new Date(), 6 - i), 0);
             const val = format(optDate, 'yyyy-MM');
@@ -663,6 +762,14 @@ const Requests = () => {
               const weekEnd = addDays(parseISO(monDate), 6);
               const uniqueApplyDates = new Set(weekSchs.map(s => toDateStr(s.date)));
               const assignedDaysCount = new Set(weekSchs.filter(isPublicAssignment).map(s => toDateStr(s.date))).size;
+              const pendingDaysCount = new Set(
+                weekSchs
+                  .filter(s => s.wsdStatus === '신청' && !isPublicAssignment(s))
+                  .map(s => toDateStr(s.date))
+              ).size;
+              const isWeekPartial = assignedDaysCount > 0 && pendingDaysCount > 0;
+              const isWeekConfirmed = assignedDaysCount > 0 && pendingDaysCount === 0;
+
               const weekCells = Array.from({ length: 7 }, (_, i) => {
                 const date = addDays(parseISO(monDate), i);
                 const dateStr = format(date, 'yyyy-MM-dd');
@@ -681,13 +788,17 @@ const Requests = () => {
                         <div className="req-history-range">
                           {format(parseISO(monDate), 'M/d')} – {format(weekEnd, 'M/d')}
                         </div>
-                        <div className="req-history-meta">
+                        <div className="req-history-meta mt-1">
                           신청 {uniqueApplyDates.size}일
-                          {assignedDaysCount > 0 ? ` · 출근 ${assignedDaysCount}일` : ' · 출근 대기'}
+                          {isWeekPartial
+                            ? ` · 임시 배정 (출근 ${assignedDaysCount}일 · 대기 ${pendingDaysCount}일)`
+                            : isWeekConfirmed
+                            ? ` · 출근 ${assignedDaysCount}일`
+                            : ' · 출근 대기'}
                         </div>
                       </div>
                       <div className="d-flex gap-2 flex-shrink-0">
-                        <Button variant="light" className="req-icon-btn p-2" onClick={() => setViewingRequest({ monDate, weekSchs })}>
+                        <Button variant="light" className="req-icon-btn p-2" onClick={() => setViewingRequest({ monDate, weekSchs })} aria-label="상세보기">
                           <RiEyeLine size={20} />
                         </Button>
                         {!weekSchs.some(isPublicAssignment) && (
@@ -698,87 +809,112 @@ const Requests = () => {
                       </div>
                     </div>
 
-                    <div className="req-week-scroll">
-                    <div className="req-week-grid">
-                      {weekCells.map(({ date, dateStr, slots }) => {
-                        const dayNum = getDay(date);
-                        const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
-                        const isSat = dayNum === 6 && !isHoly;
-                        return (
-                          <div key={dateStr} className="req-week-day">
-                            <div className={`req-week-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
-                              {DAY_LABELS[dayNum]}
-                            </div>
-                            <div className="req-week-day-date">{format(date, 'd')}</div>
-                            {slots.length === 0 ? (
-                              <div className="d-flex flex-column w-100 align-items-center" style={{ gap: '4px' }}>
-                                <div className="req-chip unapplied w-100">
-                                  <span className="req-chip-label">[신청 내역]</span>
-                                  미신청
-                                </div>
-                                <hr className="my-0 w-100" style={{ borderTop: '1px dashed var(--color-border)', opacity: 0.5 }} />
-                                <div className="req-chip unapplied w-100">
-                                  <span className="req-chip-label">[배정 결과]</span>
-                                  미신청
-                                </div>
+                    {/* 한 주 7칸 압축 표 */}
+                    <div className="req-compact-table-container">
+                      <div className="req-compact-grid">
+                        {/* 헤더 행 (Corner + 월~일 7칸) */}
+                        <div className="req-grid-cell req-grid-corner" />
+                        {weekCells.map(({ date, dateStr }) => {
+                          const dayNum = getDay(date);
+                          const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
+                          const isSat = dayNum === 6 && !isHoly;
+                          return (
+                            <div key={`h-${dateStr}`} className="req-grid-cell req-grid-header">
+                              <div className={`req-grid-day-name ${isHoly ? 'text-danger' : isSat ? 'text-primary' : ''}`}>
+                                {DAY_LABELS[dayNum]}
                               </div>
-                            ) : slots.map((s, idx) => {
-                              // 주 단위 확정 여부 확인 (해당 주의 다른 요일에 하나라도 확정된 배정이 있는지)
-                              const isWeekConfirmed = weekSchs.some(sch => sch.wsdIsConfirmed === true || sch.wsdConfirmed === true || sch.confirmed === true);
+                              <div className="req-grid-day-date">{format(date, 'd')}</div>
+                            </div>
+                          );
+                        })}
 
-                              // [상단] 원래 신청 내역 (Jackson 직렬화 문제 대응: isSelfApplied -> selfApplied)
-                              const selfAppliedFlag = s.isSelfApplied ?? s.selfApplied;
-                              const didApply = selfAppliedFlag ?? (s.applyWorkPlaceIdx != null || s.openApplied != null);
-                              const isOpApplied = s.openApplied === true || s.isOpen === true;
-                              const applyLabel = didApply 
-                                ? (isOpApplied ? (displayOpenTime({ wsdStartTime: '오픈' }, date) || '오픈') : '신청')
-                                : '미신청';
-                              const applyWpName = didApply ? (s.applyWorkPlaceName || s.wsdWorkPlaceName) : null;
-                              const showApplyWp = didApply && (slots.length > 1 || (s.applyWorkPlaceIdx && Number(s.applyWorkPlaceIdx) !== Number(user?.workPlaceIdx)));
-                              
-                              // [하단] 배정 결과
-                              let assignLabel = '-';
-                              let assignClass = 'empty';
-                              const isSlotConfirmed = s.wsdIsConfirmed === true || s.wsdConfirmed === true || s.confirmed === true;
-                              
-                              if (isSlotConfirmed && (s.wsdStatus === '출근' || s.wsdStatus === '배정' || s.wsdStatus === '타지점근무')) {
-                                assignLabel = displayOpenTime(s, date) || '출근';
-                                assignClass = 'work';
-                              } else if (isSlotConfirmed && (s.wsdStatus === '미출근' || s.wsdStatus === '미배정')) {
-                                assignLabel = '미배정';
-                                assignClass = 'rejected';
-                              } else if (isWeekConfirmed && didApply && (!s.wsdIdx || s.wsdStatus === '신청')) {
-                                // 이번 주가 '확정' 상태인데, 알바생이 신청한 요일에 배정 데이터(wsdIdx)가 없거나 상태가 '신청' 그대로라면 -> 반려(미배정)된 것임!
-                                assignLabel = '미배정';
-                                assignClass = 'rejected';
-                              } else if (s.wsdStatus === '신청' || !isSlotConfirmed) {
-                                assignLabel = '배정 대기';
-                                assignClass = 'applied';
-                              }
+                        {/* 1행: 신청 */}
+                        <div className="req-grid-cell req-grid-label">신청</div>
+                        {weekCells.map(({ date, dateStr, slots }) => {
+                          const appliedSlot = slots.find(s => {
+                            const selfApplied = s.isSelfApplied ?? s.selfApplied;
+                            return selfApplied ?? (s.applyWorkPlaceIdx != null || s.openApplied != null);
+                          });
+                          const isOpen = appliedSlot && (appliedSlot.openApplied === true || appliedSlot.isOpen === true);
+                          const isApplied = !!appliedSlot;
+                          const chipClass = isApplied ? (isOpen ? 'cell-open' : 'cell-applied') : 'cell-unapplied';
+                          const text = isApplied ? (isOpen ? '오픈' : '신청') : '–';
 
-                              const assignWpName = s.wsdWorkPlaceName;
-                              const showAssignWp = slots.length > 1 || (s.wsdWorkPlaceIdx && Number(s.wsdWorkPlaceIdx) !== Number(user?.workPlaceIdx));
+                          return (
+                            <button
+                              key={`app-${dateStr}`}
+                              type="button"
+                              className={`req-grid-cell req-data-cell ${chipClass}`}
+                              onClick={() => setSelectedCellDetail({
+                                date,
+                                type: 'APPLY',
+                                slot: appliedSlot,
+                                label: isApplied ? (isOpen ? '오픈 근무 신청' : '일반 근무 신청') : '신청 내역 없음'
+                              })}
+                              aria-label={`${format(date, 'M월 d일')} 신청 내역: ${text}`}
+                            >
+                              {text}
+                            </button>
+                          );
+                        })}
 
-                              return (
-                                <div key={`${dateStr}-${idx}`} className="d-flex flex-column w-100 align-items-center" style={{ gap: '4px' }}>
-                                  <div className={`req-chip ${didApply ? 'applied' : 'unapplied'} w-100`}>
-                                    <span className="req-chip-label">[신청 내역]</span>
-                                    {applyLabel}
-                                    {showApplyWp && applyWpName && <span className="req-chip-wp">{applyWpName}</span>}
-                                  </div>
-                                  <hr className="my-0 w-100" style={{ borderTop: '1px dashed var(--color-border)', opacity: 0.5 }} />
-                                  <div className={`req-chip ${assignClass} w-100`}>
-                                    <span className="req-chip-label">[배정 결과]</span>
-                                    {assignLabel}
-                                    {showAssignWp && assignWpName && assignClass !== 'rejected' && assignClass !== 'empty' && <span className="req-chip-wp">{assignWpName}</span>}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
+                        {/* 2행: 배정 */}
+                        <div className="req-grid-cell req-grid-label">배정</div>
+                        {weekCells.map(({ date, dateStr, slots }) => {
+                          const assignedSlot = slots.find(s => isPublicAssignment(s));
+                          const didApply = slots.some(s => {
+                            const selfApplied = s.isSelfApplied ?? s.selfApplied;
+                            return selfApplied ?? (s.applyWorkPlaceIdx != null || s.openApplied != null);
+                          });
+                          const hasPendingSlot = slots.some(s => s.wsdStatus === '신청');
+                          const hasOffSlot = slots.some(s => s.wsdStatus === '미출근' || s.wsdStatus === '미배정');
+                          const isRejected = !assignedSlot && (hasOffSlot || (isWeekConfirmed && didApply && !hasPendingSlot));
+                          const isPending = !assignedSlot && !isRejected && (hasPendingSlot || slots.some(s => s.wsdIsConfirmed !== true));
+
+                          let text = '–';
+                          let chipClass = 'cell-unapplied';
+                          let detailLabel = '배정 내역 없음';
+
+                          if (assignedSlot) {
+                            text = displayOpenTime(assignedSlot, date).split(' ')[0] || '출근';
+                            chipClass = 'cell-work';
+                            detailLabel = `${displayOpenTime(assignedSlot, date)} (${assignedSlot.wsdWorkPlaceName || '소속지점'})`;
+                          } else if (isPending && didApply) {
+                            text = '대기';
+                            chipClass = 'cell-pending';
+                            detailLabel = '배정 대기 중 (관리자 승인 대기)';
+                          } else if (isRejected) {
+                            text = '미배정';
+                            chipClass = 'cell-rejected';
+                            detailLabel = '미배정 (근무 미배정 처리됨)';
+                          }
+
+                          return (
+                            <button
+                              key={`assign-${dateStr}`}
+                              type="button"
+                              className={`req-grid-cell req-data-cell ${chipClass}`}
+                              onClick={() => setSelectedCellDetail({
+                                date,
+                                type: 'ASSIGN',
+                                slot: assignedSlot || slots[0],
+                                label: detailLabel
+                              })}
+                              aria-label={`${format(date, 'M월 d일')} 배정 결과: ${text}`}
+                            >
+                              {text}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* 표 하단 색상 범례 */}
+                      <div className="req-table-legend d-flex align-items-center justify-content-center gap-3 mt-2 flex-wrap">
+                        <span className="req-legend-item"><span className="legend-dot dot-pending" /> 신청/대기</span>
+                        <span className="req-legend-item"><span className="legend-dot dot-work" /> 배정 완료</span>
+                        <span className="req-legend-item"><span className="legend-dot dot-rejected" /> 미배정</span>
+                        <span className="req-legend-item"><span className="legend-dot dot-unapplied">–</span> 미신청</span>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
@@ -787,6 +923,35 @@ const Requests = () => {
           )}
         </div>
       )}
+
+      {/* 칸 탭 상세 안내 모달 */}
+      <Modal show={!!selectedCellDetail} onHide={() => setSelectedCellDetail(null)} centered size="sm">
+        <Modal.Header closeButton className="py-2">
+          <Modal.Title className="fs-6 fw-bold">
+            {selectedCellDetail && `${format(selectedCellDetail.date, 'M월 d일')} (${DAY_LABELS[getDay(selectedCellDetail.date)]}) 상세`}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="py-3 text-center">
+          <div className="fs-5 fw-bold mb-1" style={{ color: 'var(--color-primary)' }}>
+            {selectedCellDetail?.label}
+          </div>
+          {selectedCellDetail?.slot?.wsdWorkPlaceName && (
+            <div className="text-muted small mt-1">
+              근무 지점: {selectedCellDetail.slot.wsdWorkPlaceName}
+            </div>
+          )}
+          {selectedCellDetail?.slot?.applyWorkPlaceName && (
+            <div className="text-muted small mt-1">
+              신청 지점: {selectedCellDetail.slot.applyWorkPlaceName}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="py-1 justify-content-center border-0">
+          <Button variant="secondary" size="sm" onClick={() => setSelectedCellDetail(null)}>
+            닫기
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* 수정 모달 */}
       <Modal show={!!editTarget} onHide={() => setEditTarget(null)} centered size="lg">
@@ -879,7 +1044,7 @@ const Requests = () => {
                 return (
                   <tr key={s.wsdIdx || `${s.date}_${s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx}`}>
                     <td>{`${format(dateObj, 'MM/dd')} (${DAY_LABELS[getDay(dateObj)]})`}</td>
-                    <td><span className={`req-status-badge ${isPublicAssignment(s) ? 'work' : s.wsdStatus === '신청' ? 'applied' : 'muted'}`}>{displayStatusLabel(s)}</span></td>
+                    <td><span className={`req-status-badge ${isPublicAssignment(s) ? 'work' : s.wsdStatus === '신청' ? 'applied' : (s.wsdStatus === '미출근' || s.wsdStatus === '미배정') ? 'rejected' : 'muted'}`}>{displayStatusLabel(s)}</span></td>
                     <td>{isPublicAssignment(s) ? (displayOpenTime(s, dateObj) || '-') : '-'}</td>
                     <td>{s.wsdWorkPlaceName || s.applyWorkPlaceName || '-'}</td>
                   </tr>

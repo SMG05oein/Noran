@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final TrafficMonitorInterceptor trafficMonitorInterceptor;
+    private final CorsOriginsSupport corsOriginsSupport;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -35,7 +36,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/index.html", "/")
                 .addResourceLocations("classpath:/static/")
                 .setCacheControl(CacheControl.noStore().mustRevalidate());
-        // 2. JS, CSS, 이미지 등 정적 자원은 1년 등 길게 캐싱해도 됨 (어차피 파일명에 해시가 붙어 다름)
+        // 2. JS, CSS, 이미지 등 정적 자원은 길게 캐싱 (파일명 해시)
         registry.addResourceHandler("/assets/**")
                 .addResourceLocations("classpath:/static/assets/")
                 .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic());
@@ -44,12 +45,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins(
-                        "http://localhost:3000",
-                        "http://localhost:5173",
-                        "https://dwaeji.kr",
-                        "https://www.dwaeji.kr"
-                )
+                .allowedOrigins(corsOriginsSupport.origins().toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
@@ -61,11 +57,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:3000");
-        config.addAllowedOrigin("http://localhost:5173");
-        config.addAllowedOrigin("https://dwaeji.kr");
-        config.addAllowedOrigin("https://www.dwaeji.kr");
-        config.addAllowedOrigin("https://api.dwaeji.kr");
+        for (String origin : corsOriginsSupport.origins()) {
+            config.addAllowedOrigin(origin);
+        }
         config.addAllowedHeader("*");
         config.addAllowedMethod("GET");
         config.addAllowedMethod("POST");
@@ -77,10 +71,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         CorsFilter filter = new CorsFilter(source);
         FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(filter);
-        // 필터 체인에서 가장 먼저 실행되도록 설정 (스프링 시큐리티보다 앞서 동작해야 CORS Preflight 오류가 없음)
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        // 에러 발생 시(/error 포워딩)에도 CORS 헤더가 유지되도록 DispatcherType 추가
-        bean.setDispatcherTypes(jakarta.servlet.DispatcherType.REQUEST, jakarta.servlet.DispatcherType.ERROR, jakarta.servlet.DispatcherType.FORWARD, jakarta.servlet.DispatcherType.ASYNC);
+        bean.setDispatcherTypes(
+                jakarta.servlet.DispatcherType.REQUEST,
+                jakarta.servlet.DispatcherType.ERROR,
+                jakarta.servlet.DispatcherType.FORWARD,
+                jakarta.servlet.DispatcherType.ASYNC);
         return bean;
     }
 }

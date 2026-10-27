@@ -459,8 +459,8 @@ const AdminWeeklyAssign = () => {
     });
   };
 
-  const renderUsers = useMemo(() => {
-    let usersToShow = allUsers.filter(u => {
+  const baseWorkers = useMemo(() => {
+    return allUsers.filter(u => {
       if (!isActiveWorker(u)) return false;
       const uid = toUserIdx(u.userIdx || u.id);
       const wpIdx = resolveUserHomeWpIdx(u);
@@ -469,6 +469,24 @@ const AdminWeeklyAssign = () => {
       const isAdded = addedWorkerUserIdxs.some((id) => toUserIdx(id) === uid);
       return isHome || hasScheduleForHome || isAdded;
     });
+  }, [allUsers, currentWorkPlaceIdx, addedWorkerUserIdxs, branches, editSchedules]);
+
+  const sortWorkers = (list) => {
+    return [...list].sort((a, b) => {
+      const groupOf = (u) => {
+        if (isOnLeave(u)) return 2;
+        if (isOtherBranchWorker(u)) return 1;
+        return 0;
+      };
+      const ga = groupOf(a);
+      const gb = groupOf(b);
+      if (ga !== gb) return ga - gb;
+      return (a.userName || '').localeCompare(b.userName || '', 'ko');
+    });
+  };
+
+  const renderUsers = useMemo(() => {
+    let usersToShow = baseWorkers;
 
     if (filterType !== 'ALL' || dayFilter !== 'ALL') {
       usersToShow = usersToShow.filter(u => {
@@ -497,21 +515,8 @@ const AdminWeeklyAssign = () => {
       });
     }
 
-    // 본점 → 타지점 → 휴직(맨 밑), 같은 그룹 안에서는 이름순
-    usersToShow = [...usersToShow].sort((a, b) => {
-      const groupOf = (u) => {
-        if (isOnLeave(u)) return 2;
-        if (isOtherBranchWorker(u)) return 1;
-        return 0;
-      };
-      const ga = groupOf(a);
-      const gb = groupOf(b);
-      if (ga !== gb) return ga - gb;
-      return (a.userName || '').localeCompare(b.userName || '', 'ko');
-    });
-
-    return usersToShow;
-  }, [allUsers, editSchedules, currentWorkPlaceIdx, addedWorkerUserIdxs, filterType, dayFilter, weekDays, branches]);
+    return sortWorkers(usersToShow);
+  }, [baseWorkers, editSchedules, filterType, dayFilter, weekDays]);
 
   const otherBranchCandidates = useMemo(() => {
     const term = (workerSearchTerm || '').trim().toLowerCase();
@@ -967,17 +972,36 @@ const AdminWeeklyAssign = () => {
   };
 
   const mobileDisplayUsers = useMemo(() => {
-    if (!onlyApplied) return renderUsers;
-    return renderUsers.filter(u => {
-      const uid = toUserIdx(u.userIdx || u.id);
-      const dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
-      const firstShift = dayShifts[0];
-      if (!firstShift) return false;
-      const hadApply = !!(firstShift.originHadApply || firstShift.wsdStatus === '신청' || firstShift.originOpenApplied);
-      const isAttending = firstShift.wsdStatus === '출근' || !!firstShift.wsdStartTime || !!firstShift.wsdIsOpen || !!firstShift.wsdIsClose;
-      return hadApply || isAttending;
-    });
-  }, [renderUsers, onlyApplied, editSchedules, mobileDateStr]);
+    let list = baseWorkers;
+
+    // 1. 모바일 출퇴근 필터링: 현재 선택된 요일(mobileDateStr) 당일 기준으로 출근/미출근 판별
+    if (filterType !== 'ALL' && mobileDateStr) {
+      list = list.filter(u => {
+        const uid = toUserIdx(u.userIdx || u.id);
+        const dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
+        const isAttendingOnDay = dayShifts.some(s => s.wsdStatus === '출근' || s.status === '출근');
+
+        if (filterType === 'ATTENDING') return isAttendingOnDay;
+        if (filterType === 'NOT_ATTENDING') return !isAttendingOnDay;
+        return true;
+      });
+    }
+
+    // 2. 모바일 신청자만 보기 필터링: 현재 선택된 요일(mobileDateStr) 당일 기준
+    if (onlyApplied && mobileDateStr) {
+      list = list.filter(u => {
+        const uid = toUserIdx(u.userIdx || u.id);
+        const dayShifts = editSchedules[uid]?.[mobileDateStr] || [];
+        const firstShift = dayShifts[0];
+        if (!firstShift) return false;
+        const hadApply = !!(firstShift.originHadApply || firstShift.wsdStatus === '신청' || firstShift.originOpenApplied);
+        const isAttending = firstShift.wsdStatus === '출근' || !!firstShift.wsdStartTime || !!firstShift.wsdIsOpen || !!firstShift.wsdIsClose;
+        return hadApply || isAttending;
+      });
+    }
+
+    return sortWorkers(list);
+  }, [baseWorkers, editSchedules, mobileDateStr, filterType, onlyApplied]);
 
   const activeSheetShift = useMemo(() => {
     if (!mobileTimeSheet.show || !mobileTimeSheet.uid) return null;
@@ -1386,7 +1410,7 @@ const AdminWeeklyAssign = () => {
           className="wat-sticky-action-bar"
           right={
             <>
-              {/* 데스크톱(> 425px): 5개 버튼 전체 노출 */}
+              {/* 데스크톱(> 450px): 5개 버튼 전체 노출 */}
               <div className="wat-desktop-actions">
                 <Button variant="success" onClick={handleDownloadExcel} disabled={excelDownloading || loading}>
                   {excelDownloading ? <Spinner size="sm" className="me-1" /> : <RiDownload2Line className="me-1" />}
@@ -1425,7 +1449,7 @@ const AdminWeeklyAssign = () => {
                 </Button>
               </div>
 
-              {/* 모바일(<= 425px): 주요 액션 2개 + 더보기 바텀시트 트리거 */}
+              {/* 모바일(<= 450px): 주요 액션 2개 + 더보기 바텀시트 트리거 */}
               <div className="wat-mobile-actions">
                 <Button
                   variant="outline-secondary"

@@ -4,6 +4,7 @@ import com.recode.Dwaeji.developer.dto.DevAuthBodyDto;
 import com.recode.Dwaeji.developer.service.DevAuditService;
 import com.recode.Dwaeji.developer.service.DevExecutorAuth;
 import com.recode.Dwaeji.developer.service.DeveloperDashboardService;
+import com.recode.Dwaeji.developer.service.TestServerControlService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ public class DeveloperDashboardController {
     private static final Logger log = LoggerFactory.getLogger(DeveloperDashboardController.class);
 
     private final DeveloperDashboardService dashboardService;
+    private final TestServerControlService testServerControlService;
     private final DevExecutorAuth executorAuth;
     private final DevAuditService auditService;
     private final ConfigurableApplicationContext applicationContext;
@@ -134,6 +136,69 @@ public class DeveloperDashboardController {
         } catch (Exception e) {
             auditService.record("dashboard", actor, "redeploy", false, e.getMessage(), ip);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Deploy webhook failed: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/test-server")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<Map<String, Object>> testServerStatus() {
+        return ResponseEntity.ok(testServerControlService.status());
+    }
+
+    @PostMapping("/test-server/start")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<Map<String, Object>> testServerStart(
+            @RequestBody DevAuthBodyDto body,
+            @AuthenticationPrincipal UserDetails user,
+            HttpServletRequest request) {
+        executorAuth.require(body.getId(), body.getPw());
+        String actor = user != null ? user.getUsername() : "unknown";
+        String ip = clientIp(request);
+        try {
+            Map<String, Object> result = testServerControlService.start();
+            auditService.record("dashboard", actor, "test-server-start", true, "ok", ip);
+            return ResponseEntity.ok(result);
+        } catch (ResponseStatusException e) {
+            auditService.record("dashboard", actor, "test-server-start", false, e.getReason(), ip);
+            throw e;
+        }
+    }
+
+    @PostMapping("/test-server/stop")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<Map<String, Object>> testServerStop(
+            @RequestBody DevAuthBodyDto body,
+            @AuthenticationPrincipal UserDetails user,
+            HttpServletRequest request) {
+        executorAuth.require(body.getId(), body.getPw());
+        String actor = user != null ? user.getUsername() : "unknown";
+        String ip = clientIp(request);
+        try {
+            Map<String, Object> result = testServerControlService.stop();
+            auditService.record("dashboard", actor, "test-server-stop", true, "ok", ip);
+            return ResponseEntity.ok(result);
+        } catch (ResponseStatusException e) {
+            auditService.record("dashboard", actor, "test-server-stop", false, e.getReason(), ip);
+            throw e;
+        }
+    }
+
+    @PostMapping("/test-server/deploy")
+    @PreAuthorize("hasRole('DEVELOPER')")
+    public ResponseEntity<Map<String, Object>> testServerDeploy(
+            @RequestBody DevAuthBodyDto body,
+            @AuthenticationPrincipal UserDetails user,
+            HttpServletRequest request) {
+        executorAuth.require(body.getId(), body.getPw());
+        String actor = user != null ? user.getUsername() : "unknown";
+        String ip = clientIp(request);
+        try {
+            Map<String, Object> result = testServerControlService.deploy();
+            auditService.record("dashboard", actor, "test-server-deploy", true, "ok", ip);
+            return ResponseEntity.ok(result);
+        } catch (ResponseStatusException e) {
+            auditService.record("dashboard", actor, "test-server-deploy", false, e.getReason(), ip);
+            throw e;
         }
     }
 

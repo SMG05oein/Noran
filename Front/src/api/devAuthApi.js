@@ -291,3 +291,39 @@ export const sendAlertTest = async () => {
   }
 };
 
+export const fetchTestServerStatus = async () => {
+  try {
+    const response = await devApiClient.get(`${addUrl}/dashboard/test-server`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: extractError(error, '테스트 서버 상태를 불러오지 못했습니다.') };
+  }
+};
+
+export const startTestServer = async (id, pw) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/dashboard/test-server/start`, { id, pw });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: extractError(error, '테스트 서버 실행에 실패했습니다.') };
+  }
+};
+
+export const stopTestServer = async (id, pw) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/dashboard/test-server/stop`, { id, pw });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: extractError(error, '테스트 서버 중지에 실패했습니다.') };
+  }
+};
+
+export const deployTestServer = async (id, pw) => {
+  try {
+    const response = await devApiClient.post(`${addUrl}/dashboard/test-server/deploy`, { id, pw });
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: extractError(error, '테스트 서버 재기동에 실패했습니다.') };
+  }
+};
+

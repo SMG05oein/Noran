@@ -287,23 +287,32 @@
 }
 
 /* ========================================================
-   Bottom Legend Bar (Mockup Style)
+   Bottom Legend Bar (Capsule Pill Style)
    ======================================================== */
+.cal-legend-wrapper {
+  margin-top: 1.25rem !important;
+}
+
 .cal-legend-bar {
-  background-color: var(--color-input-bg) !important;
-  border-radius: 18px !important;
-  padding: 14px 28px !important;
-  margin-top: 18px !important;
-  border: none !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 9999px !important;
+  padding: 10px 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 20px !important;
+  box-shadow: var(--shadow-xs) !important;
 }
 
 .cal-legend-item {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 7px !important;
-  font-size: 0.92rem !important;
+  gap: 6px !important;
+  font-size: 0.88rem !important;
   font-weight: 700 !important;
   color: var(--color-text-main) !important;
+  white-space: nowrap !important;
 }
 
 /* Dropdown Menu */
@@ -363,11 +372,78 @@
   }
 
   .cal-legend-bar {
-    padding: 10px 14px !important;
-    gap: 12px !important;
+    padding: 8px 16px !important;
+    gap: 14px !important;
   }
 
   .cal-legend-item {
-    font-size: 0.8rem !important;
+    font-size: 0.82rem !important;
+  }
+}
+
+/* Mobile Small Devices (<= 450px) */
+@media (max-width: 450px) {
+  .cal-wrapper-card {
+    padding: 14px 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .cal-main-title {
+    font-size: 1.15rem !important;
+  }
+
+  .cal-user-greeting {
+    font-size: 0.82rem !important;
+  }
+
+  .cal-header {
+    margin-bottom: 0.85rem !important;
+  }
+
+  .cal-nav-btn {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+  }
+
+  .cal-title-dropdown {
+    font-size: 1.05rem !important;
+    padding: 2px 4px !important;
+  }
+
+  .cal-today-btn {
+    height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 0.78rem !important;
+    border-radius: 10px !important;
+  }
+
+  .cal-cell {
+    min-height: 54px !important;
+    padding: 2px 1px !important;
+  }
+
+  .cal-cell-number {
+    font-size: 0.76rem !important;
+  }
+
+  .cal-status-box {
+    min-height: 16px !important;
+  }
+
+  .cal-legend-wrapper {
+    margin-top: 1rem !important;
+  }
+
+  .cal-legend-bar {
+    padding: 7px 12px !important;
+    gap: 10px !important;
+    border-radius: 9999px !important;
+    max-width: 100% !important;
+  }
+
+  .cal-legend-item {
+    font-size: 0.75rem !important;
+    gap: 4px !important;
   }
 }

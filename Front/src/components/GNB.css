@@ -91,18 +91,22 @@
   border: 1px solid var(--color-border);
   color: var(--color-text-main);
   border-radius: var(--radius-sm);
-  padding: 0.35rem 0.7rem;
+  padding: 0.4rem 0.7rem;
+  min-height: 38px;
+  min-width: 38px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   font-size: 0.85rem;
   font-weight: 600;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .theme-toggle-btn:hover {
   background: var(--color-surface-hover);
+  border-color: var(--color-primary);
 }
 
 .gnb-dropdown-wrapper {
@@ -133,6 +137,8 @@
 
 .gnb-offcanvas {
   max-width: 280px;
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-main) !important;
 }
 
 .gnb-sheet-profile {
@@ -140,6 +146,16 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1rem 1.1rem;
+}
+
+.profile-avatar {
+  width: 46px;
+  height: 46px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+  flex-shrink: 0;
 }
 
 .gnb-sheet-link {

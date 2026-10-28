@@ -1,7 +1,7 @@
 /* Warm Theme Main.css */
 
 /* =========================================
-   ?????: ?????????? ?????
+   Outline Action Button
    ========================================= */
 .req-outline-btn {
   background: transparent !important;
@@ -30,7 +30,7 @@
 }
 
 /* =========================================
-   ????? ??? ?????
+   Day Toggle Buttons
    ========================================= */
 .day-btn-off,
 .day-btn-off:hover,
@@ -83,7 +83,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1.25rem 1.35rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
   margin-bottom: 1rem;
   position: relative;
   overflow: hidden;
@@ -121,7 +121,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1.25rem 1.35rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
   margin-bottom: 1.25rem;
   position: relative;
   overflow: hidden;
@@ -275,7 +275,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border) !important;
   border-radius: var(--radius-md);
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
 }
 
 .req-history-range {
@@ -356,7 +356,6 @@
   font-weight: 700;
 }
 
-/* 알바생이 신청하지 않은 날 - 배경/테두리 없이 텍스트만 */
 .req-chip.unapplied {
   background: transparent;
   border: none;
@@ -390,20 +389,14 @@
   letter-spacing: 0.01em;
 }
 
-.req-chip.applied .req-chip-label {
-  color: rgba(255,255,255,0.55);
-}
-
+.req-chip.applied .req-chip-label,
 .req-chip.work .req-chip-label {
-  color: rgba(255,255,255,0.55);
+  color: rgba(255, 255, 255, 0.55);
 }
 
-[data-bs-theme="light"] .req-chip.applied .req-chip-label {
-  color: rgba(0,0,0,0.4);
-}
-
+[data-bs-theme="light"] .req-chip.applied .req-chip-label,
 [data-bs-theme="light"] .req-chip.work .req-chip-label {
-  color: rgba(0,0,0,0.4);
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .req-chip-wp {
@@ -446,7 +439,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border) !important;
   border-radius: var(--radius-md);
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
 }
 
 .req-apply-week-label {
@@ -596,7 +589,7 @@
   }
 }
 
-/* --- Shift Request Split-Button Grid (공식 UI) --- */
+/* --- Shift Request Split-Button Grid --- */
 .req-split-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -640,18 +633,17 @@
   font-weight: 700;
   border-radius: 6px;
   border: 1px solid var(--color-border);
-  background: var(--color-input-bg, #222);
+  background: var(--color-input-bg);
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .req-split-btn:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.05);
   border-color: var(--color-text-light);
 }
 
-/* [신청] 활성화 - 톤다운된 차분한 소프트 블루 */
 .req-split-btn.active-normal {
   background: rgba(91, 130, 166, 0.16);
   border-color: #5B82A6;
@@ -665,11 +657,10 @@
   color: #A6CEF2;
 }
 
-/* [오픈] 활성화 - 톤다운된 차분한 웜 앰버 */
 .req-split-btn.active-open {
   background: rgba(201, 138, 61, 0.16);
   border-color: #C98A3D;
-  color: #945F20;
+  color: #8A5618;
   font-weight: 800;
 }
 
@@ -685,13 +676,14 @@
 }
 
 .req-batch-toggle {
-  padding: 0.22rem 0.6rem !important;
+  padding: 0.28rem 0.65rem !important;
   font-size: 0.78rem !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
   border-color: var(--color-border) !important;
-  background: var(--color-input-bg, #222) !important;
+  background: var(--color-input-bg) !important;
   color: var(--color-text-main) !important;
+  min-height: 34px;
 }
 
 .req-batch-toggle:hover,
@@ -702,15 +694,16 @@
 }
 
 .req-batch-reset-btn {
-  padding: 0.2rem 0.55rem !important;
-  font-size: 0.75rem !important;
+  padding: 0.25rem 0.6rem !important;
+  font-size: 0.76rem !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
+  min-height: 34px;
 }
 
 .req-batch-menu {
-  font-size: 0.8rem;
-  min-width: 135px;
+  font-size: 0.82rem;
+  min-width: 140px;
   background: var(--color-surface) !important;
   border-color: var(--color-border) !important;
   box-shadow: var(--shadow-md);
@@ -718,7 +711,7 @@
 
 .req-batch-menu .dropdown-item {
   color: var(--color-text-main) !important;
-  padding: 0.4rem 0.75rem;
+  padding: 0.45rem 0.75rem;
   font-weight: 600;
 }
 
@@ -729,14 +722,13 @@
 /* =========================================
    Mobile Shift Request / History Enhancement
    ========================================= */
-
-/* Place select as a stylish chip */
 .req-place-select-chip {
   background: var(--color-surface);
   color: var(--color-text-main);
   border: 1px solid var(--color-border);
   border-radius: 9999px;
-  padding: 0.35rem 0.9rem;
+  padding: 0.4rem 0.95rem;
+  min-height: 38px;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
@@ -753,7 +745,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -765,111 +757,146 @@
   color: var(--color-primary) !important;
 }
 
-/* Vertical 7-Rows Shift List */
-.req-vertical-list {
+/* Shift Request Weekly 7-Day Grid Matrix (신청 / 오픈) */
+.req-grid-container {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
-.req-vertical-row {
+.req-grid-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+/* Day Header Card */
+.req-grid-day-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm, 8px);
-  padding: 0.65rem 0.85rem;
-  transition: all 0.15s ease;
-  min-height: 52px;
-}
-
-.req-vertical-row.row-normal {
-  border-color: rgba(222, 158, 75, 0.45);
-  background: rgba(222, 158, 75, 0.05);
-}
-
-.req-vertical-row.row-open {
-  border-color: rgba(112, 156, 196, 0.45);
-  background: rgba(112, 156, 196, 0.06);
-}
-
-.req-row-date {
-  font-size: 0.95rem;
-  min-width: 54px;
-}
-
-.req-row-day-name {
-  font-size: 1rem;
-}
-
-.req-row-day-number {
-  font-size: 0.9rem;
-}
-
-.req-row-btn-group {
-  flex: 1;
-  max-width: 200px;
-  justify-content: flex-end;
-}
-
-.req-action-btn {
-  flex: 1;
-  min-width: 72px;
-  height: 42px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-input-bg, #222);
-  color: var(--color-text-muted);
-  font-size: 0.88rem;
-  font-weight: 700;
-  display: inline-flex;
+  padding: 0.45rem 0.15rem;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-height: 52px;
+  text-align: center;
+  box-shadow: var(--shadow-xs);
+}
+
+.req-grid-day-name {
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-text-main);
+}
+
+.req-grid-day-name.is-holy {
+  color: #ef4444 !important;
+}
+
+.req-grid-day-name.is-sat {
+  color: #38bdf8 !important;
+}
+
+.req-grid-day-num {
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 2px;
+  color: var(--color-text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cell Action Buttons */
+.req-grid-btn {
+  height: 44px;
+  border-radius: var(--radius-sm, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
-.req-action-btn:hover {
-  filter: brightness(1.08);
+.req-grid-btn:not(.is-active) {
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
 }
 
-/* [신청] 활성화 - 주황/앰버 톤 */
-.req-action-btn.active-normal {
-  background: rgba(201, 138, 61, 0.18);
-  border-color: #C98A3D;
-  color: #DE9E4B;
+.req-grid-btn:not(.is-active):hover {
+  background: var(--color-surface-hover, color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)));
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  color: var(--color-text-main);
+}
+
+/* Active Normal (신청) — Warm Amber Card Look */
+.req-grid-btn.btn-normal.is-active {
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface)) !important;
+  border: 1.5px solid var(--color-primary) !important;
+  color: var(--color-primary) !important;
   font-weight: 800;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
-[data-bs-theme="dark"] .req-action-btn.active-normal {
-  background: rgba(222, 158, 75, 0.22);
-  border-color: #DE9E4B;
-  color: #F7D09E;
-}
-
-/* [오픈] 활성화 - 파랑/스카이 톤 */
-.req-action-btn.active-open {
-  background: rgba(91, 130, 166, 0.18);
-  border-color: #5B82A6;
-  color: #5B82A6;
+/* Active Open (오픈) — Slate Blue Card Look */
+.req-grid-btn.btn-open.is-active {
+  background: color-mix(in srgb, var(--color-info) 18%, var(--color-surface)) !important;
+  border: 1.5px solid var(--color-info) !important;
+  color: var(--color-info) !important;
   font-weight: 800;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-info) 25%, transparent);
 }
 
-[data-bs-theme="dark"] .req-action-btn.active-open {
-  background: rgba(112, 156, 196, 0.22);
-  border-color: #709CC4;
-  color: #A6CEF2;
+@media (max-width: 480px) {
+  .req-grid-row {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+  }
+  .req-grid-day-card {
+    padding: 0.35rem 0.1rem;
+    min-height: 48px;
+  }
+  .req-grid-day-name {
+    font-size: 0.84rem;
+  }
+  .req-grid-day-num {
+    font-size: 0.8rem;
+  }
+  .req-grid-btn {
+    height: 42px;
+    font-size: 0.8rem;
+  }
 }
 
-/* Sticky Bottom Submit Bar */
+/* Submit Bar — Inline on Desktop (>= 992px), Fixed above BottomNav on Mobile (< 992px) */
 .req-sticky-submit-bar {
-  position: fixed;
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
-  background: var(--color-surface);
+  margin-top: 0.75rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--color-border);
-  padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
-  z-index: 1000;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
-  max-width: 600px;
-  margin: 0 auto;
+  background: transparent;
+}
+
+@media (max-width: 991.98px) {
+  .req-sticky-submit-bar {
+    position: fixed;
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding: 0.65rem 1rem;
+    margin-top: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-md);
+  }
 }
 
 .req-submit-summary {
@@ -877,11 +904,11 @@
 }
 
 .req-sum-normal {
-  color: #DE9E4B;
+  color: var(--color-warning);
 }
 
 .req-sum-open {
-  color: #709CC4;
+  color: var(--color-info);
 }
 
 .req-submit-btn {
@@ -953,32 +980,43 @@
 }
 
 .req-data-cell:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.06);
 }
 
-/* Chip Colors */
-.req-data-cell.cell-applied {
-  background: rgba(222, 158, 75, 0.16);
-  color: #DE9E4B;
-  border-color: rgba(222, 158, 75, 0.4);
+/* Chip Colors with Light/Dark contrast */
+.req-data-cell.cell-applied,
+.req-data-cell.cell-pending {
+  background: var(--color-warning-bg);
+  color: #9A6522;
+  border-color: rgba(201, 138, 61, 0.45);
+}
+
+[data-bs-theme="dark"] .req-data-cell.cell-applied,
+[data-bs-theme="dark"] .req-data-cell.cell-pending {
+  color: #F7D09E;
+  border-color: rgba(222, 158, 75, 0.45);
 }
 
 .req-data-cell.cell-open {
-  background: rgba(112, 156, 196, 0.16);
-  color: #709CC4;
-  border-color: rgba(112, 156, 196, 0.4);
+  background: var(--color-info-bg);
+  color: #385D80;
+  border-color: rgba(91, 130, 166, 0.45);
 }
 
-.req-data-cell.cell-pending {
-  background: rgba(222, 158, 75, 0.16);
-  color: #DE9E4B;
-  border-color: rgba(222, 158, 75, 0.4);
+[data-bs-theme="dark"] .req-data-cell.cell-open {
+  color: #A6CEF2;
+  border-color: rgba(112, 156, 196, 0.45);
 }
 
 .req-data-cell.cell-work {
-  background: rgba(108, 165, 121, 0.2);
-  color: #6CA579;
-  border-color: rgba(108, 165, 121, 0.4);
+  background: var(--color-success-bg);
+  color: #3B6947;
+  border-color: rgba(93, 138, 104, 0.45);
+}
+
+[data-bs-theme="dark"] .req-data-cell.cell-work {
+  color: #A3DBB0;
+  border-color: rgba(108, 165, 121, 0.45);
 }
 
 .req-data-cell.cell-rejected {
@@ -1015,11 +1053,11 @@
 }
 
 .legend-dot.dot-pending {
-  background: #DE9E4B;
+  background: var(--color-warning);
 }
 
 .legend-dot.dot-work {
-  background: #6CA579;
+  background: var(--color-success);
 }
 
 .legend-dot.dot-rejected {
@@ -1036,10 +1074,13 @@
 }
 
 /* Mobile Flattening and Bottom Padding */
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
   .req-container {
-    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(9.5rem + env(safe-area-inset-bottom, 0px)) !important;
   }
+}
+
+@media (max-width: 768px) {
   .req-apply-card {
     background: transparent !important;
     border: none !important;

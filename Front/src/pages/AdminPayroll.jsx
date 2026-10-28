@@ -144,11 +144,11 @@ const AdminPayroll = () => {
 
   return (
     <div className="admin-container">
-      <Container className="py-4 py-md-5">
+      <Container className="py-2 py-md-4">
         <div className="admin-header-card">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 gap-md-3">
             <div>
-              <h2 className="fw-bold text-dark mb-1">급여 관리</h2>
+              <h2 className="fw-bold mb-1" style={{ color: 'var(--color-text-main)' }}>급여 관리</h2>
               <p className="text-muted small mb-0">월별 직원 급여(시급·총근무시간·세전)를 조회하고 엑셀로 다운로드합니다.</p>
             </div>
 
@@ -195,14 +195,12 @@ const AdminPayroll = () => {
                 setPage(0);
                 setPageInput('1');
               }}
-              className="custom-input py-2 fw-bold text-primary"
-              style={{ width: '160px' }}
+              className="custom-input py-2 fw-bold text-primary admin-filter-month"
             />
 
             <Form
               onSubmit={handleSearch}
-              className="d-flex align-items-center gap-1 ms-md-auto"
-              style={{ minWidth: '220px', maxWidth: '320px' }}
+              className="admin-search-form d-flex align-items-center gap-1 ms-md-auto"
             >
               <Form.Control
                 type="text"

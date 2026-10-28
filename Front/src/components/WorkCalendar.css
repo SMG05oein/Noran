@@ -1,5 +1,5 @@
 /* ========================================================
-   Warm Cream Theme - Premium Work Calendar (Mockup Match)
+   Warm Cream Theme - Premium Work Calendar
    ======================================================== */
 
 .cal-wrapper-card {
@@ -210,7 +210,7 @@
   color: var(--color-info) !important;
 }
 
-/* Disabled (Other Month) - 일자 꺼짐 없이 모든 칸 균일 카드 유지 */
+/* Disabled (Other Month) */
 .cal-cell-disabled {
   background-color: var(--color-surface-hover) !important;
   border: 1px solid var(--color-border) !important;
@@ -223,7 +223,7 @@
 }
 
 /* ========================================================
-   ★ ACTIVE / SELECTED CELL (부드럽고 고급스러운 웜 하이라이트)
+   Active / Selected Cell
    ======================================================== */
 .cal-cell-active {
   background: var(--color-primary-light) !important;
@@ -250,7 +250,7 @@
   fill: var(--color-primary) !important;
 }
 
-/* Today Cell (오늘 날짜 - 차분하고 정갈한 웜 톤) */
+/* Today Cell */
 .cal-cell-today:not(.cal-cell-active) {
   background-color: var(--color-primary-light) !important;
   border: 1.5px solid var(--color-primary) !important;
@@ -401,34 +401,39 @@
   }
 
   .cal-nav-btn {
-    width: 34px !important;
-    height: 34px !important;
-    border-radius: 10px !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 11px !important;
   }
 
   .cal-title-dropdown {
     font-size: 1.05rem !important;
-    padding: 2px 4px !important;
+    padding: 4px 6px !important;
   }
 
   .cal-today-btn {
-    height: 32px !important;
-    padding: 0 8px !important;
-    font-size: 0.78rem !important;
+    height: 36px !important;
+    padding: 0 10px !important;
+    font-size: 0.8rem !important;
     border-radius: 10px !important;
   }
 
   .cal-cell {
-    min-height: 54px !important;
-    padding: 2px 1px !important;
+    min-height: 58px !important;
+    padding: 3px 1px !important;
   }
 
   .cal-cell-number {
-    font-size: 0.76rem !important;
+    font-size: 0.78rem !important;
   }
 
   .cal-status-box {
     min-height: 16px !important;
+  }
+
+  .cal-admin-badge {
+    font-size: 0.65rem !important;
+    padding: 2px 5px !important;
   }
 
   .cal-legend-wrapper {
@@ -440,6 +445,7 @@
     gap: 10px !important;
     border-radius: 9999px !important;
     max-width: 100% !important;
+    flex-wrap: wrap;
   }
 
   .cal-legend-item {

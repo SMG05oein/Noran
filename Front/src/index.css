@@ -1,13 +1,13 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
 :root {
-  /* Warm Korean BBQ Theme (怨좉퉫吏??곕뱶/?뚮씪肄뷀? ?쒗넠) */
-  --color-primary: #9F4E3B; /* 源딆? ?곴컝??*/
+  /* Warm Korean BBQ Theme (Wood & Terracotta Palette) */
+  --color-primary: #9F4E3B; /* Deep Terracotta */
   --color-primary-hover: #7F3D2F;
   --color-primary-rgb: 159, 78, 59;
   --color-primary-light: rgba(159, 78, 59, 0.12);
 
-  --color-secondary: #E8D5BF; /* ?곕쑜??踰좎씠吏 / ?곕뱶 */
+  --color-secondary: #E8D5BF; /* Warm Beige / Wood */
   --color-secondary-hover: #D8C3AA;
   --color-secondary-rgb: 232, 213, 191;
 
@@ -72,12 +72,12 @@
   --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.7);
 
   /* Primary & Accent (Dark Mode) */
-  --color-primary: #D77A5F; 
+  --color-primary: #D77A5F;
   --color-primary-hover: #E88E75;
   --color-primary-rgb: 215, 122, 95;
   --color-primary-light: rgba(215, 122, 95, 0.18);
 
-  --color-secondary: #49372F; 
+  --color-secondary: #49372F;
   --color-secondary-hover: #5C473C;
   --color-secondary-rgb: 73, 55, 47;
 
@@ -99,7 +99,7 @@
   --color-input-text: #F1E9E4;
 }
 
-/* 湲濡쒕쾶 ?ㅽ겕 紐⑤뱶 遺?몄뒪?몃옪 ?대옒??蹂댁젙 */
+/* Global Dark Mode Bootstrap Class Overrides */
 [data-bs-theme="dark"] .bg-white {
   background-color: var(--color-surface) !important;
 }
@@ -142,6 +142,7 @@ body {
   background-color: var(--color-bg-cream);
   color: var(--color-text-main);
   letter-spacing: -0.015em;
+  line-height: 1.5;
 }
 
 * {
@@ -154,33 +155,62 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-main);
   font-weight: 700;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 p {
   margin-top: 0;
   margin-bottom: 1rem;
+  text-wrap: pretty;
 }
 
-/* ?꾩뿭 ?ㅽ겕濡ㅻ컮 / ?쒕옒洹?諛??꾩쟾 ?쒓굅 (?ㅽ겕濡?湲곕뒫? ?뺤긽 ?좎?) */
-/* 전역 스크롤바 숨김 (PC 및 모바일 전체 적용) */
+/* Accessible focus-visible ring */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Hide outer document scrollbar while keeping thin themed scrollbars on scrollable tables and panels */
 html,
 body,
-#root,
-* {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE and Edge */
+#root {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
-#root::-webkit-scrollbar,
-*::-webkit-scrollbar {
-  display: none !important; /* Chrome, Safari, Opera */
-  width: 0 !important;
-  height: 0 !important;
+#root::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
+.table-responsive,
+.req-week-scroll,
+.calendar-dropdown-menu,
+.crm-worker-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
 
+.table-responsive::-webkit-scrollbar,
+.req-week-scroll::-webkit-scrollbar,
+.calendar-dropdown-menu::-webkit-scrollbar,
+.crm-worker-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb,
+.req-week-scroll::-webkit-scrollbar-thumb,
+.calendar-dropdown-menu::-webkit-scrollbar-thumb,
+.crm-worker-list::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 9999px;
+}
 
 input,
 textarea,
@@ -192,4 +222,3 @@ textarea,
   -moz-user-select: text !important;
   -ms-user-select: text !important;
 }
-

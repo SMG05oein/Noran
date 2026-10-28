@@ -321,9 +321,9 @@ const MyPage = () => {
   }
 
   return (
-    <Container className="py-4 py-md-5 mb-5" style={{ maxWidth: '640px' }}>
+    <Container className="py-3 py-md-5 mb-5" style={{ maxWidth: '640px' }}>
       <div className="mb-4">
-        <h2 className="fw-bold text-dark mb-1">내 정보 관리</h2>
+        <h2 className="fw-bold mb-1" style={{ color: 'var(--color-text-main)' }}>내 정보 관리</h2>
         <p className="text-muted small mb-0">프로필 정보 및 급여 지급 계좌를 안전하게 관리합니다.</p>
       </div>
 

@@ -3,7 +3,7 @@ import { Navbar, Nav, Container, Badge, Offcanvas, NavDropdown } from 'react-boo
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import useThemeStore from '../store/useThemeStore';
-import { RiLogoutBoxRLine, RiSunLine, RiMoonLine, RiMenuLine, RiUser3Line } from 'react-icons/ri';
+import { RiLogoutBoxRLine, RiSunLine, RiMoonLine, RiMenuLine } from 'react-icons/ri';
 import AppVersion from './AppVersion';
 import './GNB.css';
 
@@ -45,7 +45,7 @@ const AdminGNB = () => {
             <button
               type="button"
               onClick={() => setShowMenu(true)}
-              className="theme-toggle-btn border-0 bg-transparent"
+              className="theme-toggle-btn"
               aria-label="메뉴 열기"
             >
               <RiMenuLine size={22} className={theme === 'dark' ? 'text-white' : 'text-dark'} />
@@ -96,11 +96,8 @@ const AdminGNB = () => {
           <Offcanvas.Title className="fw-bold fs-5">관리자 메뉴</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column p-4">
-          <div className="gnb-sheet-profile mb-4 d-flex align-items-center gap-3 p-3 bg-light rounded-3 border">
-            <div
-              className="profile-avatar bg-primary text-white d-flex align-items-center justify-content-center rounded-circle shadow-sm"
-              style={{ width: '46px', height: '46px', fontSize: '1.2rem', fontWeight: 'bold' }}
-            >
+          <div className="gnb-sheet-profile mb-4 d-flex align-items-center gap-3">
+            <div className="profile-avatar d-flex align-items-center justify-content-center rounded-circle shadow-sm">
               {user?.name ? user.name.charAt(0) : '👤'}
             </div>
             <div>
@@ -123,7 +120,7 @@ const AdminGNB = () => {
 
           <div className="pt-4 border-top">
             <div className="mb-4">
-              <Link to="/howtouse" className="gnb-sheet-link mb-3 fw-bold bg-primary text-white p-2 rounded text-center d-block" onClick={() => setShowMenu(false)} style={{ textDecoration: 'none' }}>
+              <Link to="/howtouse" className="btn btn-primary w-100 mb-3 fw-bold py-2 text-center d-block" onClick={() => setShowMenu(false)}>
                 시스템 이용방법
               </Link>
               <Link to="/privacy" className="gnb-sheet-link mb-2" onClick={() => setShowMenu(false)}>
@@ -147,7 +144,6 @@ const AdminGNB = () => {
           </div>
         </Offcanvas.Body>
       </Offcanvas>
-
     </>
   );
 };

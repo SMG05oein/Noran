@@ -1,4 +1,4 @@
-﻿/* Warm Korean BBQ Theme Auth Styling */
+/* Warm Korean BBQ Theme Auth Styling */
 .auth-container {
   background-color: var(--color-bg-cream);
   min-height: 100vh;
@@ -7,15 +7,14 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
-  padding: 1rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 1.25rem 1rem;
 }
 
 .auth-container.login-container {
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .auth-container.signup-container {
@@ -25,7 +24,7 @@
   padding: 1.5rem 1rem;
 }
 
-/* ?ш렐?섍퀬 ?몃젴???쒗넠 諛곌꼍 愿묒썝 */
+/* Warm ambient radial glow */
 .auth-container::before {
   content: '';
   position: absolute;

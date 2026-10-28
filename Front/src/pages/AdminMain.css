@@ -10,22 +10,11 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 1.15rem 1.35rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
   margin-bottom: 1.15rem;
   position: relative;
   overflow: visible;
 }
-
-/*.admin-header-card::before {*/
-/*  content: '';*/
-/*  position: absolute;*/
-/*  top: 0;*/
-/*  left: 0;*/
-/*  width: 6px;*/
-/*  height: 100%;*/
-/*  background: var(--color-primary);*/
-/*  border-radius: var(--radius-pill) 0 0 var(--radius-pill);*/
-/*}*/
 
 .admin-stat-card {
   background: var(--color-surface);
@@ -83,7 +72,8 @@
 }
 
 .branch-pill {
-  padding: 0.4rem 0.9rem;
+  padding: 0.42rem 0.9rem;
+  min-height: 36px;
   border-radius: var(--radius-sm);
   font-weight: 700;
   font-size: 0.85rem;
@@ -91,6 +81,9 @@
   background-color: var(--color-surface);
   color: var(--color-text-main);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
@@ -105,6 +98,28 @@
   border-color: var(--color-primary);
   color: #ffffff;
   box-shadow: none;
+}
+
+/* Responsive Admin Filter Controls */
+.admin-filter-month {
+  width: 165px;
+}
+
+.admin-search-form {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+@media (max-width: 767.98px) {
+  .admin-filter-month {
+    width: 100%;
+  }
+
+  .admin-search-form {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 .png-download-btn {
@@ -132,7 +147,7 @@
   color: #FFFFFF !important;
 }
 
-/* ?吏??洹쇰Т 諭껋? ?ㅽ???*/
+/* Cross-Branch Shift Badge Styles */
 .badge-other-branch {
   display: inline-flex;
   flex-direction: column;
@@ -148,7 +163,6 @@
 }
 
 .badge-other-branch:hover {
-
   box-shadow: var(--shadow-xs);
   border-color: rgba(142, 68, 173, 0.6);
 }
@@ -184,11 +198,11 @@
 /* Mobile & Tablet Responsiveness (up to lg breakpoint) */
 @media (max-width: 991.98px) {
   .admin-container {
-    padding-top: 1rem;
+    padding-top: 0.5rem;
   }
-  
+
   .admin-header-card {
-    padding: 1.25rem;
+    padding: 0.85rem 0.85rem;
   }
 
   .admin-stat-card {
@@ -236,14 +250,14 @@
   font-weight: 700;
   font-size: 0.82rem;
   padding: 0.35rem 0.4rem;
-  color: var(--color-text);
+  color: var(--color-text-main);
   cursor: pointer;
 }
 
 .assign-time-option:hover,
 .assign-time-option.is-active {
   background: var(--color-surface-hover, rgba(0, 0, 0, 0.06));
-  color: var(--bs-primary);
+  color: var(--color-primary);
 }
 
 [data-bs-theme="dark"] .assign-time-dropdown {
@@ -361,7 +375,7 @@
   color: #9dc0e0 !important;
 }
 
-/* 새 근무 기록 추가 모달 */
+/* Create Record Modal */
 .crm-section-title {
   display: flex;
   align-items: center;
@@ -509,20 +523,32 @@
 }
 
 .table-leave {
-  --bs-table-color: #000;
-  --bs-table-bg: rgb(136 136 33 / 0.21); /* 기준이 되는 카키/올리브 톤 배경 */
-  --bs-table-border-color: rgb(136 136 33 / 0.4); /* 톤을 맞춘 테두리 색상 */
-  --bs-table-striped-bg: rgb(136 136 33 / 0.28); /* 줄무늬 행 (기본보다 살짝 진하게) */
-  --bs-table-striped-color: #000;
-  --bs-table-active-bg: rgb(136 136 33 / 0.45); /* 활성화 행 (가장 진하게) */
-  --bs-table-active-color: #000;
-  --bs-table-hover-bg: rgb(136 136 33 / 0.35); /* 마우스 호버 시 (적절한 중간 농도) */
-  --bs-table-hover-color: #000;
+  --bs-table-color: var(--color-text-main);
+  --bs-table-bg: rgba(201, 138, 61, 0.14);
+  --bs-table-border-color: rgba(201, 138, 61, 0.35);
+  --bs-table-striped-bg: rgba(201, 138, 61, 0.2);
+  --bs-table-striped-color: var(--color-text-main);
+  --bs-table-active-bg: rgba(201, 138, 61, 0.3);
+  --bs-table-active-color: var(--color-text-main);
+  --bs-table-hover-bg: rgba(201, 138, 61, 0.24);
+  --bs-table-hover-color: var(--color-text-main);
   color: var(--bs-table-color);
   border-color: var(--bs-table-border-color);
 }
 
-/* ?ㅽ겕紐⑤뱶 ?뚯씠釉??댁궗??濡쒖슦 ?ㅽ???理쒖쟻??*/
+[data-bs-theme="dark"] .table-leave {
+  --bs-table-color: var(--color-text-main);
+  --bs-table-bg: rgba(222, 158, 75, 0.16);
+  --bs-table-border-color: rgba(222, 158, 75, 0.35);
+  --bs-table-striped-bg: rgba(222, 158, 75, 0.22);
+  --bs-table-striped-color: var(--color-text-main);
+  --bs-table-active-bg: rgba(222, 158, 75, 0.28);
+  --bs-table-active-color: var(--color-text-main);
+  --bs-table-hover-bg: rgba(222, 158, 75, 0.24);
+  --bs-table-hover-color: var(--color-text-main);
+}
+
+/* Dark mode resigned worker row */
 [data-bs-theme="dark"] .table-secondary {
   --bs-table-bg: rgba(255, 255, 255, 0.05) !important;
   --bs-table-striped-bg: rgba(255, 255, 255, 0.07) !important;
@@ -531,7 +557,7 @@
   color: var(--color-text-muted) !important;
 }
 
-/* 직원관리 — 은행/계좌 표시 라디오 */
+/* Employee Management — Sensitive Bank/Account Segmented Controls */
 .bank-sensitive-controls {
   display: flex;
   flex-direction: column;
@@ -632,4 +658,8 @@
   border-top-color: var(--color-border);
 }
 
-
+.unrecorded-badge-count {
+  background-color: #ffffff !important;
+  color: #dc3545 !important;
+  font-weight: 800;
+}

@@ -464,9 +464,7 @@ const Requests = () => {
   };
 
   const handleOpenEdit = (monDate, weekSchs) => {
-    const hasConfirmed = weekSchs.some(isPublicAssignment);
-    if (hasConfirmed) {
-      alert('이미 배정이 확정된 주차는 수정할 수 없습니다.');
+    if (monDate < reqDate || weekSchs.some(isPublicAssignment)) {
       return;
     }
 
@@ -553,6 +551,9 @@ const Requests = () => {
   };
 
   const handleEditSubmit = async () => {
+    if (editTarget?.monDate && editTarget.monDate < reqDate) {
+      return;
+    }
     const hasAnyDay = editBlocks.some(b => Object.values(b.days).some(v => v));
     if (!hasAnyDay) {
       alert('신청할 요일을 하나 이상 선택해주세요.');
@@ -801,7 +802,7 @@ const Requests = () => {
                         <Button variant="light" className="req-icon-btn p-2" onClick={() => setViewingRequest({ monDate, weekSchs })} aria-label="상세보기">
                           <RiEyeLine size={20} />
                         </Button>
-                        {!weekSchs.some(isPublicAssignment) && (
+                        {!weekSchs.some(isPublicAssignment) && monDate >= reqDate && (
                           <Button variant="outline-warning" size="sm" className="fw-bold px-3" onClick={() => handleOpenEdit(monDate, weekSchs)}>
                             수정
                           </Button>

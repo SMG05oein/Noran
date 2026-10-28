@@ -411,14 +411,16 @@ const AdminRecords = () => {
                 <span 
                   className={`ms-1 px-2 py-0 rounded-pill fw-bold ${
                     unrecordedList.length > 0
-                      ? 'shadow-xs'
+                      ? 'unrecorded-badge-count shadow-xs'
                       : 'bg-secondary text-white'
                   }`}
                   style={{ 
                     fontSize: '0.8rem', 
                     lineHeight: '1.4',
-                    backgroundColor: unrecordedList.length > 0 ? '#fff8f0' : undefined,
-                    color: unrecordedList.length > 0 ? '#63391b' : undefined
+                    ...(unrecordedList.length > 0 ? {
+                      backgroundColor: '#ffffff',
+                      color: '#dc3545',
+                    } : {})
                   }}
                 >
                   {unrecordedLoading ? (
@@ -501,11 +503,10 @@ const AdminRecords = () => {
               type="month" 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)} 
-              className="custom-input py-2 fw-bold text-primary"
-              style={{ width: '160px' }}
+              className="custom-input py-2 fw-bold text-primary admin-filter-month"
             />
 
-            <Form onSubmit={handleSearch} className="d-flex align-items-center gap-1 ms-md-auto" style={{ minWidth: '220px', maxWidth: '320px' }}>
+            <Form onSubmit={handleSearch} className="admin-search-form d-flex align-items-center gap-1 ms-md-auto">
               <Form.Control
                 type="text"
                 placeholder="직원 이름 검색"

@@ -1,9 +1,9 @@
 /* ==========================================================================
-   Records.css — 알바생 근무 기록 모바일 (<= 450px) 전용 및 반응형 스타일
+   Records.css — Worker Records Mobile & Responsive Styles
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. 상단 월 선택 네비게이터 & 기록 추가 버튼
+   1. Month Navigator & New Record Button
    -------------------------------------------------------------------------- */
 .rec-month-picker-container {
   display: inline-flex;
@@ -19,7 +19,9 @@
   background: transparent !important;
   border: 0 !important;
   color: var(--color-text-main) !important;
-  padding: 0.2rem 0.35rem !important;
+  padding: 0.25rem 0.4rem !important;
+  min-width: 34px;
+  min-height: 34px;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -37,7 +39,7 @@
 .rec-month-label-btn {
   background: transparent;
   border: 0;
-  padding: 0.2rem 0.5rem;
+  padding: 0.25rem 0.55rem;
   font-weight: 800;
   font-size: 0.95rem;
   color: var(--color-text-main);
@@ -59,14 +61,19 @@
   font-size: 0.88rem !important;
   border-radius: var(--radius-pill) !important;
   border: 0 !important;
-  padding: 0.4rem 0.85rem !important;
-  min-height: 38px;
+  padding: 0.45rem 0.95rem !important;
+  min-height: 40px;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 0.25rem;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.rec-add-btn:hover {
+  background-color: var(--color-primary-hover) !important;
 }
 
 .rec-add-btn:active {
@@ -74,17 +81,17 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. 통계 2분할 통합 카드
+   2. 2-Column Summary Stat Card
    -------------------------------------------------------------------------- */
 .rec-stat-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0.75rem 0.5rem;
+  padding: 0.85rem 0.5rem;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
 }
 
 .rec-stat-col {
@@ -105,7 +112,7 @@
 }
 
 .rec-stat-label {
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--color-text-muted);
   margin-bottom: 0.2rem;
@@ -128,12 +135,12 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. 기록 목록 한 줄 압축 행 & 아코디언 펼침
+   3. Compact Record List Rows & Accordion
    -------------------------------------------------------------------------- */
 .rec-list-container {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
 .rec-item-card {
@@ -147,16 +154,16 @@
 
 .rec-item-card.is-expanded {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .rec-item-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.65rem 0.85rem;
+  padding: 0.7rem 0.9rem;
   cursor: pointer;
-  min-height: 48px;
+  min-height: 50px;
   gap: 0.6rem;
   user-select: none;
 }
@@ -165,12 +172,12 @@
   background: var(--color-surface-hover);
 }
 
-/* 좌측 날짜 컬럼 */
+/* Date Column */
 .rec-date-col {
   display: flex;
   align-items: baseline;
-  gap: 0.2rem;
-  min-width: 42px;
+  gap: 0.25rem;
+  min-width: 44px;
   flex-shrink: 0;
 }
 
@@ -179,6 +186,9 @@
   font-weight: 800;
   color: var(--color-text-main);
   line-height: 1;
+  display: inline-block;
+  width: 2ch;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
@@ -189,14 +199,14 @@
 }
 
 .rec-day-sat {
-  color: #3b82f6 !important;
+  color: var(--color-info) !important;
 }
 
 .rec-day-sun {
-  color: #ef4444 !important;
+  color: var(--color-danger) !important;
 }
 
-/* 중앙 시간/비고 컬럼 */
+/* Center Time & Remark Column */
 .rec-center-col {
   flex: 1 1 auto;
   min-width: 0;
@@ -251,10 +261,10 @@
   gap: 0.25rem;
   font-size: 0.8rem;
   font-weight: 800;
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
-/* 우측 시간 및 화살표 */
+/* Right Hours & Expand Arrow */
 .rec-right-col {
   display: flex;
   align-items: center;
@@ -289,7 +299,7 @@
   transform: rotate(180deg);
 }
 
-/* 펼침 내용 */
+/* Expanded Body */
 .rec-expanded-body {
   padding: 0.65rem 0.85rem 0.75rem;
   border-top: 1px dashed var(--color-border);
@@ -312,34 +322,34 @@
 .rec-action-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .rec-del-btn {
-  border: 1px solid #ef4444 !important;
-  color: #ef4444 !important;
+  border: 1px solid var(--color-danger) !important;
+  color: var(--color-danger) !important;
   background: transparent !important;
-  font-size: 0.78rem !important;
+  font-size: 0.8rem !important;
   font-weight: 700 !important;
-  padding: 0.35rem 0.75rem !important;
+  padding: 0.35rem 0.8rem !important;
   border-radius: var(--radius-sm) !important;
-  min-height: 36px;
+  min-height: 38px;
 }
 
 .rec-del-btn:hover,
 .rec-del-btn:active {
-  background: rgba(239, 68, 68, 0.1) !important;
+  background: var(--color-danger-bg) !important;
 }
 
 .rec-edit-btn {
   background: var(--color-surface) !important;
   color: var(--color-text-main) !important;
   border: 1px solid var(--color-border) !important;
-  font-size: 0.78rem !important;
+  font-size: 0.8rem !important;
   font-weight: 700 !important;
   padding: 0.35rem 1.1rem !important;
   border-radius: var(--radius-sm) !important;
-  min-height: 36px;
+  min-height: 38px;
 }
 
 .rec-edit-btn:hover,
@@ -350,7 +360,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   4. 새 근무 기록 추가 바텀시트 (<= 450px)
+   4. Mobile Bottom Sheet (<= 450px)
    -------------------------------------------------------------------------- */
 @media (max-width: 450px) {
   .rec-bottom-sheet {
@@ -364,7 +374,7 @@
     flex-direction: column !important;
     overflow: hidden !important;
     border: 0 !important;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: var(--shadow-lg) !important;
   }
 
   .rec-sheet-header {
@@ -408,11 +418,11 @@
     padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-sm);
   }
 }
 
-/* 칩 버튼 공통 */
+/* Chip Button Common */
 .rec-chip-btn {
   border-radius: var(--radius-pill) !important;
   font-size: 0.78rem !important;
@@ -422,17 +432,17 @@
   background: var(--color-surface-hover) !important;
   color: var(--color-text-muted) !important;
   transition: all 0.15s ease !important;
-  min-height: 34px;
+  min-height: 36px;
 }
 
 .rec-chip-btn.active {
   background: var(--color-primary) !important;
   border-color: var(--color-primary) !important;
   color: #fff !important;
-  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+  box-shadow: var(--shadow-xs);
 }
 
-/* 출퇴근 대형 시간 박스 */
+/* Start / End Time Boxes */
 .rec-time-box-container {
   display: flex;
   align-items: center;
@@ -504,18 +514,18 @@
   flex-shrink: 0;
 }
 
-/* 휴게 시간 칩 컨테이너 */
+/* Break Time Chips */
 .rec-break-chips {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
 
-/* 실시간 총 근무시간 안내 카드 */
+/* Live Total Hours Card */
 .rec-total-hours-card {
   padding: 0.65rem 0.85rem;
   border-radius: var(--radius-md);
-  background: rgba(234, 88, 12, 0.08);
+  background: var(--color-primary-light);
   border: 1px solid var(--color-primary);
   text-align: center;
 }
@@ -532,15 +542,15 @@
 }
 
 .rec-total-hours-card.is-warning {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: #ef4444;
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
 }
 
 .rec-total-hours-card.is-warning .rec-total-text {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
-/* 하단 저장 버튼 */
+/* Submit Button */
 .rec-submit-btn {
   width: 100%;
   height: 48px;
@@ -550,7 +560,7 @@
   background: var(--color-primary) !important;
   color: #fff !important;
   border: 0 !important;
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .rec-submit-btn:disabled {
@@ -559,7 +569,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   5. 수정 페이지 전용 카드 스타일
+   5. Record Edit Page Card Styles
    -------------------------------------------------------------------------- */
 .rec-edit-card {
   background: var(--color-surface);
@@ -582,7 +592,7 @@
 }
 
 .rec-deadline-banner.is-expired {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: #ef4444;
-  color: #ef4444;
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }

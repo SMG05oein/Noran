@@ -3,7 +3,7 @@ import { Button, Form } from 'react-bootstrap';
 
 const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) => {
   return (
-    <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
+    <div className="d-flex justify-content-center align-items-center mt-3 mt-md-4 gap-2 gap-sm-3 flex-nowrap">
       <Button
         variant={page === 0 ? "outline-secondary" : "outline-primary"}
         disabled={page === 0}
@@ -12,12 +12,13 @@ const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) =
           setPage(newPage);
           setPageInput(String(newPage + 1));
         }}
-        className="fw-bold px-4 py-2 rounded-pill shadow-sm"
+        className="fw-bold px-3 py-1.5 px-md-4 py-md-2 rounded-pill shadow-sm text-nowrap d-inline-flex align-items-center justify-content-center"
+        style={{ flexShrink: 0 }}
       >
         &laquo; 이전
       </Button>
       
-      <div className="fw-bold fs-5 px-3 py-1 rounded-pill shadow-sm d-flex align-items-center" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <div className="fw-bold fs-6 fs-md-5 px-3 py-1 rounded-pill shadow-sm d-flex align-items-center flex-shrink-0" style={{ backgroundColor: 'var(--color-surface)' }}>
         <Form.Control
           type="text"
           value={pageInput}
@@ -35,18 +36,18 @@ const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) =
               e.target.blur();
             }
           }}
-          className="text-center fw-bold text-primary fs-5 border-0"
+          className="text-center fw-bold text-primary fs-6 fs-md-5 border-0"
           style={{ 
             backgroundColor: 'transparent',
             color: 'var(--color-primary)',
             width: `${Math.max(String(totalPages).length, String(pageInput).length, 2)}ch`, 
             padding: 0, 
-            boxShadow: 'none', 
-            outline: 'none' 
+            boxShadow: 'none',
+            outline: 'none'
           }}
         />
-        <span className="text-muted fs-5 mx-1">/</span> 
-        <span className="text-primary fs-5">{totalPages}</span>
+        <span className="text-muted fs-6 fs-md-5 mx-1">/</span>
+        <span className="text-primary fs-6 fs-md-5">{totalPages}</span>
       </div>
 
       <Button
@@ -57,7 +58,8 @@ const PaginationBar = ({ page, totalPages, pageInput, setPage, setPageInput }) =
           setPage(newPage);
           setPageInput(String(newPage + 1));
         }}
-        className="fw-bold px-4 py-2 rounded-pill shadow-sm"
+        className="fw-bold px-3 py-1.5 px-md-4 py-md-2 rounded-pill shadow-sm text-nowrap d-inline-flex align-items-center justify-content-center"
+        style={{ flexShrink: 0 }}
       >
         다음 &raquo;
       </Button>

@@ -358,6 +358,25 @@ const AdminWeeklyAssign = () => {
     return map;
   }, [editSchedules, weekDays, currentWorkPlaceIdx]);
 
+  const totalByDate = useMemo(() => {
+    const map = {};
+    weekDays.forEach(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      let count = 0;
+      Object.entries(editSchedules).forEach(([uid, userDays]) => {
+        const dayShifts = userDays[dateStr] || [];
+        const isAttending = dayShifts.some(s => {
+          const wpIdx = s.wsdWorkPlaceIdx || currentWorkPlaceIdx;
+          if (Number(wpIdx) !== Number(currentWorkPlaceIdx)) return false;
+          return s.wsdStatus === '출근' || s.status === '출근' || (!['미출근', '신청', '미신청', '미배정'].includes(s.wsdStatus) && (s.wsdIsOpen || s.wsdIsClose || (s.wsdStartTime && s.wsdStartTime !== '미출근')));
+        });
+        if (isAttending) count++;
+      });
+      map[dateStr] = count;
+    });
+    return map;
+  }, [editSchedules, weekDays, currentWorkPlaceIdx]);
+
   const appliedCountByDate = useMemo(() => {
     const map = {};
     weekDays.forEach(date => {
@@ -1107,6 +1126,7 @@ const AdminWeeklyAssign = () => {
                 const { isHoly, isSat } = dayMeta(date);
                 const peak = peakByDate[dateStr] || 0;
                 const applied = appliedCountByDate[dateStr] || 0;
+                const total = totalByDate[dateStr] || 0;
                 const isDayFiltered = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                 const isShortage = peak > 0 && applied < peak;
                 return (
@@ -1115,7 +1135,7 @@ const AdminWeeklyAssign = () => {
                     type="button"
                     className={`wat-day-tab ${mobileDayIdx === idx ? 'active' : ''} ${isHoly ? 'is-holy' : ''} ${isSat ? 'is-sat' : ''} ${isDayFiltered ? 'wat-tab-filtered' : ''} ${isShortage ? 'is-shortage' : ''}`}
                     onClick={() => setMobileDayIdx(idx)}
-                    aria-label={`${format(date, 'MM/dd')} ${'월화수목금토일'[idx]}요일 신청 ${applied}명, 피크 ${peak}명${isShortage ? ' (인원 부족)' : ''}`}
+                    aria-label={`${format(date, 'MM/dd')} ${'월화수목금토일'[idx]}요일 신청 ${applied}명, 피크 ${peak}명, 전체 ${total}명${isShortage ? ' (인원 부족)' : ''}`}
                   >
                     <div className="wat-tab-day-name">{'월화수목금토일'[idx]}</div>
                     <div className="wat-tab-date">{format(date, 'MM/dd')}</div>
@@ -1125,6 +1145,9 @@ const AdminWeeklyAssign = () => {
                       </span>
                       <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`} title={`피크 ${peak}명`}>
                         P{peak}
+                      </span>
+                      <span className={`wat-total-chip ${total === 0 ? 'is-zero' : ''}`} title={`전체 출근 ${total}명`}>
+                        T{total}
                       </span>
                     </div>
                   </button>
@@ -1308,6 +1331,7 @@ const AdminWeeklyAssign = () => {
                         const { isHoly, isSat } = dayMeta(date);
                         const peak = peakByDate[dateStr] || 0;
                         const applied = appliedCountByDate[dateStr] || 0;
+                        const total = totalByDate[dateStr] || 0;
                         const isColHighlighted = dayFilter !== 'ALL' && Number(dayFilter) === idx;
                         return (
                           <th
@@ -1322,6 +1346,9 @@ const AdminWeeklyAssign = () => {
                               </span>
                               <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`} title="해당 요일 피크 동시 근무자 수">
                                 피크 {peak}
+                              </span>
+                              <span className={`wat-total-chip ${total === 0 ? 'is-zero' : ''}`} title="해당 요일 전체 출근 인원">
+                                전체 {total}
                               </span>
                             </div>
                           </th>

@@ -13,7 +13,7 @@ public class AlarmScheduler {
 
     private final AlarmDispatchService alarmDispatchService;
 
-    /** Asia/Seoul 매분 0초: 누락(익일)·신청마감(금·토·일) */
+    /** Asia/Seoul 매분 0초: 누락(이번 달·익월1일은 전월)·신청마감(금·토·일) */
     @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
     public void tick() {
         try {

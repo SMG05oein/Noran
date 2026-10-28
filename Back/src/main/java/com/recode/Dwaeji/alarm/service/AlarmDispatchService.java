@@ -58,7 +58,19 @@ public class AlarmDispatchService {
             return;
         }
         LocalTime now = LocalTime.now(SEOUL).withSecond(0).withNano(0);
-        LocalDate yesterday = LocalDate.now(SEOUL).minusDays(1);
+        LocalDate today = LocalDate.now(SEOUL);
+        // 익월 1일까지는 전월 기록을 적을 수 있음 → 1일은 저번 달 전체, 그 외는 이번 달(어제까지).
+        boolean lastMonthGraceDay = today.getDayOfMonth() == 1;
+        LocalDate rangeStart;
+        LocalDate rangeEnd;
+        if (lastMonthGraceDay) {
+            LocalDate lastMonth = today.minusMonths(1);
+            rangeStart = lastMonth.withDayOfMonth(1);
+            rangeEnd = today.withDayOfMonth(1).minusDays(1);
+        } else {
+            rangeStart = today.withDayOfMonth(1);
+            rangeEnd = today.minusDays(1);
+        }
 
         List<AlarmPreference> due = alarmPreferenceRepository.findMissingRecordDue(now);
         if (due.isEmpty()) {
@@ -66,10 +78,10 @@ public class AlarmDispatchService {
         }
 
         List<WorkScheduleDaily> schedules = workScheduleDailyRepository
-                .findByWsdDateBetweenFetch(yesterday, yesterday);
+                .findByWsdDateBetweenFetch(rangeStart, rangeEnd);
 
         Map<Long, List<WorkScheduleDaily>> missingByUser = new HashMap<>();
-        Set<String> recordKeys = loadRecordKeys(yesterday, yesterday);
+        Set<String> recordKeys = loadRecordKeys(rangeStart, rangeEnd);
 
         for (WorkScheduleDaily schedule : schedules) {
             if (schedule.getWsdStatus() != ApplyStatus.출근) {
@@ -95,13 +107,30 @@ public class AlarmDispatchService {
             if (missing == null || missing.isEmpty()) {
                 continue;
             }
-            String dedupe = "MISSING_RECORD:" + yesterday.format(DATE_FMT);
+            // 하루 1회. 누락이 남아 있으면 다음 날 다시 안내.
+            String dedupe = "MISSING_RECORD:" + today.format(DATE_FMT);
             if (!tryClaim(userIdx, AlarmType.MISSING_RECORD, dedupe)) {
                 continue;
             }
-            String body = missing.size() == 1
-                    ? yesterday.format(DATE_FMT) + " 근무 기록이 아직 없습니다."
-                    : yesterday.format(DATE_FMT) + " 근무 기록 " + missing.size() + "건이 아직 없습니다.";
+            LocalDate nearest = missing.stream()
+                    .map(WorkScheduleDaily::getWsdDate)
+                    .filter(Objects::nonNull)
+                    .max(LocalDate::compareTo)
+                    .orElse(null);
+            if (nearest == null) {
+                continue;
+            }
+            String dateLabel = nearest.format(DATE_FMT);
+            String body;
+            if (lastMonthGraceDay) {
+                body = missing.size() == 1
+                        ? "저번 달 " + dateLabel + " 근무 기록이 아직 없습니다."
+                        : "저번 달 " + dateLabel + " 외 " + (missing.size() - 1) + "건의 근무 기록이 아직 없습니다.";
+            } else {
+                body = missing.size() == 1
+                        ? dateLabel + " 근무 기록이 아직 없습니다."
+                        : dateLabel + " 외 " + (missing.size() - 1) + "건의 근무 기록이 아직 없습니다.";
+            }
             send(userIdx, "근무 기록 누락 안내", body, "/records");
         }
     }

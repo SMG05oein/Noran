@@ -7,6 +7,7 @@ import Loading from '../components/Loading';
 import MyPageAccountCard from '../components/myPage/MyPageAccountCard';
 import MyPageProfileForm from '../components/myPage/MyPageProfileForm';
 import MyPageModals from '../components/myPage/MyPageModals';
+import AlarmSettingsCard from '../components/AlarmSettingsCard';
 import './Main.css';
 
 const MyPage = () => {
@@ -325,6 +326,8 @@ const MyPage = () => {
 
       {error && <Alert variant="danger" className="rounded-3 py-2">{error}</Alert>}
       {success && <Alert variant="success" className="rounded-3 py-2">{success}</Alert>}
+
+      <AlarmSettingsCard />
 
       <MyPageAccountCard userInfo={userInfo} />
 

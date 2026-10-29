@@ -14,6 +14,7 @@ import com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
 import com.recode.Dwaeji.work_apply_work.service.WorkScheduleDailyService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +29,9 @@ import java.util.stream.Collectors;
 import com.recode.Dwaeji.work_apply_work.database.WorkApply;
 import com.recode.Dwaeji.work_apply_work.dto.DailyScheduleDto;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
+import com.recode.Dwaeji.alarm.service.AlarmDispatchService;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
@@ -38,6 +41,7 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
     private final WorkApplyRepository workApplyRepository;
     private final UserRepository userRepository;
     private final WorkPlaceRepository workPlaceRepository;
+    private final AlarmDispatchService alarmDispatchService;
 
     private User getRequester(String requesterId) {
         return userRepository.findByUserId(requesterId)
@@ -88,6 +92,62 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
     private boolean isVisibleToWorker(WorkScheduleDaily schedule) {
         return schedule != null
                 && Boolean.TRUE.equals(schedule.getWsdIsConfirmed());
+    }
+
+    private boolean wasConfirmedAttendance(WorkScheduleDaily existing) {
+        return existing != null
+                && existing.getWsdStatus() == ApplyStatus.출근
+                && Boolean.TRUE.equals(existing.getWsdIsConfirmed());
+    }
+
+    /**
+     * 해당 주·지점에서 이미 확정 출근이 있던 유저.
+     * 확정 후 다른 요일을 새로 넣어도 "수정" 알람으로 보내기 위해 사용한다.
+     */
+    private Set<Long> usersWithConfirmedAttendance(
+            List<WorkScheduleDaily> existingSchedules, Long workPlaceIdx) {
+        Set<Long> users = new HashSet<>();
+        for (WorkScheduleDaily s : existingSchedules) {
+            if (!wasConfirmedAttendance(s) || s.getUser() == null) {
+                continue;
+            }
+            if (!workPlaceIdx.equals(resolveWorkPlaceIdx(s.getWorkPlace(), s.getUser()))) {
+                continue;
+            }
+            users.add(s.getUser().getUserIdx());
+        }
+        return users;
+    }
+
+    /** CONFIRM 알람용: 신규이거나 상태/시각/확정/오픈·마감/지점이 달라지면 변경 */
+    private boolean isAttendanceConfirmChanged(
+            WorkScheduleDaily existing,
+            ApplyStatus newStatus,
+            String newStart,
+            WorkPlace newWp,
+            boolean newConfirmed,
+            boolean newOpen,
+            boolean newClose) {
+        if (existing == null) {
+            return true;
+        }
+        Long oldWp = existing.getWorkPlace() != null ? existing.getWorkPlace().getWpIdx() : null;
+        Long newWpIdx = newWp != null ? newWp.getWpIdx() : null;
+        return existing.getWsdStatus() != newStatus
+                || !Objects.equals(normalizeTime(existing.getWsdStartTime()), normalizeTime(newStart))
+                || !Objects.equals(Boolean.TRUE.equals(existing.getWsdIsConfirmed()), newConfirmed)
+                || !Objects.equals(Boolean.TRUE.equals(existing.getWsdIsOpen()), newOpen)
+                || !Objects.equals(Boolean.TRUE.equals(existing.getWsdIsClose()), newClose)
+                || !Objects.equals(oldWp, newWpIdx);
+    }
+
+    private String normalizeTime(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String t = raw.trim();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{2}:\\d{2})").matcher(t);
+        return m.find() ? m.group(1) : t;
     }
 
     @Override
@@ -160,6 +220,11 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         // 3. 새로 전달받은 배정과 비교 (Smart Update). 같은 날 다른 지점은 허용.
         List<WorkScheduleDaily> toSave = new ArrayList<>();
         Set<String> requestKeySet = new HashSet<>();
+        // CONFIRM 알람: 유저 단위로 최초 확정 vs 확정 후 수정 구분
+        // (같은 주에 이미 확정 출근이 있으면, 다른 요일을 새로 넣어도 "수정")
+        Set<Long> alreadyConfirmedUsers = usersWithConfirmedAttendance(existingSchedules, workPlaceIdx);
+        Set<Long> newlyConfirmedUserIdxes = new HashSet<>();
+        Set<Long> updatedAfterConfirmUserIdxes = new HashSet<>();
         for (WorkScheduleDailyRequestDto dto : dtos) {
             if (!isPersistedSchedule(dto.getStatus())) {
                 continue; // 신청만 있는 경우는 배정 행으로 만들지 않는다(CONFIRM 시 미출근 upsert).
@@ -208,6 +273,17 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                     && Boolean.TRUE.equals(dto.getIsClose())
                     && isAssignment(dto.getStatus());
 
+            if (assignMode == AssignMode.CONFIRM
+                    && dto.getStatus() == ApplyStatus.출근
+                    && confirmedFlag
+                    && isAttendanceConfirmChanged(matched, dto.getStatus(), resolvedStart, wp, confirmedFlag, resolvedOpen, resolvedClose)) {
+                if (wasConfirmedAttendance(matched) || alreadyConfirmedUsers.contains(dto.getUserIdx())) {
+                    updatedAfterConfirmUserIdxes.add(dto.getUserIdx());
+                } else {
+                    newlyConfirmedUserIdxes.add(dto.getUserIdx());
+                }
+            }
+
             if (matched != null && (toDelete.contains(matched) || !assignMode.replacesWholeRange())) {
                 matched.setWsdStatus(dto.getStatus());
                 matched.setWsdStartTime(resolvedStart);
@@ -241,6 +317,17 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
             }
         }
 
+        // CONFIRM: 기존 출근 확정이 이번 저장에서 삭제되면 "수정"으로 간주
+        if (assignMode == AssignMode.CONFIRM) {
+            for (WorkScheduleDaily deleted : toDelete) {
+                if (deleted.getUser() != null && wasConfirmedAttendance(deleted)) {
+                    updatedAfterConfirmUserIdxes.add(deleted.getUser().getUserIdx());
+                }
+            }
+            // 같은 유저가 신규 확정+수정을 동시에 가지면 수정 문구 우선
+            newlyConfirmedUserIdxes.removeAll(updatedAfterConfirmUserIdxes);
+        }
+
         // 4. CONFIRM만: 더 이상 쓰이지 않는 기존 데이터 일괄 삭제
         if (!toDelete.isEmpty()) {
             scheduleRepository.deleteAll(toDelete);
@@ -254,6 +341,27 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         // 6. CONFIRM만: 신청만 있고 출근 없으면 미출근 행 생성
         if (assignMode.convertsUnassignedApplies()) {
             upsertUnassignedForUnassignedApplicants(startDate, endDate, workPlaceIdx, workPlaceMap.get(workPlaceIdx), toSave);
+        }
+
+        // 7. CONFIRM만: 변경된 유저에게만 웹 푸시 (최초 확정 / 확정 후 수정 문구 분리)
+        if (assignMode == AssignMode.CONFIRM) {
+            log.info("[alarm] CONFIRM push weekStart={} wpIdx={} newly={} updated={}",
+                    startDate, workPlaceIdx, newlyConfirmedUserIdxes, updatedAfterConfirmUserIdxes);
+            try {
+                if (!newlyConfirmedUserIdxes.isEmpty()) {
+                    alarmDispatchService.dispatchAssignConfirmAlarms(
+                            newlyConfirmedUserIdxes, startDate, workPlaceIdx, false);
+                }
+                if (!updatedAfterConfirmUserIdxes.isEmpty()) {
+                    alarmDispatchService.dispatchAssignConfirmAlarms(
+                            updatedAfterConfirmUserIdxes, startDate, workPlaceIdx, true);
+                }
+                if (newlyConfirmedUserIdxes.isEmpty() && updatedAfterConfirmUserIdxes.isEmpty()) {
+                    log.info("[alarm] CONFIRM skipped: no attendance schedule changes");
+                }
+            } catch (Exception e) {
+                log.error("[alarm] CONFIRM push dispatch failed", e);
+            }
         }
 
         return assignMode;

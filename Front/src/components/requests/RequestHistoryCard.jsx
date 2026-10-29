@@ -121,8 +121,8 @@ const RequestHistoryCard = ({
               );
             })}
 
-            {/* 2행: 배정 */}
-            <div className="req-grid-cell req-grid-label">배정</div>
+            {/* 2행: 출근 */}
+            <div className="req-grid-cell req-grid-label">출근</div>
             {weekCells.map(({ date, dateStr, slots }) => {
               const assignedSlot = slots.find(s => isPublicAssignment(s));
               const didApply = slots.some(s => {
@@ -130,10 +130,7 @@ const RequestHistoryCard = ({
                 if (s.isSelfApplied === false || s.selfApplied === false) return false;
                 return true;
               });
-              const hasPendingSlot = slots.some(s => s.wsdStatus === '신청');
-              const hasOffSlot = slots.some(s => s.wsdStatus === '미출근' || s.wsdStatus === '미배정');
-              const isRejected = !assignedSlot && (hasOffSlot || (isWeekConfirmed && didApply && !hasPendingSlot));
-              const isPending = !assignedSlot && !isRejected && (hasPendingSlot || slots.some(s => s.wsdIsConfirmed !== true));
+              const isConfirmed = weekSchs.some(isPublicAssignment);
 
               let text = '–';
               let chipClass = 'cell-unapplied';
@@ -143,14 +140,14 @@ const RequestHistoryCard = ({
                 text = displayOpenTime(assignedSlot, date).split(' ')[0] || '출근';
                 chipClass = 'cell-work';
                 detailLabel = `${displayOpenTime(assignedSlot, date)} (${assignedSlot.wsdWorkPlaceName || '소속지점'})`;
-              } else if (isPending && didApply) {
-                text = '대기';
+              } else if (isConfirmed) {
+                text = '–';
+                chipClass = 'cell-unapplied';
+                detailLabel = didApply ? '근무 미배정' : '배정 내역 없음';
+              } else if (didApply) {
+                text = '신청';
                 chipClass = 'cell-pending';
-                detailLabel = '배정 대기 중 (관리자 승인 대기)';
-              } else if (isRejected) {
-                text = '미배정';
-                chipClass = 'cell-rejected';
-                detailLabel = '미배정 (근무 미배정 처리됨)';
+                detailLabel = '신청 완료 (배정 대기)';
               }
 
               return (
@@ -174,9 +171,8 @@ const RequestHistoryCard = ({
 
           {/* 표 하단 색상 범례 */}
           <div className="req-table-legend d-flex align-items-center justify-content-center gap-3 mt-2 flex-wrap">
-            <span className="req-legend-item"><span className="legend-dot dot-pending" /> 신청/대기</span>
-            <span className="req-legend-item"><span className="legend-dot dot-work" /> 배정 완료</span>
-            <span className="req-legend-item"><span className="legend-dot dot-rejected" /> 미배정</span>
+            <span className="req-legend-item"><span className="legend-dot dot-pending" /> 신청</span>
+            <span className="req-legend-item"><span className="legend-dot dot-work" /> 출근 시간</span>
             <span className="req-legend-item"><span className="legend-dot dot-unapplied">–</span> 미신청</span>
           </div>
         </div>

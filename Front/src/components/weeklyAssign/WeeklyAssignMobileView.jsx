@@ -1,8 +1,9 @@
 import React from 'react';
 import { Badge } from 'react-bootstrap';
 import { format } from 'date-fns';
-import { RiCloseLine } from 'react-icons/ri';
-import { toUserIdx, createEmptyShift, displayShiftStatus, getShiftTone, dayMeta } from './weeklyAssignUtils';
+import { RiCloseLine, RiRefreshLine } from 'react-icons/ri';
+import { toUserIdx, createEmptyShift, displayShiftStatus, getShiftTone, dayMeta, canResetShift } from './weeklyAssignUtils';
+import { openStartTimeForDate } from '../../utils/shiftReset';
 
 const WeeklyAssignMobileView = ({
   weekDays,
@@ -21,6 +22,8 @@ const WeeklyAssignMobileView = ({
   isOnLeave,
   renderRowBulkInput,
   handleRemoveOtherWorker,
+  handleUpdateShift,
+  handleRemoveShift,
   setRemarkModal,
   setMobileTimeSheet,
   onlyApplied,
@@ -166,12 +169,62 @@ const WeeklyAssignMobileView = ({
               </div>
               <div className="wat-mobile-row-right">
                 {dayShifts.map(shift => {
-                  const tone = getShiftTone(shift);
+                  const openHint = !!shift.originOpenApplied && !shift.wsdIsOpen;
                   return (
-                    <div key={shift._id} className="wat-mobile-shift-item">
+                    <div key={shift._id} className="wat-mobile-shift-group">
+                      {/* 되돌리기 버튼: 변경된 경우 노출 */}
+                      {canResetShift(shift) && (
+                        <button
+                          type="button"
+                          className="wat-mobile-reset-btn"
+                          title="되돌리기"
+                          aria-label="되돌리기"
+                          onClick={() => handleRemoveShift(uid, mobileDateStr, shift._id)}
+                        >
+                          <RiRefreshLine size={16} />
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        className={`wat-mobile-slot-btn tone-${tone}`}
+                        className={`wat-toggle-chip wat-chip-open ${shift.wsdIsOpen ? 'is-active' : ''} ${openHint ? 'is-hint' : ''}`}
+                        onClick={() => {
+                          const nextVal = !shift.wsdIsOpen;
+                          handleUpdateShift(uid, mobileDateStr, shift._id, {
+                            wsdIsOpen: nextVal,
+                            ...(nextVal ? {
+                              wsdStatus: '출근',
+                              wsdStartTime: shift.wsdStartTime || openStartTimeForDate(mobileDateStr)
+                            } : {})
+                          });
+                        }}
+                        aria-label={`${u.userName} 오픈 토글`}
+                        aria-pressed={!!shift.wsdIsOpen}
+                        title={openHint ? '오픈 신청함 (클릭 시 오픈 출근)' : '오픈 토글'}
+                      >
+                        오픈
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`wat-toggle-chip wat-chip-close ${shift.wsdIsClose ? 'is-active' : ''}`}
+                        onClick={() => {
+                          const nextVal = !shift.wsdIsClose;
+                          handleUpdateShift(uid, mobileDateStr, shift._id, {
+                            wsdIsClose: nextVal,
+                            ...(nextVal ? { wsdStatus: '출근' } : {})
+                          });
+                        }}
+                        aria-label={`${u.userName} 마감 토글`}
+                        aria-pressed={!!shift.wsdIsClose}
+                        title="마감 토글"
+                      >
+                        마감
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`wat-mobile-time-trigger assign-status-input ${getShiftTone(shift)}`}
                         onClick={() => {
                           setMobileTimeSheet({
                             show: true,

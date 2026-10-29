@@ -13,7 +13,7 @@ import {
 } from './requestsUtils';
 
 export const BatchApplyBar = ({ onBatch }) => (
-  <div className="req-batch-bar d-flex align-items-center gap-1 mb-2 flex-wrap">
+  <div className="req-batch-bar d-flex align-items-center gap-1 mb-2 w-100">
     <span className="small text-muted fw-bold me-1" style={{ fontSize: '0.8rem' }}>일괄:</span>
     <Dropdown as={ButtonGroup} size="sm">
       <Dropdown.Toggle variant="outline-secondary" className="req-batch-toggle">
@@ -62,21 +62,24 @@ export const BatchApplyBar = ({ onBatch }) => (
   </div>
 );
 
-export const PlaceChipSelect = ({ workPlaces, value, onChange }) => (
-  <div className="req-place-chip-wrapper">
-    <select
-      className="req-place-select-chip"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label="근무지 선택"
-    >
-      {workPlaces.length === 0 && <option value="">지점 불러오는 중…</option>}
-      {workPlaces.map(wp => (
-        <option key={wp.wpIdx} value={wp.wpIdx}>{wp.wpName}</option>
-      ))}
-    </select>
-  </div>
-);
+export const PlaceChipSelect = ({ workPlaces, options, value, onChange }) => {
+  const list = Array.isArray(workPlaces) ? workPlaces : Array.isArray(options) ? options : [];
+  return (
+    <div className="req-place-chip-wrapper">
+      <select
+        className="req-place-select-chip"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="근무지 선택"
+      >
+        {list.length === 0 && <option value="">지점 불러오는 중…</option>}
+        {list.map(wp => (
+          <option key={wp.wpIdx} value={wp.wpIdx}>{wp.wpName}</option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 export const PlaceSelect = ({ workPlaces, value, onChange }) => (
   <Form.Group className="mb-3">
@@ -96,6 +99,7 @@ export const PlaceSelect = ({ workPlaces, value, onChange }) => (
 
 export const ApplyWeekList = ({
   monday,
+  nextMonday,
   block,
   onToggleType,
   weekSchs = [],
@@ -104,8 +108,13 @@ export const ApplyWeekList = ({
 }) => {
   if (!block) return null;
 
+  const baseMonday = monday || nextMonday;
+  const validMonday = baseMonday instanceof Date && !isNaN(baseMonday.getTime())
+    ? baseMonday
+    : (typeof baseMonday === 'string' ? new Date(baseMonday) : new Date());
+
   const daysData = DAYS_ORDER.map((day, i) => {
-    const date = addDays(monday, i);
+    const date = addDays(validMonday, i);
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayNum = getDay(date);
     const isHoly = isHoliday(date.getFullYear(), date.getMonth() + 1, date.getDate()) || dayNum === 0;
@@ -114,10 +123,12 @@ export const ApplyWeekList = ({
     const isOpen = applied && !!block.openShift[day];
     const isNormal = applied && !isOpen;
 
-    // Assignment status for 3rd row
+    const blockWpIdx = String(block?.workPlaceIdx || '');
+    // Assignment status for 3rd row (filtered for this block's work place)
     const slots = (weekSchs || []).filter(s => {
       const st = s.wsdStatus;
-      return toDateStr(s.date) === dateStr && !isBlankStatus(st);
+      const sWpIdx = String(s.applyWorkPlaceIdx || s.wsdWorkPlaceIdx || '');
+      return toDateStr(s.date) === dateStr && !isBlankStatus(st) && (!sWpIdx || !blockWpIdx || sWpIdx === blockWpIdx);
     });
 
     const assignedSlot = slots.find(s => isPublicAssignment(s));
@@ -245,6 +256,7 @@ export const ApplyWeekList = ({
 
 export const ApplyWeekGrid = ({
   monday,
+  nextMonday,
   block,
   onToggleType,
   weekSchs,
@@ -252,7 +264,8 @@ export const ApplyWeekGrid = ({
   disabled
 }) => (
   <ApplyWeekList
-    monday={monday}
+    monday={monday || nextMonday}
+    nextMonday={nextMonday || monday}
     block={block}
     onToggleType={onToggleType}
     weekSchs={weekSchs}

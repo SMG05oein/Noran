@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Container } from 'react-bootstrap';
 import {
   format,
@@ -206,6 +206,31 @@ const Records = () => {
     setSelectedMonth(format(addMonths(d, 1), 'yyyy-MM'));
   };
 
+  const touchStartXRef = useRef(null);
+  const touchStartYRef = useRef(null);
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      if (diffX < 0) {
+        handleNextMonth();
+      } else {
+        handlePrevMonth();
+      }
+    }
+  };
+
   useEffect(() => {
     loadRecords(selectedMonth);
   }, [selectedMonth]);
@@ -230,7 +255,12 @@ const Records = () => {
   }, [filteredRecords, currentPage, pageSize]);
 
   return (
-    <Container className="py-3 py-md-4 mb-5" style={{ maxWidth: '640px' }}>
+    <Container
+      className="py-3 py-md-4 mb-5"
+      style={{ maxWidth: '640px' }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* 1. 상단 월 선택 네비게이터 & 새 기록 추가 버튼 */}
       <RecordMonthNavigator
         selectedMonth={selectedMonth}

@@ -45,9 +45,9 @@ const SHOW_ACCOUNT_PLAIN_KEY = 'adminUsers.showAccountPlain';
 
 const AdminUsers = () => {
   const { user: me } = useAuthStore();
-  const [selectedRole, setSelectedRole] = useState('알바생'); // '전체', '알바생', '직원'
+  const [selectedRole, setSelectedRole] = useState('알바생'); // 기본 '알바생'
   const [selectedBranch, setSelectedBranch] = useState('');
-  const [activeStatus, setActiveStatus] = useState('ACTIVE'); // 'ALL', 'ACTIVE', 'INACTIVE'
+  const [activeStatus, setActiveStatus] = useState('ACTIVE'); // 'ALL', 'ACTIVE', 'LEAVE', 'INACTIVE'
   const [searchName, setSearchName] = useState('');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -198,10 +198,24 @@ const AdminUsers = () => {
       let res;
       const params = { size: 10, page };
       if (selectedBranch) params.workPlaceIdx = selectedBranch;
-      if (searchName) params.name = searchName;
+      if (searchName) {
+        params.userName = searchName;
+        params.name = searchName;
+      }
       if (sortBy) {
         params.sortBy = sortBy;
         params.sortDir = sortDir;
+      }
+
+      if (activeStatus === 'ACTIVE') {
+        params.isActive = 1;
+        params.status = 'ACTIVE';
+      } else if (activeStatus === 'LEAVE') {
+        params.isActive = 2;
+        params.status = 'LEAVE';
+      } else if (activeStatus === 'INACTIVE') {
+        params.isActive = 0;
+        params.status = 'INACTIVE';
       }
 
       if (isArchivedMode) {
@@ -209,14 +223,8 @@ const AdminUsers = () => {
       } else if (selectedRole === '직원') {
         res = await fetchAdminManagers(params);
       } else if (selectedRole === '알바생') {
-        if (activeStatus === 'ACTIVE') params.status = 'ACTIVE';
-        else if (activeStatus === 'LEAVE') params.status = 'LEAVE';
-        else if (activeStatus === 'INACTIVE') params.status = 'INACTIVE';
-        res = await fetchAdminWorkers(params);
+        res = await fetchAdminWorkers(params, skipCache);
       } else {
-        if (activeStatus === 'ACTIVE') params.status = 'ACTIVE';
-        else if (activeStatus === 'LEAVE') params.status = 'LEAVE';
-        else if (activeStatus === 'INACTIVE') params.status = 'INACTIVE';
         res = await fetchAllUsers(params);
       }
 
@@ -231,8 +239,14 @@ const AdminUsers = () => {
           totalE = res.data.length;
         } else if (res.data) {
           content = res.data.content || [];
-          totalP = res.data.totalPages || 1;
-          totalE = res.data.totalElements || 0;
+          totalE = res.data.page?.totalElements ?? res.data.totalElements ?? (Array.isArray(content) ? content.length : 0);
+          totalP = res.data.page?.totalPages ?? res.data.totalPages ?? (totalE > 0 ? Math.ceil(totalE / 10) : 1);
+          if (totalE > 0) {
+            const calculatedP = Math.ceil(totalE / 10);
+            if (totalP <= 1 && calculatedP > 1) {
+              totalP = calculatedP;
+            }
+          }
         }
 
         if (selectedRole === '전체') {
@@ -279,6 +293,12 @@ const AdminUsers = () => {
   };
 
   useEffect(() => {
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('adminWorkersCache_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
     const loadData = async () => {
       const typeRes = await fetchUserTypes();
       if (typeRes.success) setUserTypes(typeRes.data);

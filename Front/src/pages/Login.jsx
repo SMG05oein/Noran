@@ -87,7 +87,7 @@ const Login = () => {
 
   return (
     <div className="auth-container login-container">
-      <Container className="d-flex align-items-center justify-content-center p-2">
+      <Container className="d-flex align-items-center justify-content-center p-0 p-sm-2">
         <div className="w-100" style={{ maxWidth: "380px" }}>
           <Card className="auth-card border-0 shadow-sm">
             <Card.Body className="p-4">

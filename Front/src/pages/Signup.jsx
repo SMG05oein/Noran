@@ -285,8 +285,8 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-container">
-      <Container className="d-flex align-items-center justify-content-center p-4">
+    <div className="auth-container signup-container">
+      <Container className="d-flex align-items-center justify-content-center p-0 p-sm-2 my-auto">
         <div className="w-100" style={{ maxWidth: "460px" }}>
           <Card className="auth-card border-0 shadow-sm">
             <Card.Body className="p-4">

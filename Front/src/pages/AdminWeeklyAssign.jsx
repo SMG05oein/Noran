@@ -791,6 +791,8 @@ const AdminWeeklyAssign = () => {
               isOnLeave={isOnLeave}
               renderRowBulkInput={renderRowBulkInput}
               handleRemoveOtherWorker={handleRemoveOtherWorker}
+              handleUpdateShift={handleUpdateShift}
+              handleRemoveShift={handleRemoveShift}
               setRemarkModal={setRemarkModal}
               setMobileTimeSheet={setMobileTimeSheet}
               onlyApplied={onlyApplied}

@@ -122,11 +122,7 @@ export const ApplyWeekList = ({
 
     const assignedSlot = slots.find(s => isPublicAssignment(s));
     const didApply = applied || slots.some(isUserAppliedShift);
-    const hasPendingSlot = slots.some(s => s.wsdStatus === '신청');
-    const hasOffSlot = slots.some(s => s.wsdStatus === '미출근' || s.wsdStatus === '미배정');
-    const isConfirmedWeek = (weekSchs || []).some(s => isPublicAssignment(s));
-    const isRejected = !assignedSlot && (hasOffSlot || (isConfirmedWeek && didApply && !hasPendingSlot));
-    const isPending = !assignedSlot && !isRejected && (hasPendingSlot || slots.some(s => s.wsdIsConfirmed !== true) || (slots.length === 0 && applied));
+    const isConfirmedWeek = disabled || (weekSchs || []).some(s => isPublicAssignment(s));
 
     let assignText = '–';
     let assignClass = 'cell-unapplied';
@@ -136,14 +132,14 @@ export const ApplyWeekList = ({
       assignText = displayOpenTime(assignedSlot, date).split(' ')[0] || '출근';
       assignClass = 'cell-work';
       assignLabel = `${displayOpenTime(assignedSlot, date)} (${assignedSlot.wsdWorkPlaceName || '소속지점'})`;
-    } else if (didApply && (isPending || slots.length > 0)) {
-      assignText = '대기';
+    } else if (isConfirmedWeek) {
+      assignText = '–';
+      assignClass = 'cell-unapplied';
+      assignLabel = didApply ? '근무 미배정' : '배정 내역 없음';
+    } else if (didApply) {
+      assignText = '신청';
       assignClass = 'cell-pending';
-      assignLabel = '배정 대기 중 (관리자 승인 대기)';
-    } else if (isRejected) {
-      assignText = '미배정';
-      assignClass = 'cell-rejected';
-      assignLabel = '미배정 (근무 미배정 처리됨)';
+      assignLabel = '신청 완료 (배정 대기)';
     }
 
     return {
@@ -222,7 +218,7 @@ export const ApplyWeekList = ({
           <button
             key={d.day}
             type="button"
-            className={`req-grid-btn req-assign-cell req-data-cell ${d.assignClass}`}
+            className={`req-grid-btn req-assign-cell ${d.assignClass}`}
             onClick={() => onCellDetailClick && onCellDetailClick({
               date: d.date,
               type: 'ASSIGN',
@@ -239,9 +235,8 @@ export const ApplyWeekList = ({
 
       {/* 배정 상태 범례 */}
       <div className="req-table-legend d-flex align-items-center justify-content-center gap-3 mt-2 flex-wrap">
-        <span className="req-legend-item"><span className="legend-dot dot-pending" /> 신청/대기</span>
-        <span className="req-legend-item"><span className="legend-dot dot-work" /> 배정 완료</span>
-        <span className="req-legend-item"><span className="legend-dot dot-rejected" /> 미배정</span>
+        <span className="req-legend-item"><span className="legend-dot dot-pending" /> 신청</span>
+        <span className="req-legend-item"><span className="legend-dot dot-work" /> 출근 시간</span>
         <span className="req-legend-item"><span className="legend-dot dot-unapplied">–</span> 미신청</span>
       </div>
     </div>

@@ -209,7 +209,8 @@
     padding: 1rem;
   }
 
-  .custom-table td, .custom-table th {
+  .custom-table td,
+  .custom-table th {
     font-size: 0.85rem;
     padding: 0.65rem 0.75rem;
   }
@@ -275,6 +276,7 @@
   color: var(--color-text-muted) !important;
   border-color: var(--color-input-border) !important;
 }
+
 .assign-status-input.unapplied::placeholder {
   color: var(--color-text-muted) !important;
   opacity: 1;
@@ -285,6 +287,7 @@
   color: #f6efe8 !important;
   border-color: #3f342e !important;
 }
+
 .assign-status-input.unassigned::placeholder {
   color: #f6efe8 !important;
   opacity: 1;
@@ -295,6 +298,7 @@
   color: var(--color-warning) !important;
   border-color: var(--color-warning) !important;
 }
+
 .assign-status-input.applied::placeholder {
   color: var(--color-warning) !important;
   opacity: 1;
@@ -320,6 +324,7 @@
   color: var(--color-info) !important;
   border-color: var(--color-info) !important;
 }
+
 .assign-status-input.other-branch::placeholder {
   color: var(--color-info) !important;
   opacity: 1;
@@ -330,6 +335,7 @@
   color: var(--color-text-muted) !important;
   border-color: #554a43 !important;
 }
+
 [data-bs-theme="dark"] .assign-status-input.unapplied::placeholder {
   color: var(--color-text-muted) !important;
 }
@@ -339,6 +345,7 @@
   color: #f6efe8 !important;
   border-color: #8a6d5d !important;
 }
+
 [data-bs-theme="dark"] .assign-status-input.unassigned::placeholder {
   color: #f6efe8 !important;
 }
@@ -348,6 +355,7 @@
   color: #f0c37a !important;
   border-color: #de9e4b !important;
 }
+
 [data-bs-theme="dark"] .assign-status-input.applied::placeholder {
   color: #f0c37a !important;
 }
@@ -371,6 +379,7 @@
   color: #9dc0e0 !important;
   border-color: #709cc4 !important;
 }
+
 [data-bs-theme="dark"] .assign-status-input.other-branch::placeholder {
   color: #9dc0e0 !important;
 }
@@ -619,12 +628,12 @@
   color: var(--color-text-main);
 }
 
-.bank-sensitive-seg input[type="radio"]:checked + label {
+.bank-sensitive-seg input[type="radio"]:checked+label {
   background: var(--color-primary);
   color: #fff;
 }
 
-.bank-sensitive-seg input[type="radio"]:focus-visible + label {
+.bank-sensitive-seg input[type="radio"]:focus-visible+label {
   outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
   outline-offset: 1px;
 }
@@ -659,7 +668,7 @@
 }
 
 .unrecorded-badge-count {
-  background-color: #ffffff !important;
-  color: #dc3545 !important;
+  background-color: #392929 !important;
+  color: #fd7e7e !important;
   font-weight: 800;
 }

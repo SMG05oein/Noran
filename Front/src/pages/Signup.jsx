@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authSignup, fetchWorkPlaces, fetchBanks } from '../api/authApi';
 import { Form, Button, Container, Card, Alert, Spinner } from 'react-bootstrap';
-import { RiUser3Line, RiLockPasswordLine, RiPhoneLine, RiStore2Line, RiRestaurantLine } from 'react-icons/ri';
+import { RiRestaurantLine } from 'react-icons/ri';
 import TermsModal from '../components/TermsModal';
+import SignupFormFields from '../components/signup/SignupFormFields';
+import SignupTermsSection from '../components/signup/SignupTermsSection';
 import './Auth.css';
 
 const Signup = () => {
@@ -20,8 +22,8 @@ const Signup = () => {
   const [userAccountNumber, setUserAccountNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [success] = useState(false);
+  const [successMessage] = useState('');
   const [termsConsent, setTermsConsent] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [emailConsent, setEmailConsent] = useState(false);
@@ -39,8 +41,6 @@ const Signup = () => {
   const [birthError, setBirthError] = useState('');
 
   const [banks, setBanks] = useState([]);
-
-  // 지점 목록
   const [branches, setBranches] = useState([]);
 
   const navigate = useNavigate();
@@ -226,7 +226,7 @@ const Signup = () => {
       accountNameRef.current?.focus();
       return alert('예금주 성명을 입력해주세요.');
     }
-    
+
     if (hasErrors) {
       return alert('입력 형식이 올바르지 않은 항목이 있습니다. 입력란 아래의 경고 메시지를 확인해주세요.');
     }
@@ -301,369 +301,61 @@ const Signup = () => {
               {success && <Alert variant="success" className="rounded-3 py-2 text-center">{successMessage}</Alert>}
 
               <Form onSubmit={handleSignup}>
-                {/* 이름 */}
-                <Form.Group id="userName" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiUser3Line /> 이름 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={userName}
-                    onChange={handleUserNameChange}
-                    required
-                    ref={userNameRef}
-                    placeholder="성명을 입력하세요"
-                    className={`custom-input ${userNameError ? 'is-invalid' : ''}`}
-                  />
-                  {userNameError && (
-                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
-                      ⚠️ {userNameError}
-                    </div>
-                  )}
-                </Form.Group>
+                <SignupFormFields
+                  userName={userName}
+                  handleUserNameChange={handleUserNameChange}
+                  userNameError={userNameError}
+                  userNameRef={userNameRef}
+                  birthDate={birthDate}
+                  handleBirthChange={handleBirthChange}
+                  birthError={birthError}
+                  birthRef={birthRef}
+                  userId={userId}
+                  handleUserIdChange={handleUserIdChange}
+                  userIdError={userIdError}
+                  userIdRef={userIdRef}
+                  userEmail={userEmail}
+                  handleUserEmailChange={handleUserEmailChange}
+                  userEmailError={userEmailError}
+                  emailRef={emailRef}
+                  password={password}
+                  handlePasswordChange={handlePasswordChange}
+                  passwordConfirm={passwordConfirm}
+                  handlePasswordConfirmChange={handlePasswordConfirmChange}
+                  pwMatchError={pwMatchError}
+                  pwConfirmRef={pwConfirmRef}
+                  phone={phone}
+                  handlePhoneChange={handlePhoneChange}
+                  phoneError={phoneError}
+                  phoneWarn={phoneWarn}
+                  phoneRef={phoneRef}
+                  userBank={userBank}
+                  setUserBank={setUserBank}
+                  bankRef={bankRef}
+                  banks={banks}
+                  userAccountNumber={userAccountNumber}
+                  setUserAccountNumber={setUserAccountNumber}
+                  accountNumRef={accountNumRef}
+                  userAccountName={userAccountName}
+                  setUserAccountName={setUserAccountName}
+                  accountNameRef={accountNameRef}
+                  branch={branch}
+                  setBranch={setBranch}
+                  branches={branches}
+                />
 
-                  {/* 생년월일 */}
-                  <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold text-muted small">생년월일 <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="date"
-                      value={birthDate}
-                      onChange={handleBirthChange}
-                      required
-                      ref={birthRef}
-                      className="custom-input"
-                    />
-                    {birthError && <div className="text-danger small mt-1">{birthError}</div>}
-                  </Form.Group>
-
-                  {/* 아이디 */}
-                <Form.Group id="userId" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiUser3Line /> 아이디 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={userId}
-                    onChange={handleUserIdChange}
-                    required
-                    ref={userIdRef}
-                    placeholder="영문, 숫자 조합"
-                    className={`custom-input ${userIdError ? 'is-invalid' : ''}`}
-                  />
-                  {userIdError && (
-                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
-                      ⚠️ {userIdError}
-                    </div>
-                  )}
-                </Form.Group>
-
-                {/* 이메일 (선택) */}
-                <Form.Group id="userEmail" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    이메일 (선택)
-                  </Form.Label>
-                  <Form.Control
-                    type="email"
-                    value={userEmail}
-                    onChange={handleUserEmailChange}
-                    ref={emailRef}
-                    placeholder="이메일을 입력하세요 (선택)"
-                    className={`custom-input ${userEmailError ? 'is-invalid' : ''}`}
-                  />
-                  {userEmailError && (
-                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
-                      ⚠️ {userEmailError}
-                    </div>
-                  )}
-                </Form.Group>
-
-                {/* 비밀번호 */}
-                <Form.Group id="password" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiLockPasswordLine /> 비밀번호 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={password}
-                    onChange={handlePasswordChange}
-                    required
-                    placeholder="비밀번호 입력"
-                    className="custom-input"
-                  />
-                </Form.Group>
-
-                {/* 비밀번호 확인 */}
-                <Form.Group id="passwordConfirm" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiLockPasswordLine /> 비밀번호 확인 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={passwordConfirm}
-                    onChange={handlePasswordConfirmChange}
-                    required
-                    ref={pwConfirmRef}
-                    placeholder="비밀번호를 다시 입력하세요"
-                    className={`custom-input ${pwMatchError ? 'is-invalid' : ''}`}
-                  />
-                  {pwMatchError && (
-                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
-                      ⚠️ {pwMatchError}
-                    </div>
-                  )}
-                  {!pwMatchError && passwordConfirm && (
-                    <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px', fontWeight: '600' }}>
-                      ✅ 비밀번호가 일치합니다.
-                    </div>
-                  )}
-                </Form.Group>
-
-                {/* 전화번호 */}
-                <Form.Group id="phone" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiPhoneLine /> 연락처 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    required
-                    ref={phoneRef}
-                    placeholder="010-0000-0000"
-                    className={`custom-input ${phoneError || phoneWarn ? 'is-invalid' : phone && !phoneError && !phoneWarn ? 'is-valid' : ''}`}
-                    maxLength={13}
-                  />
-                  {(phoneError || phoneWarn) ? (
-                    <div className="invalid-feedback d-block" style={{ fontSize: '0.82rem' }}>
-                      ⚠️ {phoneWarn || phoneError}
-                    </div>
-                  ) : phone && (
-                    <div className="text-success" style={{ fontSize: '0.82rem', marginTop: '4px', fontWeight: '600' }}>
-                      ✅ 올바른 전화번호 형식입니다.
-                    </div>
-                  )}
-                </Form.Group>
-
-                <Form.Group id="userBank" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 은행명 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Select 
-                    value={userBank} 
-                    onChange={(e) => setUserBank(e.target.value)} 
-                    ref={bankRef}
-                    className="custom-input"
-                  >
-                    <option value="">은행 선택</option>
-                    {banks.map(bank => (
-                      <option key={bank.bankCode || bank.code} value={bank.bankCode || bank.code}>
-                        {bank.bankName || bank.name}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-
-                <Form.Group id="userAccountNumber" className="mb-3">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 계좌번호 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={userAccountNumber}
-                    onChange={(e) => setUserAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                    ref={accountNumRef}
-                    placeholder="계좌번호 입력"
-                    className="custom-input"
-                  />
-                </Form.Group>
-
-                <Form.Group id="userAccountName" className="mb-4">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 예금주 성명 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={userAccountName}
-                    onChange={(e) => setUserAccountName(e.target.value)}
-                    ref={accountNameRef}
-                    placeholder="예금주 (본인 명의)"
-                    className="custom-input"
-                  />
-                </Form.Group>
-
-                {/* 소속 지점 */}
-                <Form.Group id="branch" className="mb-4">
-                  <Form.Label className="fw-bold small text-muted d-flex align-items-center gap-1">
-                    <RiStore2Line /> 소속 지점 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Select
-                    value={branch}
-                    onChange={(e) => setBranch(Number(e.target.value))}
-                    className="custom-input"
-                  >
-                    {branches.map(b => (
-                      <option key={b.wpIdx} value={b.wpIdx}>
-                        {b.wpName}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-
-                {/* 약관 동의 */}
-                <div className="mb-4 p-3 rounded-3 border" style={{ background: 'var(--color-input-bg)', borderColor: 'var(--color-border)' }}>
-                  <div className="d-flex align-items-center mb-3 pb-2 border-bottom">
-                    <Form.Check
-                      type="checkbox"
-                      id="allConsent"
-                      checked={termsConsent && privacyConsent && emailConsent}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        if (checked) {
-                          // 전체 동의 클릭 시: 아직 동의 안 한 첫 번째 약관부터 모달 오픈
-                          if (!termsConsent) {
-                            setIsSequentialAll(true);
-                            setModalType('terms');
-                          } else if (!privacyConsent) {
-                            setIsSequentialAll(true);
-                            setModalType('consent');
-                          } else {
-                            // 이미 둘 다 동의되어 있으면 전체 체크
-                            setTermsConsent(true);
-                            setPrivacyConsent(true);
-                            setEmailConsent(true);
-                          }
-                        } else {
-                          // 체크 해제 시 전체 해제
-                          setIsSequentialAll(false);
-                          setTermsConsent(false);
-                          setPrivacyConsent(false);
-                          setEmailConsent(false);
-                        }
-                        if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
-                      }}
-                      className="me-2"
-                    />
-                    <Form.Label htmlFor="allConsent" className="fw-bold mb-0" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
-                      전체 동의합니다.
-                    </Form.Label>
-                  </div>
-                  
-                  {/* 이용규정 */}
-                  <div className="mb-3">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center">
-                        <Form.Check
-                          type="checkbox"
-                          id="termsConsent"
-                          checked={termsConsent}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            if (checked) {
-                              setModalType('terms');
-                            } else {
-                              setTermsConsent(false);
-                            }
-                            if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
-                          }}
-                          className="me-2"
-                        />
-                        <span 
-                          onClick={() => setModalType('terms')}
-                          className="mb-0 small fw-semibold" 
-                          style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
-                        >
-                          [필수] 근태관리시스템 이용규정 동의 <span className="text-danger">*</span>
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setModalType('terms')}
-                        className="btn btn-link p-0 text-muted small text-decoration-none"
-                      >
-                        [내용 보기]
-                      </button>
-                    </div>
-                    <div 
-                      onClick={() => setModalType('terms')}
-                      className="border rounded p-2 small text-muted" 
-                      style={{ cursor: 'pointer', height: '65px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-                    >
-                      <strong>근태관리시스템 이용규정</strong><br/>
-                      본 규정은 '노란돼지'가 소속 직원의 근태관리 업무 처리를 위해 도입한 내부 업무도구의 이용 방법과 직원의 준수사항을 안내함을 목적으로 합니다. (클릭하여 전문 확인 및 동의)
-                    </div>
-                  </div>
-
-                  {/* 개인정보 수집 및 이용 */}
-                  <div className="mb-3">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center">
-                        <Form.Check
-                          type="checkbox"
-                          id="privacyConsent"
-                          checked={privacyConsent}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            if (checked) {
-                              setModalType('consent');
-                            } else {
-                              setPrivacyConsent(false);
-                            }
-                            if (error === '필수 규정에 모두 동의해야 회원가입이 가능합니다.') setError('');
-                          }}
-                          className="me-2"
-                        />
-                        <span 
-                          onClick={() => setModalType('consent')}
-                          className="mb-0 small fw-semibold" 
-                          style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}
-                        >
-                          [필수] 개인정보 수집·이용 및 국외 이전 동의 <span className="text-danger">*</span>
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setModalType('consent')}
-                        className="btn btn-link p-0 text-muted small text-decoration-none"
-                      >
-                        [내용 보기]
-                      </button>
-                    </div>
-                    <div 
-                      onClick={() => setModalType('consent')}
-                      className="border rounded p-2 small text-muted" 
-                      style={{ cursor: 'pointer', height: '65px', overflowY: 'auto', fontSize: '0.75rem', background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-                    >
-                      <strong>개인정보 수집·이용 및 국외 이전 동의</strong><br/>
-                      1. 수집 항목: 이름, 아이디, 비밀번호, 생년월일, 연락처, 지점, 은행, 계좌 등<br/>
-                      2. 국외 이전: 일본(오사카) Oracle Cloud에 서비스 운영 목적 보관 (클릭하여 전문 확인 및 동의)
-                    </div>
-                  </div>
-
-                  {/* 선택 이메일 동의 */}
-                  <div className="d-flex align-items-center justify-content-between">
-                    <div className="d-flex align-items-center">
-                      <Form.Check
-                        type="checkbox"
-                        id="emailConsent"
-                        checked={emailConsent}
-                        onChange={(e) => setEmailConsent(e.target.checked)}
-                        className="me-2"
-                      />
-                      <Form.Label htmlFor="emailConsent" className="mb-0 small" style={{ cursor: 'pointer', color: 'var(--color-text-main)' }}>
-                        [선택] 이메일 등 주요 공지사항 수신 동의
-                      </Form.Label>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-end">
-                    <button
-                      type="button"
-                      onClick={() => setModalType('privacy')}
-                      className="btn btn-link p-0 text-primary fw-bold small text-decoration-none"
-                    >
-                      ※ 개인정보처리방침 전문 보기
-                    </button>
-                  </div>
-                </div>
+                <SignupTermsSection
+                  termsConsent={termsConsent}
+                  setTermsConsent={setTermsConsent}
+                  privacyConsent={privacyConsent}
+                  setPrivacyConsent={setPrivacyConsent}
+                  emailConsent={emailConsent}
+                  setEmailConsent={setEmailConsent}
+                  error={error}
+                  setError={setError}
+                  setModalType={setModalType}
+                  setIsSequentialAll={setIsSequentialAll}
+                />
 
                 <Button
                   disabled={loading || success || hasErrors || !termsConsent || !privacyConsent}
@@ -704,7 +396,6 @@ const Signup = () => {
           if (modalType === 'terms') {
             setTermsConsent(true);
             if (isSequentialAll && !privacyConsent) {
-              // 전체 동의 진행 중: 2번째 약관으로 즉시 연속 전환
               setTimeout(() => setModalType('consent'), 150);
               return;
             }

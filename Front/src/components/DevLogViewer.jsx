@@ -11,7 +11,7 @@ import {
 const BASE_PACKAGE = 'com.recode.Dwaeji';
 const PACKAGE_OPTIONS = [
   { value: BASE_PACKAGE, label: `${BASE_PACKAGE} (전체)` },
-  ...['work_record', 'user', 'gathering', 'payroll', 'joke', 'developer'].map((s) => ({
+  ...['work_record', 'user', 'payroll', 'developer'].map((s) => ({
     value: `${BASE_PACKAGE}.${s}`,
     label: `${BASE_PACKAGE}.${s}`,
   })),

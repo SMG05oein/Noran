@@ -18,10 +18,6 @@ import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.recode.Dwaeji.gathering.repository.GatheringCommentRepository;
-import com.recode.Dwaeji.gathering.repository.GatheringPostRepository;
-import com.recode.Dwaeji.gathering.repository.GatheringReportRepository;
-import com.recode.Dwaeji.joke.repository.JokeRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyDailyRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkApplyRepository;
 import com.recode.Dwaeji.work_apply_work.repository.WorkScheduleDailyRepository;
@@ -38,10 +34,6 @@ public class UserArchiveScheduler {
     private final WorkApplyRepository workApplyRepository;
     private final WorkApplyDailyRepository workApplyDailyRepository;
     private final WorkScheduleDailyRepository workScheduleDailyRepository;
-    private final GatheringReportRepository gatheringReportRepository;
-    private final GatheringCommentRepository gatheringCommentRepository;
-    private final GatheringPostRepository gatheringPostRepository;
-    private final JokeRepository jokeRepository;
     @Autowired
     @Lazy
     private UserArchiveScheduler self;
@@ -83,12 +75,6 @@ public class UserArchiveScheduler {
         workApplyDailyRepository.deleteByUser_UserIdx(userIdx);
         workScheduleDailyRepository.deleteByUser_UserIdx(userIdx);
         workApplyRepository.deleteByUser_UserIdx(userIdx);
-
-        gatheringReportRepository.deleteByUser_UserIdx(userIdx);
-        gatheringCommentRepository.deleteByUser_UserIdx(userIdx);
-        gatheringCommentRepository.deleteByPost_User_UserIdx(userIdx);
-        gatheringPostRepository.deleteByUser_UserIdx(userIdx);
-        jokeRepository.deleteByUser_UserIdx(userIdx);
 
         // 사용자 완전 파기
         userRepository.delete(user);

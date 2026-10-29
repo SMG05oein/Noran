@@ -74,7 +74,6 @@ VITE_API_URL=http://localhost:8080
 | `/records`, `/records/edit` | 근무 기록 |
 | `/requests` | 근무 신청 |
 | `/mypage` | 마이페이지 |
-| `/gathering` | 돼지들 모임(게시판) |
 | `/howtouse` | 시스템 이용방법 |
 | `/privacy` | 개인정보처리방침 |
 | `/terms` | 시스템 이용규정 |
@@ -92,7 +91,6 @@ VITE_API_URL=http://localhost:8080
 | `/admin/payroll` | 급여 |
 | `/admin/workplaces` | 근무지 |
 | `/admin/user-types` | 직급 |
-| `/admin/board` | 게시판 관리 |
 | `/admin/mypage` | 마이페이지 |
 
 ### 개발자 콘솔

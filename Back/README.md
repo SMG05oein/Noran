@@ -116,8 +116,6 @@ Windows:
 | `/api/work-schedule` | 근무 신청·스케줄, 일/주/월 조회 |
 | `/api/work-record` | 근무 기록, 이력, 엑셀 다운로드·대조 |
 | `/api/payroll` | 급여 조회·엑셀 |
-| `/api/gathering` | 모임 게시글, 댓글, 태그, 신고 |
-| `/api/jokes` | 유머 게시 |
 | `/api/dev/auth` | 개발자 로그인, IP OTP, 비밀번호 변경 |
 | `/api/dev/dashboard` | 시스템 정보, 헬스, 재시작·종료·재배포 |
 | `/api/dev/database` | 스키마 조회, SQL 실행, 감사 로그 |
@@ -138,8 +136,6 @@ src/main/java/com/recode/Dwaeji
 ├── work_apply_work   근무 신청·일별 스케줄
 ├── work_record       근무 기록·엑셀 대조
 ├── payroll           급여
-├── gathering         모임
-├── joke              유머
 ├── developer         개발자 대시보드
 ├── common            예외, 엑셀 테마, 인터셉터
 └── policy            Spring Security 설정

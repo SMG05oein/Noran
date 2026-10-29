@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Container, ButtonGroup, ToggleButton, Card, Table, Button, Spinner, Badge, Modal, Form, Alert, InputGroup } from 'react-bootstrap';
+import { Container } from 'react-bootstrap';
 import {
   fetchAllUsers,
   fetchAdminWorkers,
@@ -23,41 +23,25 @@ import {
   downloadUserExcel
 } from '../api/authApi';
 import PaginationBar from '../components/PaginationBar';
-import BranchFilter from '../components/BranchFilter';
 import Loading from '../components/Loading';
-import { RiSearchLine, RiDownload2Line } from 'react-icons/ri';
 import useAuthStore from '../store/useAuthStore';
 import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
+
+import { formatPhoneNumber, readLocalFlag, writeLocalFlag, hasAccountOnList } from '../components/adminUsers/adminUsersUtils';
+import AdminUsersToolbar from '../components/adminUsers/AdminUsersToolbar';
+import AdminUsersTable from '../components/adminUsers/AdminUsersTable';
+import {
+  BulkEditModal,
+  EditUserModal,
+  TempPasswordModal,
+  AddUserModal,
+  ArchiveReasonModal
+} from '../components/adminUsers/AdminUsersModals';
+
 import './AdminMain.css';
 
 const SHOW_BANK_COLS_KEY = 'adminUsers.showBankCols';
 const SHOW_ACCOUNT_PLAIN_KEY = 'adminUsers.showAccountPlain';
-
-const formatPhoneNumber = (value) => {
-  if (!value) return '';
-  const num = value.replace(/[^0-9]/g, '');
-  if (num.length <= 3) return num;
-  if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-  return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-};
-
-const readLocalFlag = (key) => {
-  try {
-    return localStorage.getItem(key) === '1';
-  } catch {
-    return false;
-  }
-};
-
-const writeLocalFlag = (key, value) => {
-  try {
-    localStorage.setItem(key, value ? '1' : '0');
-  } catch { /* ignore */ }
-};
-
-/** 목록 API의 기재 여부 플래그 ("기재" | null) */
-const hasAccountOnList = (userAccountNumber) =>
-  userAccountNumber != null && userAccountNumber !== '';
 
 const AdminUsers = () => {
   const { user: me } = useAuthStore();
@@ -161,19 +145,19 @@ const AdminUsers = () => {
 
   const bankNameByCode = useMemo(() => {
     const map = {};
-    for (const bank of banks) {
+    (banks || []).forEach(bank => {
       const code = bank.bankCode ?? bank.code;
-      if (code != null && code !== '') {
-        map[String(code)] = bank.bankName || bank.name || String(code);
-      }
-    }
+      const name = bank.bankName ?? bank.name;
+      if (code != null) map[String(code)] = name;
+      if (name) map[name] = name;
+    });
     return map;
   }, [banks]);
 
   const resolveBankLabel = (u) => {
     const code = u.bankCode || u.userBank;
-    if (code == null || code === '') return '-';
-    return bankNameByCode[String(code)] || String(code);
+    if (!code) return '-';
+    return bankNameByCode[String(code)] || code;
   };
 
   const clearAccountPlain = () => {
@@ -182,7 +166,6 @@ const AdminUsers = () => {
   };
 
   const handleShowBankColsChange = (show) => {
-    if (!canViewSensitive) return;
     setShowBankCols(show);
     writeLocalFlag(SHOW_BANK_COLS_KEY, show);
     if (!show) {
@@ -193,94 +176,106 @@ const AdminUsers = () => {
   };
 
   const handleShowAccountPlainChange = (show) => {
-    if (!canViewSensitive || !showBankCols) return;
     setShowAccountPlain(show);
     writeLocalFlag(SHOW_ACCOUNT_PLAIN_KEY, show);
-    if (!show) clearAccountPlain();
+    if (!show) {
+      clearAccountPlain();
+    }
   };
 
   const resolveAccountCell = (u) => {
-    if (!hasAccountOnList(u.userAccountNumber)) return '미기재';
-    if (!accountPlainVisible) return u.userAccountNumber;
+    if (!hasAccountOnList(u.userAccountNumber)) return '-';
+    if (!accountPlainVisible) return '기재됨';
     const plain = accountPlainByIdx[u.userIdx];
-    if (plain != null && plain !== '') return plain;
-    if (accountPlainLoading) return '…';
-    return u.userAccountNumber;
+    if (plain) return plain;
+    if (accountPlainLoading) return '조회 중...';
+    return '기재됨';
   };
 
   const loadUsers = async (skipCache = false) => {
     setLoading(true);
-    setSelectedUserIdxs(new Set()); // 페이지 변경시 선택 초기화
     try {
+      let res;
       const params = { size: 10, page };
-      if (activeStatus !== 'ALL') {
-        if (activeStatus === 'ACTIVE') params.isActive = 1;
-        else if (activeStatus === 'INACTIVE') params.isActive = 0;
-        else if (activeStatus === 'LEAVE') params.isActive = 2;
-      }
-      if (selectedBranch) {
-        params.workPlaceIdx = Number(selectedBranch);
-      }
-      if (searchName) {
-        params.userName = searchName;
-      }
+      if (selectedBranch) params.workPlaceIdx = selectedBranch;
+      if (searchName) params.name = searchName;
       if (sortBy) {
         params.sortBy = sortBy;
         params.sortDir = sortDir;
       }
 
-      let res;
-      if (isArchivedMode && activeStatus === 'INACTIVE') {
-        res = await fetchArchivedWorkers(params, archiveReason);
-        if (!res.success && res.status === 403) {
-          alert('권한이 없습니다.');
-          setIsArchivedMode(false);
-          setArchiveReason('');
-          setLoading(false);
-          return;
-        }
-      } else if (selectedRole === '전체') {
-        res = await fetchAllUsers(params);
-      } else if (selectedRole === '알바생') {
-        res = await fetchAdminWorkers(params, skipCache);
-      } else {
+      if (isArchivedMode) {
+        res = await fetchArchivedWorkers(params);
+      } else if (selectedRole === '직원') {
         res = await fetchAdminManagers(params);
+      } else if (selectedRole === '알바생') {
+        if (activeStatus === 'ACTIVE') params.status = 'ACTIVE';
+        else if (activeStatus === 'LEAVE') params.status = 'LEAVE';
+        else if (activeStatus === 'INACTIVE') params.status = 'INACTIVE';
+        res = await fetchAdminWorkers(params);
+      } else {
+        if (activeStatus === 'ACTIVE') params.status = 'ACTIVE';
+        else if (activeStatus === 'LEAVE') params.status = 'LEAVE';
+        else if (activeStatus === 'INACTIVE') params.status = 'INACTIVE';
+        res = await fetchAllUsers(params);
       }
 
-      if (res.success && res.data?.content !== undefined) {
-        let list = res.data.content;
-        if (selectedRole === '전체' && !sortBy) {
-          list = [...list].sort((a, b) => {
+      if (res && res.success) {
+        let content = [];
+        let totalP = 1;
+        let totalE = 0;
+
+        if (Array.isArray(res.data)) {
+          content = res.data;
+          totalP = 1;
+          totalE = res.data.length;
+        } else if (res.data) {
+          content = res.data.content || [];
+          totalP = res.data.totalPages || 1;
+          totalE = res.data.totalElements || 0;
+        }
+
+        if (selectedRole === '전체') {
+          content.sort((a, b) => {
             const aIsAdmin = (a.isAdmin === 1 || a.role === 'ADMIN' || a.userRole === 'ADMIN') ? 1 : 0;
             const bIsAdmin = (b.isAdmin === 1 || b.role === 'ADMIN' || b.userRole === 'ADMIN') ? 1 : 0;
-            return bIsAdmin - aIsAdmin;
+            if (aIsAdmin !== bIsAdmin) return bIsAdmin - aIsAdmin;
+
+            const aName = a.userName || '';
+            const bName = b.userName || '';
+            return aName.localeCompare(bName, 'ko');
           });
         }
-        setUsers(list);
-        setTotalPages(res.data.page?.totalPages || 1);
-        setTotalElements(res.data.page?.totalElements || 0);
-      } else if (res.success && Array.isArray(res.data)) {
-        let list = res.data;
-        if (selectedRole === '전체' && !sortBy) {
-          list = [...list].sort((a, b) => {
+
+        if (!sortBy) {
+          content.sort((a, b) => {
             const aIsAdmin = (a.isAdmin === 1 || a.role === 'ADMIN' || a.userRole === 'ADMIN') ? 1 : 0;
             const bIsAdmin = (b.isAdmin === 1 || b.role === 'ADMIN' || b.userRole === 'ADMIN') ? 1 : 0;
-            return bIsAdmin - aIsAdmin;
+            if (aIsAdmin !== bIsAdmin) return bIsAdmin - aIsAdmin;
+
+            const aActive = a.userIsActive;
+            const bActive = b.userIsActive;
+            const getPriority = (status) => {
+              if (status === 1) return 1;
+              if (status === 2) return 2;
+              return 3;
+            };
+            if (getPriority(aActive) !== getPriority(bActive)) {
+              return getPriority(aActive) - getPriority(bActive);
+            }
+            return (a.userName || '').localeCompare(b.userName || '', 'ko');
           });
         }
-        setUsers(list);
-        setTotalPages(1);
-        setTotalElements(res.data.length);
-      } else {
-        setUsers([]);
-        setTotalPages(1);
-        setTotalElements(0);
+
+        setUsers(content);
+        setTotalPages(totalP);
+        setTotalElements(totalE);
       }
     } catch (e) {
       console.error(e);
-      setUsers([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -289,7 +284,7 @@ const AdminUsers = () => {
       if (typeRes.success) setUserTypes(typeRes.data);
 
       const branchRes = await fetchWorkPlaces();
-      if (branchRes.success) setBranches([{ wpIdx: '', wpName: '전체' }, ...branchRes.data]);
+      if (branchRes.success) setBranches(branchRes.data);
 
       const bankRes = await fetchBanks();
       if (bankRes.success) {
@@ -301,56 +296,47 @@ const AdminUsers = () => {
   }, []);
 
   useEffect(() => {
-    if (activeStatus !== 'INACTIVE') {
-      setIsArchivedMode(false);
-      setArchiveReason('');
-    }
-  }, [activeStatus]);
-
-  useEffect(() => {
     loadUsers();
-  }, [selectedRole, page, selectedBranch, activeStatus, isArchivedMode, sortBy, sortDir]);
+    setSelectedUserIdxs(new Set());
+    clearAccountPlain();
+  }, [selectedRole, selectedBranch, activeStatus, page, isArchivedMode, sortBy, sortDir]);
 
-  // 계좌번호 원문 조회 ON일 때만 현재 페이지(기재 행) sensitive-info 로드
   useEffect(() => {
-    if (!accountPlainVisible) {
-      clearAccountPlain();
-      return undefined;
-    }
+    if (!accountPlainVisible || loading || users.length === 0) return;
 
+    let canceled = false;
     const targets = users.filter(
-      (u) => u.userIdx != null && hasAccountOnList(u.userAccountNumber)
+      u => hasAccountOnList(u.userAccountNumber) && !accountPlainByIdx[u.userIdx]
     );
-    if (targets.length === 0) {
-      clearAccountPlain();
-      return undefined;
-    }
 
-    let cancelled = false;
+    if (targets.length === 0) return;
+
     setAccountPlainLoading(true);
-    setAccountPlainByIdx({});
-
     (async () => {
       const entries = await Promise.all(
         targets.map(async (u) => {
-          const res = await getSensitiveInfo(u.userIdx);
-          const no = res.success ? (res.data?.userAccountNumber || '') : '';
-          return [u.userIdx, no];
+          try {
+            const res = await getSensitiveInfo(u.userIdx);
+            const no = res.success ? (res.data?.userAccountNumber || '') : '';
+            return [u.userIdx, no];
+          } catch {
+            return [u.userIdx, ''];
+          }
         })
       );
-      if (cancelled) return;
+      if (canceled) return;
       const next = {};
-      for (const [idx, no] of entries) {
-        if (no) next[idx] = no;
-      }
-      setAccountPlainByIdx(next);
+      entries.forEach(([uid, no]) => {
+        if (no) next[uid] = no;
+      });
+      setAccountPlainByIdx(prev => ({ ...prev, ...next }));
       setAccountPlainLoading(false);
     })();
 
     return () => {
-      cancelled = true;
+      canceled = true;
     };
-  }, [accountPlainVisible, users]);
+  }, [accountPlainVisible, users, loading]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -359,244 +345,240 @@ const AdminUsers = () => {
     loadUsers();
   };
 
-  const handleSort = (col) => {
-    if (sortBy === col) {
-      if (sortDir === 'asc') {
-        setSortDir('desc');
-      } else {
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else {
         setSortBy('');
         setSortDir('asc');
       }
     } else {
-      setSortBy(col);
+      setSortBy(field);
       setSortDir('asc');
     }
     setPage(0);
     setPageInput('1');
   };
 
-  const renderSortIcon = (col) => {
-    if (sortBy !== col) return <span className="ms-1 text-muted opacity-50">⇅</span>;
-    return <span className="ms-1 text-primary">{sortDir === 'asc' ? '▲' : '▼'}</span>;
+  const renderSortIcon = (field) => {
+    if (sortBy !== field) return <span className="text-muted ms-1 opacity-25">↕</span>;
+    return sortDir === 'asc' ? <span className="text-primary ms-1">▲</span> : <span className="text-primary ms-1">▼</span>;
   };
 
-  const copyUserId = async (userId) => {
-    try {
-      await navigator.clipboard.writeText(userId);
-      setCopyToast('아이디가 복사되었습니다.');
-      setTimeout(() => setCopyToast(''), 1500);
-    } catch {
-      setCopyToast('복사에 실패했습니다.');
-      setTimeout(() => setCopyToast(''), 1500);
+  const isAllSelected = users.length > 0 && users.filter(u => u.userIsActive !== 0).length > 0 &&
+    users.filter(u => u.userIsActive !== 0).every(u => selectedUserIdxs.has(u.userIdx));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedUserIdxs(new Set());
+    } else {
+      const activeIdxs = users.filter(u => u.userIsActive !== 0).map(u => u.userIdx);
+      setSelectedUserIdxs(new Set(activeIdxs));
+    }
+  };
+
+  const toggleSelectUser = (userIdx) => {
+    const next = new Set(selectedUserIdxs);
+    if (next.has(userIdx)) next.delete(userIdx);
+    else next.add(userIdx);
+    setSelectedUserIdxs(next);
+  };
+
+  const handleOpenBulkModal = () => {
+    setBulkError('');
+    setBulkSuccess('');
+    setBulkStatus('');
+    setBulkWage('');
+    setBulkFkUtIdx('');
+    setShowBulkModal(true);
+  };
+
+  const handleBulkSave = async () => {
+    if (!bulkStatus && !bulkWage && !bulkFkUtIdx) {
+      setBulkError('수정할 항목(상태, 직급, 시급) 중 최소 하나는 입력해야 합니다.');
+      return;
+    }
+
+    setBulkSaving(true);
+    setBulkError('');
+    setBulkSuccess('');
+
+    const targetList = Array.from(selectedUserIdxs).map(idx => {
+      const u = users.find(user => user.userIdx === idx);
+      return {
+        userIdx: idx,
+        userName: u ? u.userName : `직원 #${idx}`
+      };
+    });
+
+    const payload = {
+      users: targetList,
+      userIsActive: bulkStatus !== '' ? Number(bulkStatus) : undefined,
+      userHourlyWage: bulkWage !== '' ? Number(bulkWage) : undefined,
+      fkUtIdx: bulkFkUtIdx !== '' ? Number(bulkFkUtIdx) : undefined
+    };
+
+    const res = await bulkUpdateUsers(payload);
+    setBulkSaving(false);
+
+    if (res.success) {
+      alert('일괄 수정이 완료되었습니다.');
+      setShowBulkModal(false);
+      setSelectedUserIdxs(new Set());
+      loadUsers();
+    } else {
+      setBulkError(res.error || '일괄 수정 중 오류가 발생했습니다.');
     }
   };
 
   const handleDownloadUsersExcel = async () => {
     if (excelDownloading) return;
-    await runExcelDownload(({ signal }) =>
-      downloadUserExcel(selectedBranch || null, { signal })
-    );
-  };
-
-  const selectableUsers = users.filter(u => u.userIsActive !== 0);
-
-  // 체크박스 제어
-  const toggleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedUserIdxs(new Set(selectableUsers.map(u => u.userIdx)));
-    } else {
-      setSelectedUserIdxs(new Set());
-    }
-  };
-
-  const toggleSelectUser = (idx) => {
-    setSelectedUserIdxs(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
+    const branchName = selectedBranch
+      ? branches.find(b => String(b.wpIdx) === String(selectedBranch))?.wpName || ''
+      : '';
+    await runExcelDownload(async () => {
+      return await downloadUserExcel({
+        role: selectedRole,
+        branch: branchName,
+        status: activeStatus,
+        search: searchName,
+      });
     });
   };
 
-  const isAllSelected = selectableUsers.length > 0 && selectedUserIdxs.size === selectableUsers.length;
-
-  const handleOpenBulkModal = () => {
-    setBulkStatus('');
-    setBulkWage('');
-    setBulkFkUtIdx('');
-    setBulkError('');
-    setBulkSuccess('');
-    setShowBulkModal(true);
-  };
-
-  const handleBulkSave = async () => {
-    if (selectedUserIdxs.size === 0) return;
-    setBulkError('');
-    setBulkSuccess('');
-
-    const payload = {
-      userIdxList: Array.from(selectedUserIdxs),
-      isActive: bulkStatus === '' ? null : Number(bulkStatus),
-      fkUtIdx: bulkFkUtIdx === '' ? null : Number(bulkFkUtIdx),
-      userHourlyWage: bulkWage === '' ? null : Number(bulkWage)
-    };
-
-    setBulkSaving(true);
-    const res = await bulkUpdateUsers(payload);
-    setBulkSaving(false);
-
-    if (res.success) {
-      setShowBulkModal(false);
-      setSelectedUserIdxs(new Set());
-      loadUsers(true);
-    } else {
-      setBulkError(res.error || '일괄 수정에 실패했습니다.');
-    }
-  };
-
-  const openEditModal = (u) => {
+  const openEditModal = async (u) => {
     setEditUser(u);
     setEditUserName(u.userName || '');
     setEditEmail(u.userEmail || '');
-    setEditPhone(u.userPhone || '');
-    const matchedBranch = branches.find(b => b.wpName === u.workPlaceName);
-    setEditBranch(matchedBranch ? matchedBranch.wpIdx : (branches.length > 1 ? branches[1].wpIdx : 1));
-    const currentUtIdx = u.fkUtIdx ?? u.userTypeIdx ?? u.utIdx
-      ?? userTypes.find(t => t.utName === (u.userTypeName || u.userType))?.utIdx
-      ?? '';
-    setEditFkUtIdx(currentUtIdx === '' || currentUtIdx == null ? '' : String(currentUtIdx));
-    setEditIsActive(u.userIsActive !== undefined ? u.userIsActive : 1);
+    setEditPhone(formatPhoneNumber(u.userPhone || ''));
+    setEditBranch(u.fkWorkPlaceIdx || u.workPlaceIdx || 1);
+    setEditFkUtIdx(u.fkUtIdx ? String(u.fkUtIdx) : '');
+    setEditIsActive(u.userIsActive !== undefined ? String(u.userIsActive) : '1');
+
+    setEditBank(u.bankCode || u.userBank || '');
+    setEditAccountName(u.userAccountHolder || u.userAccountName || '');
+    setEditAccountNo(u.userAccountNumber || '');
+    setEditWage(u.userHourlyWage !== undefined ? String(u.userHourlyWage) : '');
+
+    setSensitiveDataLoaded(false);
     setEditError('');
     setEditSuccess('');
-
-    // 민감정보 초기화 (수정 모달에 통합됨)
-    setEditBank(u.bankCode || u.userBank || '');
-    setEditAccountName(u.userAccountName || '');
-    setEditAccountNo(u.userAccountNumber || '');
-    setEditWage(u.userHourlyWage || '');
-    setSensitiveDataLoaded(false);
   };
 
   const handleRevealSensitive = async () => {
-    if (!editUser) return;
+    if (!editUser || sensitiveLoading) return;
     setSensitiveLoading(true);
-    const res = await getSensitiveInfo(editUser.userIdx);
-    setSensitiveLoading(false);
-    if (res.success && res.data) {
-      setEditBank(res.data.bankCode || res.data.userBank || '');
-      setEditAccountName(res.data.userAccountName || '');
-      setEditAccountNo(res.data.userAccountNumber || '');
-      setEditWage(res.data.userHourlyWage || '');
-      setSensitiveDataLoaded(true);
-    } else {
-      setEditError(res.error || '원본 민감정보 조회에 실패했습니다.');
+    try {
+      const res = await getSensitiveInfo(editUser.userIdx);
+      if (res.success && res.data) {
+        setEditAccountNo(res.data.userAccountNumber || '');
+        if (res.data.userBank) setEditBank(res.data.userBank);
+        if (res.data.userAccountName) setEditAccountName(res.data.userAccountName);
+        if (res.data.userHourlyWage !== undefined) setEditWage(String(res.data.userHourlyWage));
+        setSensitiveDataLoaded(true);
+      } else {
+        alert(res.error || '민감정보를 불러올 수 없습니다.');
+      }
+    } catch {
+      alert('민감정보를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setSensitiveLoading(false);
     }
   };
 
   const handleEditSave = async () => {
+    if (!editUser) return;
+    setEditSaving(true);
     setEditError('');
     setEditSuccess('');
-    setEditSaving(true);
 
     const payload = {
       userName: editUserName,
       userEmail: editEmail,
       userPhone: editPhone,
       fkWorkPlaceIdx: Number(editBranch),
-      isActive: Number(editIsActive)
+      userIsActive: Number(editIsActive),
     };
-    if (editFkUtIdx && Number(editUser.userIdx) !== Number(me?.userIdx)) {
+    if (editFkUtIdx) {
       payload.fkUtIdx = Number(editFkUtIdx);
     }
 
     const res = await updateUserInfo(editUser.userIdx, payload);
 
-    let resSensitive = { success: true };
     if (canEditSensitive) {
       const sensitivePayload = {
-        bankCode: editBank,
+        userBank: editBank,
         userAccountName: editAccountName,
-        userHourlyWage: editWage ? Number(editWage) : null
+        userAccountNumber: editAccountNo,
+        userHourlyWage: editWage ? Number(editWage) : 0,
       };
-      if (!editAccountNo?.startsWith('기재')) {
-        sensitivePayload.userAccountNumber = editAccountNo;
-      }
-      resSensitive = await updateSensitiveInfo(editUser.userIdx, sensitivePayload);
+      await updateSensitiveInfo(editUser.userIdx, sensitivePayload);
     }
 
     setEditSaving(false);
 
-    if (res.success && resSensitive.success) {
-      setEditSuccess('수정되었습니다.');
+    if (res.success) {
+      alert('정보가 성공적으로 수정되었습니다.');
+      setEditUser(null);
       loadUsers();
-      setTimeout(() => setEditUser(null), 1000);
     } else {
-      setEditError(res.error || resSensitive.error || '수정에 실패했습니다.');
+      setEditError(res.error || '수정에 실패했습니다.');
     }
   };
 
   const handleToggleActive = async (u, t) => {
-    // console.log(u);
-    // return;
-    let confirmMsg = "";
-    let isCheck = false;
-    if (t === 2) {
-      confirmMsg = `${u.userName}을 휴직 처리하시겠습니까?`;
-      isCheck = true;
-    } else {
-      confirmMsg = u.userIsActive === 1 ? `[${u.userName}]님을 퇴사 처리하시겠습니까?` : `[${u.userName}]님을 복직 처리하시겠습니까?`;
-      isCheck = u.userIsActive === 1;
-    }
-    if (!window.confirm(confirmMsg)) { return; }
+    const isDeactivating = (t === 100 && u.userIsActive === 1);
+    const isLeaving = (t === 2);
+    const actionText = isDeactivating ? '퇴사(비활성화)' : isLeaving ? '휴직' : '복직';
 
-    if (isCheck && t === 100) {
-      console.log(isCheck, " : ", t, " : ", '휴직');
-      // return;
-      const res = await deleteUser(u.userIdx);
-      if (res.success) {
-        // return;
-        loadUsers();
-        if (editUser && editUser.userIdx === u.userIdx) setEditUser(null);
-      } else alert(res.error);
-    } else if (isCheck && t === 2) {
-      console.log(isCheck, " : ", t, " : ", '휴직');
-      // return;
-      const res = await leaveUser(u.userIdx);
-      if (res.success) {
-        // return;
-        loadUsers();
-        if (editUser && editUser.userIdx === u.userIdx) setEditUser(null);
-      } else alert(res.error);
-    } else {
-      console.log(isCheck, " : ", t, " : ", '복직');
-      // return;
-      const res = await restoreUser(u.userIdx);
-      if (res.success) {
-        // return;
-        loadUsers();
-        if (editUser && editUser.userIdx === u.userIdx) setEditUser(null);
-      } else alert(res.error);
+    if (!window.confirm(`[${u.userName}]님을 ${actionText} 처리하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      if (isDeactivating) {
+        const res = await deleteUser(u.userIdx);
+        if (res.success) {
+          alert('퇴사 처리가 완료되었습니다.');
+          setEditUser(null);
+          loadUsers();
+        } else alert(res.error || '처리에 실패했습니다.');
+      } else if (isLeaving) {
+        const res = await leaveUser(u.userIdx);
+        if (res.success) {
+          alert('휴직 처리가 완료되었습니다.');
+          setEditUser(null);
+          loadUsers();
+        } else alert(res.error || '처리에 실패했습니다.');
+      } else {
+        const res = await restoreUser(u.userIdx);
+        if (res.success) {
+          alert('복직 처리가 완료되었습니다.');
+          setEditUser(null);
+          loadUsers();
+        } else alert(res.error || '처리에 실패했습니다.');
+      }
+    } catch {
+      alert('처리 중 오류가 발생했습니다.');
     }
   };
 
   const handleHardDelete = async (u) => {
-    if (!window.confirm(`[경고] [${u.userName}]님의 데이터를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 근무 기록이 함께 삭제될 수 있습니다.`)) return;
+    if (!window.confirm(`[경고] [${u.userName}]님의 데이터를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구 파기됩니다.`)) return;
     const res = await hardDeleteUser(u.userIdx);
-    if (res.success) loadUsers();
-    else alert(res.error);
+    if (res.success) { alert('영구 삭제되었습니다.'); loadUsers(); }
+    else alert(res.error || '삭제 실패');
   };
 
   const handleSetTempPw = async () => {
-    setTempPwMsg('');
-    if (!tempPwValue) return setTempPwMsg('임시 비밀번호를 입력하세요.');
-
+    if (!tempPwValue) return;
     setTempPwSaving(true);
+    setTempPwMsg('');
     const res = await setTempPassword(tempPwUser.userIdx, tempPwValue);
     setTempPwSaving(false);
-
     if (res.success) {
-      setTempPwMsg('임시 비밀번호가 설정되었습니다.');
-      setTimeout(() => setTempPwUser(null), 1500);
+      alert('임시 비밀번호가 설정되었습니다.');
+      setTempPwUser(null);
     } else {
       setTempPwMsg(res.error || '설정에 실패했습니다.');
     }
@@ -608,8 +590,8 @@ const AdminUsers = () => {
     setAddUserName('');
     setAddUserBirth('');
     setAddUserPhone('');
-    setAddWorkPlaceIdx(branches.length > 1 ? branches[1].wpIdx : 1);
-    setAddUserRole(selectedRole === '직원' ? 'ADMIN' : 'WORKER');
+    setAddWorkPlaceIdx(branches[0]?.wpIdx || 1);
+    setAddUserRole('WORKER');
     setAddFkUtIdx('');
     setAddError('');
     setAddSuccess('');
@@ -617,15 +599,14 @@ const AdminUsers = () => {
   };
 
   const handleAddUser = async () => {
+    if (!addUserId || !addUserPw || !addUserName || !addUserBirth || !addUserPhone) {
+      setAddError('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+    setAddSaving(true);
     setAddError('');
     setAddSuccess('');
 
-    if (!addUserId || !addUserPw || !addUserName || !addUserBirth || !addUserPhone) {
-      alert('아이디, 임시 비밀번호, 이름, 생년월일, 연락처는 필수입니다.');
-      return;
-    }
-
-    setAddSaving(true);
     const payload = {
       userId: addUserId,
       userPw: addUserPw,
@@ -654,249 +635,65 @@ const AdminUsers = () => {
     }
   };
 
+  const copyUserId = (userId) => {
+    navigator.clipboard.writeText(userId);
+    setCopyToast(`'${userId}' 아이디가 복사되었습니다.`);
+    setTimeout(() => setCopyToast(''), 2000);
+  };
+
   return (
     <div className="admin-container">
       <Container className="py-2 py-md-4">
-        <div className="admin-header-card">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 gap-md-3">
-            <div className="d-flex justify-content-between align-items-center w-100 w-md-auto">
-              <div>
-                <h2 className="fw-bold mb-1" style={{ color: 'var(--color-text-main)' }}>직원 관리</h2>
-                <p className="text-muted small mb-0">알바생 및 직원의 시급, 계좌 등 민감정보와 근무 상태를 관리합니다.</p>
-              </div>
-              <Button variant="primary" className="fw-bold px-3 py-1.5 rounded-pill shadow-sm d-md-none text-nowrap ms-2" onClick={handleOpenAddModal}>
-                + 직원 추가
-              </Button>
-            </div>
-
-            <div className="d-flex flex-column align-items-md-end gap-2 w-100 w-md-auto">
-              <div className="d-flex gap-2 align-items-center flex-wrap">
-                <ButtonGroup className="shadow-xs">
-                  <ToggleButton id="tab-active-all" type="radio" variant={activeStatus === 'ALL' ? "success" : "outline-success"} name="activeRadio" value="ALL" checked={activeStatus === 'ALL'} onChange={() => { setActiveStatus('ALL'); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">전체</ToggleButton>
-                  <ToggleButton id="tab-active" type="radio" variant={activeStatus === 'ACTIVE' ? "success" : "outline-success"} name="activeRadio" value="ACTIVE" checked={activeStatus === 'ACTIVE'} onChange={() => { setActiveStatus('ACTIVE'); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">재직</ToggleButton>
-                  <ToggleButton id="tab-leave" type="radio" variant={activeStatus === 'LEAVE' ? "warning" : "outline-warning"} name="activeRadio" value="LEAVE" checked={activeStatus === 'LEAVE'} onChange={() => { setActiveStatus('LEAVE'); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">휴직</ToggleButton>
-                  <ToggleButton id="tab-resigned" type="radio" variant={activeStatus === 'INACTIVE' ? "danger" : "outline-danger"} name="activeRadio" value="INACTIVE" checked={activeStatus === 'INACTIVE'} onChange={() => { setActiveStatus('INACTIVE'); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">퇴사</ToggleButton>
-                </ButtonGroup>
-
-                <ButtonGroup className="shadow-xs">
-                  <ToggleButton id="role-all" type="radio" variant={selectedRole === '전체' ? "primary" : "outline-primary"} name="roleRadio" value="전체" checked={selectedRole === '전체'} onChange={e => { setSelectedRole(e.currentTarget.value); setSelectedBranch(''); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">전체</ToggleButton>
-                  <ToggleButton id="role-worker" type="radio" variant={selectedRole === '알바생' ? "primary" : "outline-primary"} name="roleRadio" value="알바생" checked={selectedRole === '알바생'} onChange={e => { setSelectedRole(e.currentTarget.value); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">알바생</ToggleButton>
-                  <ToggleButton id="role-admin" type="radio" variant={selectedRole === '직원' ? "primary" : "outline-primary"} name="roleRadio" value="직원" checked={selectedRole === '직원'} onChange={e => { setSelectedRole(e.currentTarget.value); setSelectedBranch(''); setPage(0); setPageInput('1'); }} className="px-2 px-sm-3 py-1 fw-bold">직원</ToggleButton>
-                </ButtonGroup>
-
-                <Button variant="primary" className="fw-bold px-3 py-1.5 rounded-pill shadow-sm d-none d-md-inline-block text-nowrap ms-2" onClick={handleOpenAddModal}>
-                  + 직원 추가
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <hr className="my-3 opacity-25" />
-
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-2 flex-wrap w-100">
-              <BranchFilter selectedBranch={selectedBranch} onlyAll={selectedRole === '직원'} onChange={(val) => { setSelectedBranch(val); setPage(0); setPageInput('1'); }} />
-
-              <Form onSubmit={handleSearch} className="admin-search-form d-flex align-items-center gap-1 ms-md-auto">
-                <Form.Control type="text" placeholder="이름 검색" value={searchName} onChange={e => setSearchName(e.target.value)} className="custom-input py-2" disabled={selectedRole === '직원'} />
-                <Button type="submit" variant="primary" className="fw-bold d-flex align-items-center gap-1 rounded-3 px-3 py-2 text-nowrap" disabled={selectedRole === '직원'}>
-                  <RiSearchLine size={16} /> 검색
-                </Button>
-              </Form>
-            </div>
-
-            <div className="d-flex gap-2 align-items-center ms-md-auto flex-wrap w-100 w-md-auto justify-content-between justify-content-md-end mt-2 mt-md-0">
-              {canViewSensitive && (
-                <div className="bank-sensitive-controls d-flex flex-column flex-md-row gap-2 py-1 px-2">
-                  {showBankCols && (
-                    <div className="bank-sensitive-row">
-                      <span className="bank-sensitive-label">계좌번호</span>
-                      <div className="bank-sensitive-seg" role="radiogroup" aria-label="계좌번호 원문">
-                        <input
-                          type="radio"
-                          id="account-plain-show"
-                          name="accountPlainRadio"
-                          checked={showAccountPlain}
-                          onChange={() => handleShowAccountPlainChange(true)}
-                        />
-                        <label htmlFor="account-plain-show">원문 조회</label>
-                        <input
-                          type="radio"
-                          id="account-plain-hide"
-                          name="accountPlainRadio"
-                          checked={!showAccountPlain}
-                          onChange={() => handleShowAccountPlainChange(false)}
-                        />
-                        <label htmlFor="account-plain-hide">숨김</label>
-                      </div>
-                    </div>
-                  )}
-                  <div className="bank-sensitive-row">
-                    <span className="bank-sensitive-label">은행정보</span>
-                    <div className="bank-sensitive-seg" role="radiogroup" aria-label="은행정보 표시">
-                      <input
-                        type="radio"
-                        id="bank-cols-show"
-                        name="bankColsRadio"
-                        checked={showBankCols}
-                        onChange={() => handleShowBankColsChange(true)}
-                      />
-                      <label htmlFor="bank-cols-show">보기</label>
-                      <input
-                        type="radio"
-                        id="bank-cols-hide"
-                        name="bankColsRadio"
-                        checked={!showBankCols}
-                        onChange={() => handleShowBankColsChange(false)}
-                      />
-                      <label htmlFor="bank-cols-hide">숨김</label>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="d-flex gap-2 align-items-center flex-wrap">
-                {canExportExcel && (
-                  <Button variant="success" className="fw-bold px-3 py-1.5 rounded-3 shadow-sm text-nowrap" onClick={handleDownloadUsersExcel} disabled={excelDownloading}>
-                    <RiDownload2Line className="me-1" />
-                    {excelDownloading ? '다운로드 중...' : '엑셀 다운로드'}
-                  </Button>
-                )}
-                <Button variant="secondary" disabled={selectedUserIdxs.size === 0} onClick={handleOpenBulkModal} className="fw-bold px-3 py-1.5 rounded-3 shadow-sm text-nowrap">
-                  선택된 직원 일괄 수정 ({selectedUserIdxs.size})
-                </Button>
-              </div>
-            </div>
-          </div>
-          {copyToast && <Alert variant="success" className="py-2 mt-2 mb-0">{copyToast}</Alert>}
-          {activeStatus === 'INACTIVE' && (
-            <Alert variant="warning" className="py-2 mt-3 mb-0 small text-dark" style={{ fontSize: '0.85rem' }}>
-              <span className="fw-bold">※ 개인정보 보호를 위해 퇴사 후 1년이 경과한 직원의 신상 정보는 마스킹 처리되며, 원본은 권한이 있는 자만 조회할 수 있습니다.</span>
-            </Alert>
-          )}
-        </div>
+        <AdminUsersToolbar
+          handleOpenAddModal={handleOpenAddModal}
+          activeStatus={activeStatus}
+          setActiveStatus={setActiveStatus}
+          selectedRole={selectedRole}
+          setSelectedRole={setSelectedRole}
+          selectedBranch={selectedBranch}
+          setSelectedBranch={setSelectedBranch}
+          searchName={searchName}
+          setSearchName={setSearchName}
+          handleSearch={handleSearch}
+          setPage={setPage}
+          setPageInput={setPageInput}
+          canViewSensitive={canViewSensitive}
+          showBankCols={showBankCols}
+          handleShowBankColsChange={handleShowBankColsChange}
+          showAccountPlain={showAccountPlain}
+          handleShowAccountPlainChange={handleShowAccountPlainChange}
+          canExportExcel={canExportExcel}
+          handleDownloadUsersExcel={handleDownloadUsersExcel}
+          excelDownloading={excelDownloading}
+          selectedUserIdxs={selectedUserIdxs}
+          handleOpenBulkModal={handleOpenBulkModal}
+          copyToast={copyToast}
+        />
 
         {loading ? <Loading /> : (
-          <>
-            <Card className="border-0 shadow-sm rounded-4 overflow-hidden mb-4">
-              <Card.Body className="p-0">
-                <div className="table-responsive">
-                  <Table hover className="custom-table align-middle mb-0 text-center">
-                    <thead className="table-light">
-                      <tr>
-                        <th style={{ width: '40px' }}>
-                          <Form.Check type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} />
-                        </th>
-                        <th>No.</th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('branch')}>
-                          소속 {renderSortIcon('branch')}
-                        </th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
-                          이름 {renderSortIcon('name')}
-                        </th>
-                        {selectedRole === '전체' && <th>역할</th>}
-                        {bankColsVisible && (
-                          <>
-                            <th>은행</th>
-                            <th>계좌</th>
-                          </>
-                        )}
-                        <th>아이디</th>
-                        <th>시급</th>
-                        <th>연락처</th>
-                        <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>
-                          상태 {renderSortIcon('status')}
-                        </th>
-                        {activeStatus === 'INACTIVE' && <th>퇴사일</th>}
-                        {activeStatus !== 'ACTIVE' && activeStatus !== 'LEAVE' && <th>삭제</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u, idx) => (
-                        <tr key={u.userIdx} className={u.userIsActive === 0 ? 'table-secondary text-muted' : u.userIsActive === 2 ? 'table-leave text-muted' : ''}>
-                          <td>
-                            <Form.Check type="checkbox" checked={selectedUserIdxs.has(u.userIdx)} onChange={() => toggleSelectUser(u.userIdx)} disabled={u.userIsActive === 0} title={u.userIsActive === 0 ? '퇴사자는 일괄 수정할 수 없습니다.' : ''} />
-                          </td>
-                          <td className="fw-bold text-muted">{page * 10 + idx + 1}</td>
-                          <td className="fw-bold">{u.workPlaceName || '-'}</td>
-                          <td className="fw-bold">
-                            <span
-                              className={u.userIsActive === 0 ? "text-secondary" : "text-primary"}
-                              style={{ cursor: u.userIsActive === 0 ? 'not-allowed' : 'pointer', textDecoration: u.userIsActive === 0 ? 'none' : 'underline' }}
-                              onClick={() => openEditModal(u)}
-                              title={u.userIsActive === 0 ? "퇴사자의 정보는 수정할 수 없습니다." : "클릭하여 상세 조회 및 수정"}
-                            >
-                              {u.userName}
-                              {Number(u.nameSeq) > 1 && u.userIdx != null && (
-                                <Badge bg="secondary" className="ms-1">#{u.userIdx}</Badge>
-                              )}
-                            </span>
-                          </td>
-                          {selectedRole === '전체' && (
-                            <td>
-                              {(u.isAdmin === 1 || u.role === 'ADMIN' || u.userRole === 'ADMIN') ? <Badge bg="danger">관리자</Badge> : <Badge bg="info">알바생</Badge>}
-                            </td>
-                          )}
-                          {bankColsVisible && (
-                            <>
-                              <td className="small">{resolveBankLabel(u)}</td>
-                              <td className="small font-monospace">{resolveAccountCell(u)}</td>
-                            </>
-                          )}
-                          <td
-                            className="text-muted small"
-                            style={{ cursor: 'pointer' }}
-                            title="클릭하여 복사"
-                            onClick={() => copyUserId(u.userId)}
-                          >
-                            {u.userId}
-                          </td>
-                          <td className="small">{canViewSensitive && u.userHourlyWage ? `${u.userHourlyWage.toLocaleString()}원` : (canViewSensitive ? '-' : '***')}</td>
-                          <td className="small">{u.userPhone || '-'}</td>
-                          <td>
-                            {u.userIsActive === 1 ? <Badge bg="success">재직</Badge> : u.userIsActive === 2 ? <Badge bg="warning">휴직</Badge> : <Badge bg="dark">퇴사</Badge>}
-                          </td>
-                          {activeStatus === 'INACTIVE' && (
-                            <td className="small text-danger">
-                              {u.userWithdrawnAt ? u.userWithdrawnAt.split('T')[0] : '-'}
-                            </td>
-                          )}
-                          {activeStatus !== 'ACTIVE' && activeStatus !== 'LEAVE' && (
-                            <td>
-                              <div className="d-flex justify-content-center gap-1">
-                                {isArchivedMode ? (
-                                  <>
-                                    <Button size="sm" variant="success" onClick={async () => {
-                                      if (!window.confirm(`[${u.userName}]님을 활성 상태로 복구하시겠습니까?`)) return;
-                                      const res = await restoreArchivedUser(u.userIdx);
-                                      if (res.success) { loadUsers(); } else alert(res.error || '복구 실패');
-                                    }}>복구</Button>
-                                    <Button size="sm" variant="danger" onClick={async () => {
-                                      if (!window.confirm(`[경고] [${u.userName}]님의 데이터를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 영구 파기됩니다.`)) return;
-                                      const res = await deleteArchivedUser(u.userIdx);
-                                      if (res.success) { loadUsers(); } else alert(res.error || '삭제 실패');
-                                    }}>삭제</Button>
-                                  </>
-                                ) : u.userIsActive === 0 ? (
-                                  <Button size="sm" variant="outline-danger" onClick={() => handleHardDelete(u)}>영구 삭제</Button>
-                                ) : (
-                                  <span className="text-muted small">-</span>
-                                )}
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                      {users.length === 0 && (
-                        <tr>
-                          <td colSpan={9 + (bankColsVisible ? 2 : 0) + (activeStatus === 'INACTIVE' ? 1 : 0) + (activeStatus !== 'ACTIVE' && activeStatus !== 'LEAVE' ? 1 : 0)} className="text-center py-5 text-muted">해당하는 직원이 없습니다.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </Table>
-                </div>
-              </Card.Body>
-            </Card>
-          </>
+          <AdminUsersTable
+            isAllSelected={isAllSelected}
+            toggleSelectAll={toggleSelectAll}
+            handleSort={handleSort}
+            renderSortIcon={renderSortIcon}
+            selectedRole={selectedRole}
+            bankColsVisible={bankColsVisible}
+            activeStatus={activeStatus}
+            users={users}
+            selectedUserIdxs={selectedUserIdxs}
+            toggleSelectUser={toggleSelectUser}
+            page={page}
+            openEditModal={openEditModal}
+            resolveBankLabel={resolveBankLabel}
+            resolveAccountCell={resolveAccountCell}
+            copyUserId={copyUserId}
+            canViewSensitive={canViewSensitive}
+            isArchivedMode={isArchivedMode}
+            restoreArchivedUser={restoreArchivedUser}
+            deleteArchivedUser={deleteArchivedUser}
+            loadUsers={loadUsers}
+            handleHardDelete={handleHardDelete}
+          />
         )}
 
         {!loading && (
@@ -904,237 +701,114 @@ const AdminUsers = () => {
         )}
       </Container>
 
-      {/* 일괄 수정 모달 */}
-      <Modal show={showBulkModal} onHide={() => setShowBulkModal(false)} centered>
-        <Modal.Header closeButton={!bulkSaving}>
-          <Modal.Title className="fw-bold">선택된 직원 일괄 수정 ({selectedUserIdxs.size}명)</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {bulkSaving ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} className="mb-3" />
-              <h6 className="fw-bold text-dark mb-1">직원 정보를 일괄 수정(반영)하는 중입니다...</h6>
-              <p className="text-muted small mb-0">서버에 변경 사항을 반영하고 목록을 갱신 중입니다. 잠시만 기다려 주세요.</p>
-            </div>
-          ) : (
-            <>
-              {bulkError && <Alert variant="danger" className="py-2">{bulkError}</Alert>}
-              {bulkSuccess && <Alert variant="success" className="py-2">{bulkSuccess}</Alert>}
+      <BulkEditModal
+        show={showBulkModal}
+        onHide={() => setShowBulkModal(false)}
+        bulkSaving={bulkSaving}
+        selectedUserCount={selectedUserIdxs.size}
+        bulkError={bulkError}
+        bulkSuccess={bulkSuccess}
+        bulkStatus={bulkStatus}
+        setBulkStatus={setBulkStatus}
+        bulkFkUtIdx={bulkFkUtIdx}
+        setBulkFkUtIdx={setBulkFkUtIdx}
+        bulkWage={bulkWage}
+        setBulkWage={setBulkWage}
+        userTypes={userTypes}
+        onSave={handleBulkSave}
+      />
 
-              <div className="text-muted small mb-3">
-                변경을 원하지 않는 항목은 비워두시면 기존 값이 유지됩니다.
-              </div>
+      <EditUserModal
+        editUser={editUser}
+        onHide={() => setEditUser(null)}
+        editError={editError}
+        editSuccess={editSuccess}
+        editUserName={editUserName}
+        setEditUserName={setEditUserName}
+        editEmail={editEmail}
+        setEditEmail={setEditEmail}
+        editPhone={editPhone}
+        setEditPhone={setEditPhone}
+        editBranch={editBranch}
+        setEditBranch={setEditBranch}
+        branches={branches}
+        editFkUtIdx={editFkUtIdx}
+        setEditFkUtIdx={setEditFkUtIdx}
+        userTypes={userTypes}
+        me={me}
+        canViewSensitive={canViewSensitive}
+        canEditSensitive={canEditSensitive}
+        banks={banks}
+        editBank={editBank}
+        setEditBank={setEditBank}
+        editAccountName={editAccountName}
+        setEditAccountName={setEditAccountName}
+        editAccountNo={editAccountNo}
+        setEditAccountNo={setEditAccountNo}
+        sensitiveDataLoaded={sensitiveDataLoaded}
+        sensitiveLoading={sensitiveLoading}
+        handleRevealSensitive={handleRevealSensitive}
+        editWage={editWage}
+        setEditWage={setEditWage}
+        handleToggleActive={handleToggleActive}
+        onOpenTempPw={() => { setTempPwUser(editUser); setTempPwValue(''); setTempPwMsg(''); }}
+        handleEditSave={handleEditSave}
+        editSaving={editSaving}
+      />
 
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">재직 상태 변경</Form.Label>
-                <Form.Select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}>
-                  <option value="">-- 변경 안 함 --</option>
-                  <option value="1">재직 (복직)</option>
-                  <option value="2">휴직 처리</option>
-                  <option value="0">퇴사 (비활성화)</option>
-                </Form.Select>
-              </Form.Group>
+      <TempPasswordModal
+        tempPwUser={tempPwUser}
+        onHide={() => setTempPwUser(null)}
+        tempPwMsg={tempPwMsg}
+        tempPwValue={tempPwValue}
+        setTempPwValue={setTempPwValue}
+        handleSetTempPw={handleSetTempPw}
+        tempPwSaving={tempPwSaving}
+      />
 
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">직급 일괄 변경</Form.Label>
-                <Form.Select value={bulkFkUtIdx} onChange={e => setBulkFkUtIdx(e.target.value)}>
-                  <option value="">-- 변경 안 함 --</option>
-                  {userTypes.map(ut => (
-                    <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
+      <AddUserModal
+        show={showAddModal}
+        onHide={() => setShowAddModal(false)}
+        addError={addError}
+        addSuccess={addSuccess}
+        addUserRole={addUserRole}
+        setAddUserRole={setAddUserRole}
+        setAddFkUtIdx={setAddFkUtIdx}
+        addWorkPlaceIdx={addWorkPlaceIdx}
+        setAddWorkPlaceIdx={setAddWorkPlaceIdx}
+        branches={branches}
+        addFkUtIdx={addFkUtIdx}
+        userTypes={userTypes}
+        addUserId={addUserId}
+        setAddUserId={setAddUserId}
+        addUserPw={addUserPw}
+        setAddUserPw={setAddUserPw}
+        addUserName={addUserName}
+        setAddUserName={setAddUserName}
+        addUserBirth={addUserBirth}
+        setAddUserBirth={setAddUserBirth}
+        addUserPhone={addUserPhone}
+        setAddUserPhone={setAddUserPhone}
+        handleAddUser={handleAddUser}
+        addSaving={addSaving}
+      />
 
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">시급 일괄 변경 (숫자만)</Form.Label>
-                <Form.Control type="number" placeholder="예: 10030" value={bulkWage} onChange={e => setBulkWage(e.target.value)} />
-              </Form.Group>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowBulkModal(false)} disabled={bulkSaving}>취소</Button>
-          <Button variant="primary" onClick={handleBulkSave} disabled={bulkSaving} className="fw-bold px-4">
-            {bulkSaving ? <Spinner as="span" animation="border" size="sm" /> : '일괄 수정 적용'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* 기본 정보 + 은행 정보 수정 모달 */}
-      <Modal show={!!editUser} onHide={() => setEditUser(null)} centered size="lg">
-        <Modal.Header closeButton><Modal.Title className="fw-bold">✏️ {editUser?.userName} 정보 수정</Modal.Title></Modal.Header>
-        <Modal.Body>
-          {editError && <Alert variant="danger" className="py-2">{editError}</Alert>}
-          {editSuccess && <Alert variant="success" className="py-2">{editSuccess}</Alert>}
-          {editUser?.userIsActive === 0 && (
-            <Alert variant="danger" className="py-2 small fw-bold">퇴사자의 정보는 보호를 위해 수정할 수 없습니다. (열람만 가능)</Alert>
-          )}
-
-          <div className="row">
-            <div className="col-md-6">
-              <div className="fw-bold text-primary mb-2 border-bottom pb-2">기본 정보</div>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이름</Form.Label><Form.Control value={editUserName} onChange={e => setEditUserName(e.target.value)} disabled={editUser?.userIsActive === 0} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이메일</Form.Label><Form.Control type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} disabled={editUser?.userIsActive === 0} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">전화번호</Form.Label><Form.Control value={editPhone} onChange={e => setEditPhone(formatPhoneNumber(e.target.value))} disabled={editUser?.userIsActive === 0} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">소속 지점</Form.Label>
-                <Form.Select value={editBranch} onChange={e => setEditBranch(Number(e.target.value))} disabled={editUser?.userIsActive === 0}>
-                  {branches.filter(b => b.wpIdx !== '').map(b => <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>)}
-                </Form.Select>
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-bold text-muted small">직급</Form.Label>
-                <Form.Select
-                  value={editFkUtIdx}
-                  onChange={e => setEditFkUtIdx(e.target.value)}
-                  disabled={Number(editUser?.userIdx) === Number(me?.userIdx) || editUser?.userIsActive === 0}
-                >
-                  <option value="">직급 선택</option>
-                  {userTypes.map(ut => <option key={ut.utIdx} value={String(ut.utIdx)}>{ut.utName}</option>)}
-                </Form.Select>
-                {(() => {
-                  const currentName = editUser?.userTypeName
-                    || editUser?.userType
-                    || userTypes.find(t => String(t.utIdx) === String(editFkUtIdx))?.utName;
-                  return currentName ? (
-                    <div className="text-muted small mt-1">현재 직급: <span className="fw-bold text-dark">{currentName}</span></div>
-                  ) : null;
-                })()}
-                {Number(editUser?.userIdx) === Number(me?.userIdx) && (
-                  <div className="text-muted small mt-1">본인 계정의 직급은 변경할 수 없습니다.</div>
-                )}
-              </Form.Group>
-            </div>
-
-            <div className="col-md-6">
-              <div className="fw-bold text-danger mb-2 border-bottom pb-2">
-                급여 및 계좌 정보
-              </div>
-              {!canViewSensitive ? (
-                <Alert variant="secondary" className="py-2 small">민감정보 조회 권한이 없습니다.</Alert>
-              ) : (
-                <>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-bold text-muted small">은행명</Form.Label>
-                    <Form.Select value={editBank} onChange={e => setEditBank(e.target.value)} disabled={!canEditSensitive || editUser?.userIsActive === 0}>
-                      <option value="">은행 선택</option>
-                      {banks.map(bank => (
-                        <option key={bank.bankCode || bank.code || bank.bankName} value={bank.bankCode || bank.code}>
-                          {bank.bankName || bank.name}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-bold text-muted small">예금주명</Form.Label>
-                    <Form.Control value={editAccountName} onChange={e => setEditAccountName(e.target.value)} placeholder="예금주 입력" disabled={!canEditSensitive || editUser?.userIsActive === 0} />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-bold text-muted small">계좌번호</Form.Label>
-                    <InputGroup>
-                      <Form.Control value={editAccountNo} onChange={e => setEditAccountNo(e.target.value.replace(/[^0-9]/g, ''))} placeholder="계좌번호 입력" disabled={!canEditSensitive || (editAccountNo?.startsWith('기재') && !sensitiveDataLoaded) || editUser?.userIsActive === 0} />
-                      {canViewSensitive && !sensitiveDataLoaded && editAccountNo?.startsWith('기재') && (
-                        <Button variant="outline-danger" onClick={handleRevealSensitive} disabled={sensitiveLoading} className="fw-bold px-3">
-                          {sensitiveLoading ? <Spinner size="sm" /> : '원문 조회'}
-                        </Button>
-                      )}
-                    </InputGroup>
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-bold text-muted small">시급</Form.Label>
-                    <Form.Control type="number" value={editWage} onChange={e => setEditWage(e.target.value)} placeholder="숫자만 입력" disabled={!canEditSensitive || editUser?.userIsActive === 0} />
-                  </Form.Group>
-                </>
-              )}
-              {!canEditSensitive && canViewSensitive && (
-                <Alert variant="warning" className="py-2 small">민감정보 수정 권한이 없어 급여/계좌는 저장되지 않습니다.</Alert>
-              )}
-            </div>
-          </div>
-
-          <hr className="my-3 opacity-25" />
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <Button size="sm" variant={editUser?.userIsActive === 1 ? 'outline-danger' : 'outline-success'} className="fw-bold px-3 py-1 me-2" onClick={() => handleToggleActive(editUser, 100)}>
-                {editUser?.userIsActive === 1 ? '퇴사 처리' : '복직 처리'}
-              </Button>
-              {
-                (editUser?.userIsActive === 2 || editUser?.userIsActive === 0) ?
-                  <div></div>
-                  :
-                  <Button size="sm" variant={"outline-secondary"} className="fw-bold px-3 py-1" onClick={() => handleToggleActive(editUser, 2)}>
-                    휴직 처리
-                  </Button>
-              }
-            </div>
-
-            <Button size="sm" variant="outline-warning" className="fw-bold px-3 py-1" onClick={() => { setTempPwUser(editUser); setTempPwValue(''); setTempPwMsg(''); }}>🔐 임시 비밀번호 설정</Button>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setEditUser(null)}>닫기</Button>
-          <Button variant="primary" onClick={handleEditSave} disabled={editSaving || editUser?.userIsActive === 0}>
-            {editSaving ? <Spinner as="span" animation="border" size="sm" /> : '저장'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      <Modal show={!!tempPwUser} onHide={() => setTempPwUser(null)} centered>
-        <Modal.Header closeButton><Modal.Title className="fw-bold">🔐 {tempPwUser?.userName} 임시 비밀번호 설정</Modal.Title></Modal.Header>
-        <Modal.Body>
-          {tempPwMsg && <Alert variant={tempPwMsg.includes('설정') ? 'success' : 'danger'} className="py-2">{tempPwMsg}</Alert>}
-          <Form.Group><Form.Label className="fw-bold text-muted small">임시 비밀번호</Form.Label><Form.Control type="text" value={tempPwValue} onChange={e => setTempPwValue(e.target.value)} placeholder="임시 비밀번호 입력" /></Form.Group>
-        </Modal.Body>
-        <Modal.Footer><Button variant="secondary" onClick={() => setTempPwUser(null)}>닫기</Button><Button variant="warning" onClick={handleSetTempPw} disabled={tempPwSaving}>{tempPwSaving ? <Spinner as="span" animation="border" size="sm" /> : '설정'}</Button></Modal.Footer>
-      </Modal>
-
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered>
-        <Modal.Header closeButton><Modal.Title className="fw-bold">새로운 직원 추가</Modal.Title></Modal.Header>
-        <Modal.Body>
-          {addError && <Alert variant="danger" className="py-2">{addError}</Alert>}
-          {addSuccess && <Alert variant="success" className="py-2">{addSuccess}</Alert>}
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">권한</Form.Label><Form.Select value={addUserRole} onChange={e => { setAddUserRole(e.target.value); if (e.target.value === 'WORKER') setAddFkUtIdx(''); }}><option value="WORKER">알바생</option><option value="ADMIN">직원</option></Form.Select></Form.Group>
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">소속 지점</Form.Label><Form.Select value={addWorkPlaceIdx} onChange={e => setAddWorkPlaceIdx(e.target.value)}>{branches.filter(b => b.wpIdx !== '').map(b => <option key={b.wpIdx} value={b.wpIdx}>{b.wpName}</option>)}</Form.Select></Form.Group>
-          {addUserRole === 'ADMIN' && (<Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">직급</Form.Label><Form.Select value={addFkUtIdx} onChange={e => setAddFkUtIdx(e.target.value)}><option value="">-- 직급 선택 --</option>{userTypes.map(ut => <option key={ut.utIdx} value={ut.utIdx}>{ut.utName}</option>)}</Form.Select></Form.Group>)}
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">아이디 *</Form.Label><Form.Control value={addUserId} onChange={e => setAddUserId(e.target.value)} placeholder="아이디 입력" /></Form.Group>
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">임시 비밀번호 *</Form.Label><Form.Control type="text" value={addUserPw} onChange={e => setAddUserPw(e.target.value)} placeholder="임시 비밀번호 입력" /></Form.Group>
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">이름 *</Form.Label><Form.Control value={addUserName} onChange={e => setAddUserName(e.target.value)} placeholder="이름 입력" /></Form.Group>
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">생년월일 *</Form.Label><Form.Control type="date" value={addUserBirth} onChange={e => setAddUserBirth(e.target.value)} /></Form.Group>
-          <Form.Group className="mb-3"><Form.Label className="fw-bold text-muted small">연락처 *</Form.Label><Form.Control value={addUserPhone} onChange={e => setAddUserPhone(formatPhoneNumber(e.target.value))} placeholder="예: 010-1234-5678" /></Form.Group>
-        </Modal.Body>
-        <Modal.Footer><Button variant="secondary" onClick={() => setShowAddModal(false)}>닫기</Button><Button variant="primary" onClick={handleAddUser} disabled={addSaving}>{addSaving ? <Spinner as="span" animation="border" size="sm" /> : '등록'}</Button></Modal.Footer>
-      </Modal>
-
-      <Modal show={showReasonModal} onHide={() => { setShowReasonModal(false); setIsArchivedMode(false); }} centered>
-        <Modal.Header closeButton><Modal.Title className="fw-bold">아카이빙 데이터 조회 사유</Modal.Title></Modal.Header>
-        <Modal.Body>
-          <Alert variant="warning" className="small mb-3">
-            보안 규정 및 인증 기준에 따라 퇴사 후 1년이 경과한 사용자의 아카이빙 데이터를 조회하려면 <strong>반드시 조회 사유를 남겨야 합니다.</strong> (감사 로그에 기록됨)
-          </Alert>
-          <Form.Group>
-            <Form.Label className="fw-bold text-muted small">조회 사유 입력 *</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              value={archiveReason}
-              onChange={e => setArchiveReason(e.target.value)}
-              placeholder="예: 근로기준법상 체불임금 정산 확인 요청 등"
-            />
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => { setShowReasonModal(false); setIsArchivedMode(false); }}>취소</Button>
-          <Button variant="primary" onClick={() => {
-            if (!archiveReason.trim()) {
-              alert('조회 사유를 입력해주세요.');
-              return;
-            }
-            setShowReasonModal(false);
-            setIsArchivedMode(true);
-            setPage(0);
-            setPageInput('1');
-          }}>조회하기</Button>
-        </Modal.Footer>
-      </Modal>
+      <ArchiveReasonModal
+        show={showReasonModal}
+        onHide={() => { setShowReasonModal(false); setIsArchivedMode(false); }}
+        archiveReason={archiveReason}
+        setArchiveReason={setArchiveReason}
+        onSubmit={() => {
+          if (!archiveReason.trim()) {
+            alert('조회 사유를 입력해주세요.');
+            return;
+          }
+          setShowReasonModal(false);
+          setIsArchivedMode(true);
+          setPage(0);
+          setPageInput('1');
+        }}
+      />
 
       {ExcelDownloadProgressModal}
     </div>

@@ -2,10 +2,6 @@ package com.recode.Dwaeji.user.impl;
 
 import com.recode.Dwaeji.JwtUtil;
 import com.recode.Dwaeji.common.excel.ExcelDarkTheme;
-import com.recode.Dwaeji.gathering.repository.GatheringCommentRepository;
-import com.recode.Dwaeji.gathering.repository.GatheringPostRepository;
-import com.recode.Dwaeji.gathering.repository.GatheringReportRepository;
-import com.recode.Dwaeji.joke.repository.JokeRepository;
 import com.recode.Dwaeji.user.database.RefreshToken;
 import com.recode.Dwaeji.user.database.User;
 import com.recode.Dwaeji.user.dto.*;
@@ -59,10 +55,6 @@ public class UserServiceImpl implements UserService {
     private final WorkApplyRepository workApplyRepository;
     private final WorkApplyDailyRepository workApplyDailyRepository;
     private final WorkScheduleDailyRepository workScheduleDailyRepository;
-    private final GatheringReportRepository gatheringReportRepository;
-    private final GatheringCommentRepository gatheringCommentRepository;
-    private final GatheringPostRepository gatheringPostRepository;
-    private final JokeRepository jokeRepository;
     private final AlarmPurgeService alarmPurgeService;
 
     @Override
@@ -568,16 +560,8 @@ public class UserServiceImpl implements UserService {
         workScheduleDailyRepository.deleteByUser_UserIdx(targetUserIdx);
         workApplyRepository.deleteByUser_UserIdx(targetUserIdx);
 
-        // 게시판/댓글/신고/농담 데이터 삭제
-        gatheringReportRepository.deleteByUser_UserIdx(targetUserIdx);
-        gatheringCommentRepository.deleteByUser_UserIdx(targetUserIdx);
-        gatheringCommentRepository.deleteByPost_User_UserIdx(targetUserIdx); // 사용자가 쓴 글에 달린 타인의 댓글 먼저 삭제
-        gatheringPostRepository.deleteByUser_UserIdx(targetUserIdx);
-        jokeRepository.deleteByUser_UserIdx(targetUserIdx);
-
         // 웹 푸시 구독·알람 설정 파기
         alarmPurgeService.purgeAllForUser(targetUserIdx);
-
         // 4. 실제 사용자 물리 삭제
         userRepository.delete(targetUser);
     }

@@ -20,7 +20,7 @@ const CustomToggle = React.forwardRef(({ children, onClick, className }, ref) =>
 
 const AdminBottomNav = () => {
   const location = useLocation();
-  const isMiscActive = ['/admin/workplaces', '/admin/user-types', '/admin/board'].some(p => location.pathname.startsWith(p));
+  const isMiscActive = ['/admin/workplaces', '/admin/user-types'].some(p => location.pathname.startsWith(p));
 
   return (
     <nav className="bottom-nav admin-theme d-lg-none" aria-label="관리자 모바일 하단 내비게이션">

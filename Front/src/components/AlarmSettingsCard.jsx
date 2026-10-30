@@ -8,7 +8,7 @@ import {
   RiShareForwardLine,
   RiTimeLine,
 } from 'react-icons/ri';
-import { fetchAlarmPreferences, sendTestAlarm, updateAlarmPreferences } from '../api/alarmApi';
+import { fetchAlarmPreferences, updateAlarmPreferences } from '../api/alarmApi';
 import useWebPush from '../hooks/useWebPush';
 import './AlarmSettingsCard.css';
 
@@ -56,7 +56,6 @@ const AlarmSettingsCard = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -134,7 +133,6 @@ const AlarmSettingsCard = () => {
     }
 
     setSaving(false);
-    // 성공 토스트는 쓰지 않음 — 거부/실패(warn)만 표시
     if (warnMsg) {
       setMsg({ type: 'warning', text: warnMsg });
     } else if (!successMsg) {
@@ -157,13 +155,13 @@ const AlarmSettingsCard = () => {
         warnMsg = '설정은 저장되지만, 이 브라우저는 웹 푸시를 지원하지 않아 수신할 수 없습니다.';
       } else if (permission === 'denied') {
         warnMsg =
-          '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
+          '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「기기 추가」를 눌러 주세요.';
       } else {
         const connectRes = await connectThisDevice();
         if (!connectRes.success) {
           if (connectRes.code === 'PERMISSION_DENIED') {
             warnMsg =
-              '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
+              '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「기기 추가」를 눌러 주세요.';
           } else {
             warnMsg = connectRes.error
               ? `설정은 저장했지만 기기 등록에 실패했습니다: ${connectRes.error}`
@@ -186,41 +184,21 @@ const AlarmSettingsCard = () => {
     setMsg({ type: '', text: '' });
     const res = await connectThisDevice();
     if (!res.success && res.code !== 'PERMISSION_DENIED') {
-      setMsg({ type: 'danger', text: res.error || '연결에 실패했습니다.' });
+      setMsg({ type: 'danger', text: res.error || '기기 연결에 실패했습니다.' });
     } else if (!res.success && res.code === 'PERMISSION_DENIED') {
       setMsg({
         type: 'warning',
         text: '알림 권한이 거부되어 있습니다. 브라우저 설정에서 허용한 뒤 다시 시도해 주세요.',
       });
+    } else if (res.success) {
+      setMsg({
+        type: 'success',
+        text: '현재 기기가 알림 수신 기기로 등록되었습니다.',
+      });
     }
   };
 
-  const handleTestAlarm = async () => {
-    setMsg({ type: '', text: '' });
-    setTesting(true);
-    const res = await sendTestAlarm();
-    setTesting(false);
-    if (res.success) {
-      setMsg({ type: 'success', text: res.data?.message || '테스트 알림을 보냈습니다. 알림을 확인해 주세요.' });
-    } else {
-      setMsg({ type: 'danger', text: res.error || '테스트 알림 발송에 실패했습니다.' });
-    }
-  };
-
-  const busy = loading || saving || pushBusy || testing;
-  // 알림은 켜졌는데 이 기기 구독이 없을 때만 (거부·실패·iOS 등)
-  const showDeviceRecovery = alarmsOn && !subscribed;
-
-  useEffect(() => {
-    if (showDeviceRecovery) setOpen(true);
-  }, [showDeviceRecovery]);
-
-  const deviceStatusText = (() => {
-    if (permission === 'denied') return '알림 권한이 거부되어 있습니다. 브라우저 설정에서 허용한 뒤 「다시 받기」를 눌러 주세요.';
-    if (iosNeedsInstall) return '홈 화면에 추가한 앱에서만 알림을 받을 수 있습니다.';
-    if (!supported) return '이 브라우저는 웹 푸시를 지원하지 않습니다.';
-    return '이 기기 등록에 실패했습니다. 「다시 받기」로 다시 시도해 주세요.';
-  })();
+  const busy = loading || saving || pushBusy;
 
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-4">
@@ -243,14 +221,31 @@ const AlarmSettingsCard = () => {
                 <RiNotification3Line className="alarm-bar__icon" />
                 <span className="alarm-bar__label">알림 설정</span>
               </button>
-              <Form.Check
-                type="switch"
-                id="alarm-master"
-                checked={alarmsOn}
-                onChange={(e) => handleMasterToggle(e.target.checked)}
-                aria-label="알림 허용"
-                className="alarm-bar__switch"
-              />
+              <div className="alarm-bar__actions">
+                {alarmsOn && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline-primary"
+                    className="alarm-bar__device-btn"
+                    disabled={busy || !supported || iosNeedsInstall}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleConnect();
+                    }}
+                  >
+                    {pushBusy ? <Spinner as="span" animation="border" size="sm" /> : '기기 추가'}
+                  </Button>
+                )}
+                <Form.Check
+                  type="switch"
+                  id="alarm-master"
+                  checked={alarmsOn}
+                  onChange={(e) => handleMasterToggle(e.target.checked)}
+                  aria-label="알림 허용"
+                  className="alarm-bar__switch"
+                />
+              </div>
             </div>
 
             {open && (
@@ -354,49 +349,6 @@ const AlarmSettingsCard = () => {
                         ))}
                       </div>
                     </section>
-
-                    <div className="alarm-test">
-                      <Button
-                        size="sm"
-                        variant="outline-secondary"
-                        className="fw-bold rounded-3"
-                        disabled={busy || !subscribed}
-                        onClick={handleTestAlarm}
-                      >
-                        {testing ? <Spinner as="span" animation="border" size="sm" /> : '테스트 알림'}
-                      </Button>
-                      <span className="alarm-test__hint">
-                        {subscribed
-                          ? '지금 알림이 오는지 확인해 보세요.'
-                          : '기기 연결이 끝난 뒤 사용할 수 있습니다.'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {showDeviceRecovery && (
-                  <div className="alarm-device">
-                    <div className="alarm-device__left">
-                      <span
-                        className={`alarm-device__dot ${permission === 'denied' || iosNeedsInstall || !supported ? 'alarm-device__dot--warn' : 'alarm-device__dot--off'}`}
-                        aria-hidden
-                      />
-                      <div>
-                        <div className="alarm-device__title">이 기기에서 받을 수 없음</div>
-                        <div className="alarm-device__status">{deviceStatusText}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        className="fw-bold rounded-3"
-                        disabled={busy || !supported || iosNeedsInstall || permission === 'denied'}
-                        onClick={handleConnect}
-                      >
-                        {pushBusy ? <Spinner as="span" animation="border" size="sm" /> : '다시 받기'}
-                      </Button>
-                    </div>
                   </div>
                 )}
 

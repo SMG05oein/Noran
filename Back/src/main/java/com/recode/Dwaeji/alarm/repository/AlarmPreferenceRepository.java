@@ -25,11 +25,12 @@ public interface AlarmPreferenceRepository extends JpaRepository<AlarmPreference
             """)
     List<AlarmPreference> findMissingRecordDue(@Param("time") LocalTime time);
 
+    /** 재직(1)만 — 휴직(2)·퇴사(0) 제외. 신청 마감은 근무 신청 대상자만. */
     @Query("""
             SELECT p FROM AlarmPreference p
             JOIN FETCH p.user u
             WHERE p.applyDeadlineEnabled = true
-              AND (u.userIsActive = 1 OR u.userIsActive = 2)
+              AND u.userIsActive = 1
               AND (
                    (:dow = 5 AND p.applyDeadlineFriTime = :time)
                 OR (:dow = 6 AND p.applyDeadlineSatTime = :time)

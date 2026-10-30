@@ -114,6 +114,20 @@ function App() {
     }
   }, []);
 
+  // 서비스 워커 웹 푸시 알림 클릭 메시지 수신 시 React Router 이동
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const handleSwMessage = (event) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK' && event.data?.url) {
+        navigate(event.data.url);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    };
+  }, [navigate]);
+
   if (isInitializing) {
     return PageFallback;
   }

@@ -6,7 +6,8 @@ export const releaseHistory = [
     version: '0.9.21',
     date: '2026-11-01',
     features: [
-      '알림 기능 추가'
+      '알림 기능 추가',
+      'UI 배치 변경'
     ],
     fixes: [
     ]

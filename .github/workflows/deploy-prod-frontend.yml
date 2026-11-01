@@ -1,0 +1,59 @@
+# main 브랜치 + Front 변경 → www
+name: Deploy Prod Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Front/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod-frontend
+  cancel-in-progress: false
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Front
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Front/package-lock.json
+
+      - name: Install & build (production)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload dist
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "Front/dist"
+          target: "/home/opc/uploads/front-prod"
+          overwrite: true
+
+      - name: Publish to www
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            SRC="/home/opc/uploads/front-prod/Front/dist"
+            DEST="/var/www/dwaeji/html"
+            mkdir -p "$DEST"
+            rsync -a --delete "$SRC"/ "$DEST"/
+            echo "Published production frontend → $DEST"

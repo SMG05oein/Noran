@@ -63,11 +63,11 @@ storage/
 excel-samples/
 excel-compare-qa.md
 
-### App config & security (���� ����) ###
-/src/main/resources/
+### App config & security ###
+# Keep secrets/local config off git. JwtUtil/JwtFilter are OK to track (secret from env).
+src/main/resources/application.properties
+src/main/resources/firebase-service-account.json
 src/main/java/com/recode/Dwaeji/policy/
-**/JwtUtil.java
-**/JwtFilter.java
 src/main/java/com/recode/Dweahi/
 
 ### Policy documents ###

@@ -1,0 +1,92 @@
+# main 브랜치 + Back 변경 → JAR만 업로드 후 서버의 deploy.sh 실행
+name: Deploy Prod Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Back/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod-backend
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Back
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: Back/**/gradle-wrapper.properties
+
+      - name: Prepare app config
+        run: |
+          cat > src/main/resources/application.properties <<'EOF'
+          spring.application.name=Dwaeji
+          server.forward-headers-strategy=framework
+          springdoc.swagger-ui.path=/swagger
+          spring.datasource.url=${DB_URL}
+          spring.datasource.username=${DB_USERNAME}
+          spring.datasource.password=${DB_PASSWORD}
+          spring.data.redis.host=${REDIS_HOST:127.0.0.1}
+          spring.data.redis.port=${REDIS_PORT:6379}
+          spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+          spring.datasource.hikari.initialization-fail-timeout=0
+          spring.jpa.hibernate.ddl-auto=update
+          spring.mail.host=smtp.gmail.com
+          spring.mail.port=587
+          spring.mail.username=${MAIL_USERNAME}
+          spring.mail.password=${MAIL_PASSWORD}
+          spring.mail.properties.mail.smtp.auth=true
+          spring.mail.properties.mail.smtp.starttls.enable=true
+          aes.secret-key=${AES_SECRET_KEY}
+          jwt.secret=${JWT_SECRET}
+          work-record.edit-deadline-day-of-month=1
+          work-record.edit-deadline-time=23:59:59
+          dev.allowed-ips=${DEV_ALLOWED_IPS:}
+          db.executor.id=${DB_EXECUTOR_ID}
+          db.executor.pw=${DB_EXECUTOR_PW}
+          spring.mvc.hiddenmethod.filter.enabled=true
+          vapid.public-key=${VAPID_PUBLIC_KEY:}
+          vapid.private-key=${VAPID_PRIVATE_KEY:}
+          vapid.subject=${VAPID_SUBJECT:}
+          EOF
+          sed -i 's/^          //' src/main/resources/application.properties
+
+      - name: Build JAR
+        run: |
+          chmod +x gradlew
+          ./gradlew clean bootJar --no-daemon --stacktrace
+
+      - name: Upload JAR
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "Back/build/libs/Dwaeji.jar"
+          target: "/home/opc/uploads/back-prod"
+          overwrite: true
+
+      - name: Deploy with server script
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            mkdir -p /home/opc/build/libs
+            cp -f /home/opc/uploads/back-prod/Back/build/libs/Dwaeji.jar /home/opc/build/libs/Dwaeji.jar
+            bash /home/opc/deploy.sh

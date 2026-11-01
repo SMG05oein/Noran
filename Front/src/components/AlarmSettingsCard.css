@@ -151,12 +151,46 @@
   margin-top: 0.05rem;
 }
 
+.alarm-block__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alarm-block__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
 .alarm-block__title {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--color-input-text, #342823);
   line-height: 1.35;
+}
+
+.alarm-block__switch {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.alarm-block__switch .form-check-input {
+  width: 2.3rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+  float: none;
+}
+
+.alarm-block__switch .form-check-input:checked {
+  background-color: var(--color-primary, #9f4e3b);
+  border-color: var(--color-primary, #9f4e3b);
 }
 
 .alarm-block__desc {
@@ -197,8 +231,51 @@
   margin-top: 0.15rem;
 }
 
-.alarm-block__days .alarm-block__control:first-child {
+.alarm-block__day-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-input-border) 80%, transparent);
+  transition: opacity 0.15s ease;
+}
+
+.alarm-block__day-control--disabled {
+  opacity: 0.55;
+}
+
+.alarm-block__day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.alarm-block__day-switch {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.alarm-block__day-switch .form-check-input {
+  width: 2.1rem;
+  height: 1.15rem;
+  margin: 0;
+  cursor: pointer;
+  float: none;
+}
+
+.alarm-block__day-switch .form-check-input:checked {
+  background-color: var(--color-primary, #9f4e3b);
+  border-color: var(--color-primary, #9f4e3b);
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 .alarm-times__input {
@@ -217,7 +294,8 @@
 }
 
 @media (max-width: 420px) {
-  .alarm-block__control {
+  .alarm-block__control,
+  .alarm-block__day-control {
     flex-wrap: wrap;
   }
 

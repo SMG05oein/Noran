@@ -13,12 +13,15 @@ import useWebPush from '../hooks/useWebPush';
 import './AlarmSettingsCard.css';
 
 const DEFAULT_PREFS = {
-  missingRecordEnabled: false,
+  missingRecordEnabled: true,
   missingRecordTime: '22:00',
-  assignConfirmEnabled: false,
-  applyDeadlineEnabled: false,
+  assignConfirmEnabled: true,
+  applyDeadlineEnabled: true,
+  applyDeadlineFriEnabled: true,
   applyDeadlineFriTime: '22:00',
+  applyDeadlineSatEnabled: true,
   applyDeadlineSatTime: '22:00',
+  applyDeadlineSunEnabled: true,
   applyDeadlineSunTime: '12:00',
 };
 
@@ -39,6 +42,9 @@ const withMaster = (base, enabled) => ({
   missingRecordEnabled: enabled,
   assignConfirmEnabled: enabled,
   applyDeadlineEnabled: enabled,
+  applyDeadlineFriEnabled: enabled,
+  applyDeadlineSatEnabled: enabled,
+  applyDeadlineSunEnabled: enabled,
 });
 
 const AlarmSettingsCard = () => {
@@ -67,15 +73,24 @@ const AlarmSettingsCard = () => {
     const res = await fetchAlarmPreferences();
     if (res.success && res.data) {
       const loaded = {
-        missingRecordEnabled: !!res.data.missingRecordEnabled,
+        missingRecordEnabled:
+          res.data.missingRecordEnabled !== undefined ? !!res.data.missingRecordEnabled : true,
         missingRecordTime: normalizeTime(res.data.missingRecordTime, '22:00'),
-        assignConfirmEnabled: !!res.data.assignConfirmEnabled,
-        applyDeadlineEnabled: !!res.data.applyDeadlineEnabled,
+        assignConfirmEnabled:
+          res.data.assignConfirmEnabled !== undefined ? !!res.data.assignConfirmEnabled : true,
+        applyDeadlineEnabled:
+          res.data.applyDeadlineEnabled !== undefined ? !!res.data.applyDeadlineEnabled : true,
+        applyDeadlineFriEnabled:
+          res.data.applyDeadlineFriEnabled !== undefined ? !!res.data.applyDeadlineFriEnabled : true,
         applyDeadlineFriTime: normalizeTime(res.data.applyDeadlineFriTime, '22:00'),
+        applyDeadlineSatEnabled:
+          res.data.applyDeadlineSatEnabled !== undefined ? !!res.data.applyDeadlineSatEnabled : true,
         applyDeadlineSatTime: normalizeTime(res.data.applyDeadlineSatTime, '22:00'),
+        applyDeadlineSunEnabled:
+          res.data.applyDeadlineSunEnabled !== undefined ? !!res.data.applyDeadlineSunEnabled : true,
         applyDeadlineSunTime: normalizeTime(res.data.applyDeadlineSunTime, '12:00'),
       };
-      setPrefs(withMaster(loaded, anyEnabled(loaded)));
+      setPrefs(loaded);
     } else {
       setMsg({ type: 'danger', text: res.error || '알림 설정을 불러오지 못했습니다.' });
     }
@@ -96,8 +111,11 @@ const AlarmSettingsCard = () => {
       missingRecordTime: normalizeTime(next.missingRecordTime, '22:00'),
       assignConfirmEnabled: !!next.assignConfirmEnabled,
       applyDeadlineEnabled: !!next.applyDeadlineEnabled,
+      applyDeadlineFriEnabled: next.applyDeadlineFriEnabled !== false,
       applyDeadlineFriTime: normalizeTime(next.applyDeadlineFriTime, '22:00'),
+      applyDeadlineSatEnabled: next.applyDeadlineSatEnabled !== false,
       applyDeadlineSatTime: normalizeTime(next.applyDeadlineSatTime, '22:00'),
+      applyDeadlineSunEnabled: next.applyDeadlineSunEnabled !== false,
       applyDeadlineSunTime: normalizeTime(next.applyDeadlineSunTime, '12:00'),
     };
 
@@ -114,11 +132,23 @@ const AlarmSettingsCard = () => {
       missingRecordTime: normalizeTime(res.data.missingRecordTime, '22:00'),
       assignConfirmEnabled: !!res.data.assignConfirmEnabled,
       applyDeadlineEnabled: !!res.data.applyDeadlineEnabled,
+      applyDeadlineFriEnabled:
+        res.data.applyDeadlineFriEnabled !== undefined
+          ? !!res.data.applyDeadlineFriEnabled
+          : payload.applyDeadlineFriEnabled,
       applyDeadlineFriTime: normalizeTime(res.data.applyDeadlineFriTime, '22:00'),
+      applyDeadlineSatEnabled:
+        res.data.applyDeadlineSatEnabled !== undefined
+          ? !!res.data.applyDeadlineSatEnabled
+          : payload.applyDeadlineSatEnabled,
       applyDeadlineSatTime: normalizeTime(res.data.applyDeadlineSatTime, '22:00'),
+      applyDeadlineSunEnabled:
+        res.data.applyDeadlineSunEnabled !== undefined
+          ? !!res.data.applyDeadlineSunEnabled
+          : payload.applyDeadlineSunEnabled,
       applyDeadlineSunTime: normalizeTime(res.data.applyDeadlineSunTime, '12:00'),
     };
-    setPrefs(withMaster(saved, anyEnabled(saved)));
+    setPrefs(saved);
 
     if (!anyEnabled(payload)) {
       const allRes = await disconnectAllDevices();
@@ -141,36 +171,81 @@ const AlarmSettingsCard = () => {
     return true;
   };
 
+  const ensureDeviceConnected = async () => {
+    if (subscribed) return null;
+    if (iosNeedsInstall) {
+      return '설정은 저장되지만, iOS는 홈 화면 추가 후 이 기기에서 알림을 받을 수 있습니다.';
+    }
+    if (!supported) {
+      return '설정은 저장되지만, 이 브라우저는 웹 푸시를 지원하지 않아 수신할 수 없습니다.';
+    }
+    if (permission === 'denied') {
+      return '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「기기 추가」를 눌러 주세요.';
+    }
+    const connectRes = await connectThisDevice();
+    if (!connectRes.success) {
+      if (connectRes.code === 'PERMISSION_DENIED') {
+        return '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「기기 추가」를 눌러 주세요.';
+      }
+      return connectRes.error
+        ? `설정은 저장했지만 기기 등록에 실패했습니다: ${connectRes.error}`
+        : '설정은 저장했지만 기기 등록에 실패했습니다.';
+    }
+    return null;
+  };
+
   const handleMasterToggle = async (enabled) => {
     const next = withMaster(prefs, enabled);
     setPrefs(next);
     if (enabled) setOpen(true);
 
     let warnMsg = null;
+    if (enabled) {
+      warnMsg = await ensureDeviceConnected();
+    }
 
-    if (enabled && !subscribed) {
-      if (iosNeedsInstall) {
-        warnMsg = '설정은 저장되지만, iOS는 홈 화면 추가 후 이 기기에서 알림을 받을 수 있습니다.';
-      } else if (!supported) {
-        warnMsg = '설정은 저장되지만, 이 브라우저는 웹 푸시를 지원하지 않아 수신할 수 없습니다.';
-      } else if (permission === 'denied') {
-        warnMsg =
-          '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「기기 추가」를 눌러 주세요.';
-      } else {
-        const connectRes = await connectThisDevice();
-        if (!connectRes.success) {
-          if (connectRes.code === 'PERMISSION_DENIED') {
-            warnMsg =
-              '설정은 저장됐지만 알림 권한이 거부되어 이 기기에서는 받을 수 없습니다. 브라우저 설정에서 허용한 뒤 「기기 추가」를 눌러 주세요.';
-          } else {
-            warnMsg = connectRes.error
-              ? `설정은 저장했지만 기기 등록에 실패했습니다: ${connectRes.error}`
-              : '설정은 저장했지만 기기 등록에 실패했습니다.';
-          }
-        }
+    await persistPrefs(next, { warnMsg });
+  };
+
+  const handleIndividualToggle = async (key, checked) => {
+    const next = { ...prefs, [key]: checked };
+    if (key === 'applyDeadlineEnabled' && checked) {
+      if (
+        !next.applyDeadlineFriEnabled &&
+        !next.applyDeadlineSatEnabled &&
+        !next.applyDeadlineSunEnabled
+      ) {
+        next.applyDeadlineFriEnabled = true;
+        next.applyDeadlineSatEnabled = true;
+        next.applyDeadlineSunEnabled = true;
       }
     }
 
+    let warnMsg = null;
+    if (checked) {
+      warnMsg = await ensureDeviceConnected();
+    }
+
+    setPrefs(next);
+    await persistPrefs(next, { warnMsg });
+  };
+
+  const handleDayToggle = async (dayEnabledKey, checked) => {
+    const next = { ...prefs, [dayEnabledKey]: checked };
+    let warnMsg = null;
+    if (checked) {
+      if (!next.applyDeadlineEnabled) {
+        next.applyDeadlineEnabled = true;
+      }
+      warnMsg = await ensureDeviceConnected();
+    } else if (
+      !next.applyDeadlineFriEnabled &&
+      !next.applyDeadlineSatEnabled &&
+      !next.applyDeadlineSunEnabled
+    ) {
+      next.applyDeadlineEnabled = false;
+    }
+    setPrefs(next);
     await persistPrefs(next, { warnMsg });
   };
 
@@ -269,24 +344,37 @@ const AlarmSettingsCard = () => {
                   </Alert>
                 )}
 
-                {!alarmsOn ? (
-                  <p className="alarm-panel__hint">
-                    스위치를 켜면 아래 세 가지 근무 알림을 모두 받습니다.
+                {!alarmsOn && (
+                  <p className="alarm-panel__hint mb-3">
+                    상단 스위치를 켜면 모든 알림을 한 번에 켜거나, 아래에서 원하는 알림만 개별로 켤 수 있습니다.
                   </p>
-                ) : (
-                  <div className="alarm-blocks">
-                    <section className="alarm-block">
-                      <div className="alarm-block__head">
-                        <span className="alarm-block__icon" aria-hidden>
-                          <RiFileList3Line />
-                        </span>
-                        <div>
+                )}
+
+                <div className="alarm-blocks">
+                  {/* 1. 근무 기록 미작성 알림 */}
+                  <section className="alarm-block">
+                    <div className="alarm-block__head">
+                      <span className="alarm-block__icon" aria-hidden>
+                        <RiFileList3Line />
+                      </span>
+                      <div className="alarm-block__content">
+                        <div className="alarm-block__header-row">
                           <h3 className="alarm-block__title">1. 근무 기록이 없을 때</h3>
-                          <p className="alarm-block__desc">
-                            전날 확정된 근무의 출퇴근 기록이 없으면, 아래 시각에 알려 드립니다.
-                          </p>
+                          <Form.Check
+                            type="switch"
+                            id="alarm-missing-record"
+                            checked={!!prefs.missingRecordEnabled}
+                            onChange={(e) => handleIndividualToggle('missingRecordEnabled', e.target.checked)}
+                            aria-label="근무 기록 누락 알림 수신 여부"
+                            className="alarm-block__switch"
+                          />
                         </div>
+                        <p className="alarm-block__desc">
+                          전날 확정된 근무의 출퇴근 기록이 없으면, 아래 시각에 알려 드립니다.
+                        </p>
                       </div>
+                    </div>
+                    {prefs.missingRecordEnabled && (
                       <div className="alarm-block__control">
                         <span className="alarm-block__control-label">알림 받을 시각</span>
                         <Form.Control
@@ -299,46 +387,108 @@ const AlarmSettingsCard = () => {
                           className="custom-input alarm-times__input"
                         />
                       </div>
-                    </section>
+                    )}
+                  </section>
 
-                    <section className="alarm-block">
-                      <div className="alarm-block__head">
-                        <span className="alarm-block__icon" aria-hidden>
-                          <RiCalendarCheckLine />
-                        </span>
-                        <div>
+                  {/* 2. 근무 배정 확정 알림 */}
+                  <section className="alarm-block">
+                    <div className="alarm-block__head">
+                      <span className="alarm-block__icon" aria-hidden>
+                        <RiCalendarCheckLine />
+                      </span>
+                      <div className="alarm-block__content">
+                        <div className="alarm-block__header-row">
                           <h3 className="alarm-block__title">2. 근무 배정이 확정됐을 때</h3>
-                          <p className="alarm-block__desc">
-                            관리자가 배정을 확정하는 즉시 알림이 갑니다. 시각은 따로 정할 수 없습니다.
-                          </p>
+                          <Form.Check
+                            type="switch"
+                            id="alarm-assign-confirm"
+                            checked={!!prefs.assignConfirmEnabled}
+                            onChange={(e) => handleIndividualToggle('assignConfirmEnabled', e.target.checked)}
+                            aria-label="근무 배정 확정 알림 수신 여부"
+                            className="alarm-block__switch"
+                          />
                         </div>
+                        <p className="alarm-block__desc">
+                          관리자가 배정을 확정하는 즉시 알림이 발송됩니다. 시각은 따로 정할 수 없습니다.
+                        </p>
                       </div>
+                    </div>
+                    {prefs.assignConfirmEnabled && (
                       <div className="alarm-block__note">확정되는 순간 바로 알림</div>
-                    </section>
+                    )}
+                  </section>
 
-                    <section className="alarm-block">
-                      <div className="alarm-block__head">
-                        <span className="alarm-block__icon" aria-hidden>
-                          <RiTimeLine />
-                        </span>
-                        <div>
+                  {/* 3. 근무 신청 마감 임박 알림 */}
+                  <section className="alarm-block">
+                    <div className="alarm-block__head">
+                      <span className="alarm-block__icon" aria-hidden>
+                        <RiTimeLine />
+                      </span>
+                      <div className="alarm-block__content">
+                        <div className="alarm-block__header-row">
                           <h3 className="alarm-block__title">3. 근무 신청 마감이 다가올 때</h3>
-                          <p className="alarm-block__desc">
-                            아직 신청하지 않았다면 매주 금·토·일에 알려 드립니다. 요일은 바꿀 수 없고, 받을 시각만 정할 수 있습니다.
-                          </p>
+                          <Form.Check
+                            type="switch"
+                            id="alarm-apply-deadline"
+                            checked={!!prefs.applyDeadlineEnabled}
+                            onChange={(e) => handleIndividualToggle('applyDeadlineEnabled', e.target.checked)}
+                            aria-label="근무 신청 마감 알림 수신 여부"
+                            className="alarm-block__switch"
+                          />
                         </div>
+                        <p className="alarm-block__desc">
+                          아직 신청하지 않았다면 선택한 요일에 알려 드립니다. 요일별 수신 여부와 받을 시각을 정할 수 있습니다.
+                        </p>
                       </div>
+                    </div>
+                    {prefs.applyDeadlineEnabled && (
                       <div className="alarm-block__days">
                         {[
-                          { key: 'applyDeadlineFriTime', label: '금요일', defaultTime: '22:00' },
-                          { key: 'applyDeadlineSatTime', label: '토요일', defaultTime: '22:00' },
-                          { key: 'applyDeadlineSunTime', label: '일요일', defaultTime: '12:00' },
-                        ].map(({ key, label, defaultTime }) => (
-                          <div key={key} className="alarm-block__control">
-                            <span className="alarm-block__control-label">{label} 알림</span>
+                          {
+                            key: 'applyDeadlineFriTime',
+                            enabledKey: 'applyDeadlineFriEnabled',
+                            label: '금요일',
+                            defaultTime: '22:00',
+                          },
+                          {
+                            key: 'applyDeadlineSatTime',
+                            enabledKey: 'applyDeadlineSatEnabled',
+                            label: '토요일',
+                            defaultTime: '22:00',
+                          },
+                          {
+                            key: 'applyDeadlineSunTime',
+                            enabledKey: 'applyDeadlineSunEnabled',
+                            label: '일요일',
+                            defaultTime: '12:00',
+                          },
+                        ].map(({ key, enabledKey, label, defaultTime }) => (
+                          <div
+                            key={key}
+                            className={`alarm-block__day-control${
+                              !prefs[enabledKey] ? ' alarm-block__day-control--disabled' : ''
+                            }`}
+                          >
+                            <div className="alarm-block__day-toggle">
+                              <Form.Check
+                                type="switch"
+                                id={`alarm-day-${key}`}
+                                checked={!!prefs[enabledKey]}
+                                onChange={(e) => handleDayToggle(enabledKey, e.target.checked)}
+                                aria-label={`${label} 알림 켜기/끄기`}
+                                className="alarm-block__day-switch"
+                              />
+                              <label
+                                htmlFor={`alarm-day-${key}`}
+                                className="alarm-block__control-label mb-0 cursor-pointer"
+                              >
+                                {label} 알림
+                              </label>
+                            </div>
                             <Form.Control
                               type="time"
                               value={prefs[key]}
+                              disabled={!prefs[enabledKey]}
                               onChange={(e) => setPrefs((p) => ({ ...p, [key]: e.target.value }))}
                               onBlur={(e) =>
                                 saveTimePatch({ [key]: normalizeTime(e.target.value, defaultTime) })
@@ -348,10 +498,9 @@ const AlarmSettingsCard = () => {
                           </div>
                         ))}
                       </div>
-                    </section>
-                  </div>
-                )}
-
+                    )}
+                  </section>
+                </div>
                 {saving && (
                   <div className="alarm-saving">
                     <Spinner animation="border" size="sm" /> 저장 중…

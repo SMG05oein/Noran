@@ -32,9 +32,9 @@ public interface AlarmPreferenceRepository extends JpaRepository<AlarmPreference
             WHERE p.applyDeadlineEnabled = true
               AND u.userIsActive = 1
               AND (
-                   (:dow = 5 AND p.applyDeadlineFriTime = :time)
-                OR (:dow = 6 AND p.applyDeadlineSatTime = :time)
-                OR (:dow = 7 AND p.applyDeadlineSunTime = :time)
+                   (:dow = 5 AND p.applyDeadlineFriEnabled = true AND p.applyDeadlineFriTime = :time)
+                OR (:dow = 6 AND p.applyDeadlineSatEnabled = true AND p.applyDeadlineSatTime = :time)
+                OR (:dow = 7 AND p.applyDeadlineSunEnabled = true AND p.applyDeadlineSunTime = :time)
               )
             """)
     List<AlarmPreference> findApplyDeadlineDue(@Param("dow") int isoDayOfWeek, @Param("time") LocalTime time);

@@ -43,6 +43,9 @@ public class AlarmPreferenceService {
         pref.setMissingRecordTime(parseTime(dto.getMissingRecordTime()));
         pref.setAssignConfirmEnabled(Boolean.TRUE.equals(dto.getAssignConfirmEnabled()));
         pref.setApplyDeadlineEnabled(Boolean.TRUE.equals(dto.getApplyDeadlineEnabled()));
+        pref.setApplyDeadlineFriEnabled(dto.getApplyDeadlineFriEnabled() != null ? dto.getApplyDeadlineFriEnabled() : true);
+        pref.setApplyDeadlineSatEnabled(dto.getApplyDeadlineSatEnabled() != null ? dto.getApplyDeadlineSatEnabled() : true);
+        pref.setApplyDeadlineSunEnabled(dto.getApplyDeadlineSunEnabled() != null ? dto.getApplyDeadlineSunEnabled() : true);
         pref.setApplyDeadlineFriTime(parseTime(dto.getApplyDeadlineFriTime()));
         pref.setApplyDeadlineSatTime(parseTime(dto.getApplyDeadlineSatTime()));
         pref.setApplyDeadlineSunTime(parseTime(dto.getApplyDeadlineSunTime()));
@@ -60,10 +63,13 @@ public class AlarmPreferenceService {
     private AlarmPreference defaultsFor(User user) {
         return AlarmPreference.builder()
                 .user(user)
-                .missingRecordEnabled(false)
+                .missingRecordEnabled(true)
                 .missingRecordTime(LocalTime.of(22, 0))
-                .assignConfirmEnabled(false)
-                .applyDeadlineEnabled(false)
+                .assignConfirmEnabled(true)
+                .applyDeadlineEnabled(true)
+                .applyDeadlineFriEnabled(true)
+                .applyDeadlineSatEnabled(true)
+                .applyDeadlineSunEnabled(true)
                 .applyDeadlineFriTime(LocalTime.of(22, 0))
                 .applyDeadlineSatTime(LocalTime.of(22, 0))
                 .applyDeadlineSunTime(LocalTime.of(12, 0))
@@ -76,6 +82,9 @@ public class AlarmPreferenceService {
                 .missingRecordTime(formatTime(pref.getMissingRecordTime(), LocalTime.of(22, 0)))
                 .assignConfirmEnabled(Boolean.TRUE.equals(pref.getAssignConfirmEnabled()))
                 .applyDeadlineEnabled(Boolean.TRUE.equals(pref.getApplyDeadlineEnabled()))
+                .applyDeadlineFriEnabled(pref.getApplyDeadlineFriEnabled() != null ? pref.getApplyDeadlineFriEnabled() : true)
+                .applyDeadlineSatEnabled(pref.getApplyDeadlineSatEnabled() != null ? pref.getApplyDeadlineSatEnabled() : true)
+                .applyDeadlineSunEnabled(pref.getApplyDeadlineSunEnabled() != null ? pref.getApplyDeadlineSunEnabled() : true)
                 .applyDeadlineFriTime(formatTime(pref.getApplyDeadlineFriTime(), LocalTime.of(22, 0)))
                 .applyDeadlineSatTime(formatTime(pref.getApplyDeadlineSatTime(), LocalTime.of(22, 0)))
                 .applyDeadlineSunTime(formatTime(pref.getApplyDeadlineSunTime(), LocalTime.of(12, 0)))

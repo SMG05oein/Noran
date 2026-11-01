@@ -28,6 +28,15 @@ public class AlarmPreferenceDto {
     private Boolean applyDeadlineEnabled;
 
     @NotNull
+    private Boolean applyDeadlineFriEnabled;
+
+    @NotNull
+    private Boolean applyDeadlineSatEnabled;
+
+    @NotNull
+    private Boolean applyDeadlineSunEnabled;
+
+    @NotNull
     @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "시각은 HH:mm 형식이어야 합니다.")
     @Schema(example = "22:00", description = "금요일 시각(요일 고정)")
     private String applyDeadlineFriTime;

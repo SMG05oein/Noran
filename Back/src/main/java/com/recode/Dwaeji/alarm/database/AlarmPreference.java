@@ -31,7 +31,7 @@ public class AlarmPreference {
 
     @Builder.Default
     @Column(name = "missing_record_enabled", nullable = false, columnDefinition = "TINYINT(1)", comment = "근무 기록 누락 알람")
-    private Boolean missingRecordEnabled = false;
+    private Boolean missingRecordEnabled = true;
 
     @Builder.Default
     @Column(name = "missing_record_time", nullable = false, comment = "누락 알람 시각(익일)")
@@ -39,11 +39,23 @@ public class AlarmPreference {
 
     @Builder.Default
     @Column(name = "assign_confirm_enabled", nullable = false, columnDefinition = "TINYINT(1)", comment = "배정 확정 알람")
-    private Boolean assignConfirmEnabled = false;
+    private Boolean assignConfirmEnabled = true;
 
     @Builder.Default
     @Column(name = "apply_deadline_enabled", nullable = false, columnDefinition = "TINYINT(1)", comment = "신청 마감 임박 알람")
-    private Boolean applyDeadlineEnabled = false;
+    private Boolean applyDeadlineEnabled = true;
+
+    @Builder.Default
+    @Column(name = "apply_deadline_fri_enabled", nullable = false, columnDefinition = "TINYINT(1)", comment = "신청 마감 알람(금) 활성화 여부")
+    private Boolean applyDeadlineFriEnabled = true;
+
+    @Builder.Default
+    @Column(name = "apply_deadline_sat_enabled", nullable = false, columnDefinition = "TINYINT(1)", comment = "신청 마감 알람(토) 활성화 여부")
+    private Boolean applyDeadlineSatEnabled = true;
+
+    @Builder.Default
+    @Column(name = "apply_deadline_sun_enabled", nullable = false, columnDefinition = "TINYINT(1)", comment = "신청 마감 알람(일) 활성화 여부")
+    private Boolean applyDeadlineSunEnabled = true;
 
     @Builder.Default
     @Column(name = "apply_deadline_fri_time", nullable = false, comment = "신청 마감 알람(금)")

@@ -1,0 +1,143 @@
+# Push to main → 테스트 서버 자동 배포
+# Back 변경 → testapi / Front 변경 → testwww
+name: Deploy Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Back/**"
+      - "Front/**"
+      - ".github/workflows/deploy-test.yml"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "What to deploy to test"
+        required: true
+        default: all
+        type: choice
+        options: [all, backend, frontend]
+
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'Back/**'
+              - '.github/workflows/deploy-test.yml'
+            frontend:
+              - 'Front/**'
+              - '.github/workflows/deploy-test.yml'
+
+  backend:
+    needs: changes
+    if: >
+      github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'backend')
+      || github.event_name == 'push' && needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Back
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Build JAR
+        run: chmod +x gradlew && ./gradlew clean bootJar --no-daemon
+
+      - name: Upload JAR + deploy-test.sh
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "Back/build/libs/Dwaeji.jar,Back/deploy-test.sh"
+          target: "/home/opc/uploads/back-test"
+          overwrite: true
+
+      - name: Deploy test API
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            mkdir -p /home/opc/test/build/libs
+            cp -f /home/opc/uploads/back-test/Back/build/libs/Dwaeji.jar /home/opc/test/build/libs/Dwaeji.jar
+            cp -f /home/opc/uploads/back-test/Back/deploy-test.sh /home/opc/deploy-test.sh
+            chmod +x /home/opc/deploy-test.sh
+            bash /home/opc/deploy-test.sh deploy
+
+  frontend:
+    needs: changes
+    if: >
+      github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'frontend')
+      || github.event_name == 'push' && needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Front
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Front/package-lock.json
+
+      - name: Install & build (test)
+        run: |
+          npm ci
+          npm run build:test
+
+      - name: Upload dist
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "Front/dist"
+          target: "/home/opc/uploads/front-test"
+          overwrite: true
+
+      - name: Publish to testwww
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            SRC="/home/opc/uploads/front-test/Front/dist"
+            DEST="/var/www/dwaeji-test/html"
+            if [ ! -d "$SRC" ]; then
+              echo "ERROR: missing upload at $SRC" >&2
+              find /home/opc/uploads/front-test -maxdepth 3 -type d >&2 || true
+              exit 1
+            fi
+            mkdir -p "$DEST"
+            rsync -a --delete "$SRC"/ "$DEST"/
+            echo "Published test frontend → $DEST"

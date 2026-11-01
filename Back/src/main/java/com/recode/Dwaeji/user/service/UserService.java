@@ -36,7 +36,7 @@ public interface UserService {
 
     void updateSensitiveInfo(String requesterId, Long targetUserIdx, SensitiveInfoDto dto);
 
-    AuthTokenResult refreshAccessToken(String refreshToken);
+    AuthTokenResult refreshAccessToken(String refreshToken, String clientIp);
 
     Page<UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir);
 

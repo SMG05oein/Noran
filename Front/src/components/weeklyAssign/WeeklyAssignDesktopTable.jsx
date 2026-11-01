@@ -212,13 +212,16 @@ const WeeklyAssignDesktopTable = ({
                     <div className="small fw-normal">{'일월화수목금토'[getDay(date)]}요일</div>
                     <div className="wat-head-chips">
                       <span className={`wat-apply-chip ${applied === 0 ? 'is-zero' : ''}`} title="해당 요일 신청 인원">
-                        신청 {applied}
+                        <span className="wat-chip-label">신청</span>
+                        <span className="wat-chip-num">{applied}</span>
                       </span>
                       <span className={`wat-peak-chip ${peak === 0 ? 'is-zero' : ''}`} title="해당 요일 피크 동시 근무자 수">
-                        피크 {peak}
+                        <span className="wat-chip-label">피크</span>
+                        <span className="wat-chip-num">{peak}</span>
                       </span>
                       <span className={`wat-total-chip ${total === 0 ? 'is-zero' : ''}`} title="해당 요일 전체 출근 인원">
-                        전체 {total}
+                        <span className="wat-chip-label">전체</span>
+                        <span className="wat-chip-num">{total}</span>
                       </span>
                     </div>
                   </th>

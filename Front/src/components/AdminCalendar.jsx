@@ -19,7 +19,7 @@ import { isHoliday } from 'holiday-kr';
 import { fetchCalendarCounts } from '../api/workApi';
 import './WorkCalendar.css';
 
-const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selectedDate }) => {
+const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selectedDate, onCountsChange }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarCounts, setCalendarCounts] = useState({});
   
@@ -32,10 +32,13 @@ const AdminCalendar = ({ selectedBranch, selectedBranchIdx, onDateClick, selecte
       const res = await fetchCalendarCounts(startDateStr, endDateStr, selectedBranchIdx);
       if (res.success) {
         setCalendarCounts(res.data);
+        if (onCountsChange) {
+          onCountsChange(res.data);
+        }
       }
     };
     loadCounts();
-  }, [currentMonth, selectedBranchIdx]);
+  }, [currentMonth, selectedBranchIdx, onCountsChange]);
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));

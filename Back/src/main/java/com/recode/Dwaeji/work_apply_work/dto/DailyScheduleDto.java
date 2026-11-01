@@ -14,6 +14,8 @@ public class DailyScheduleDto {
     private Long nameSeq;
     private String workPlaceName;
     private String startTime;
+    private Boolean isOpen;
+    private Boolean isClose;
 
     public static DailyScheduleDto from(User user, String startTime) {
         if (user == null) return null;

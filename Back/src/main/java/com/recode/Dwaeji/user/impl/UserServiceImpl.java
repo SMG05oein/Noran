@@ -743,7 +743,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public AuthTokenResult refreshAccessToken(String refreshToken) {
+    public AuthTokenResult refreshAccessToken(String refreshToken, String clientIp) {
         if (refreshToken == null || refreshToken.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 없습니다.");
         }
@@ -771,6 +771,11 @@ public class UserServiceImpl implements UserService {
             storedToken.setRfToken(newRefreshToken);
             storedToken.setRfExpiryDate(LocalDateTime.now().plusDays(refreshTtlDays));
             refreshTokenRepository.save(storedToken);
+
+            // 5. 토큰 갱신 시에도 최근 로그인 IP/일시 업데이트
+            user.setLastLoginIp(clientIp);
+            user.setLastLoginDate(LocalDateTime.now());
+            userRepository.save(user);
 
             return AuthTokenResult.builder()
                     .accessToken(newAccessToken)

@@ -636,6 +636,8 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
                             .workPlaceName(s.getWorkPlace() != null ? s.getWorkPlace().getWpName()
                                     : (s.getUser().getWorkPlace() != null ? s.getUser().getWorkPlace().getWpName() : null))
                             .startTime(s.getWsdStartTime())
+                            .isOpen(Boolean.TRUE.equals(s.getWsdIsOpen()))
+                            .isClose(Boolean.TRUE.equals(s.getWsdIsClose()))
                             .build();
                 })
                 .collect(Collectors.toList());

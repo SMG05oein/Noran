@@ -131,7 +131,36 @@
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  margin-top: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.wat-head-chips .wat-peak-chip,
+.wat-head-chips .wat-apply-chip,
+.wat-head-chips .wat-total-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.15rem;
+  padding: 0.2rem 0.25rem;
+  border-radius: 0.45rem;
+  text-align: center;
+  margin-top: 0;
+}
+
+.wat-head-chips .wat-chip-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.wat-head-chips .wat-chip-num {
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 0.1rem;
+  white-space: nowrap;
 }
 
 .wat-tab-chips {
@@ -142,9 +171,6 @@
   margin-top: 0.2rem;
 }
 
-.wat-head-chips .wat-peak-chip,
-.wat-head-chips .wat-apply-chip,
-.wat-head-chips .wat-total-chip,
 .wat-tab-chips .wat-peak-chip,
 .wat-tab-chips .wat-apply-chip,
 .wat-tab-chips .wat-total-chip {

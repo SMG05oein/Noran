@@ -197,8 +197,16 @@ public class UserController {
     @Operation(summary = "토큰 재발급", description = "HttpOnly 쿠키로 전달된 리프레시 토큰을 확인하여 새로운 액세스·리프레시 토큰을 발급합니다. 리프레시는 HttpOnly 쿠키로만 전달됩니다.")
     @PostMapping("/refresh")
     public ResponseEntity<TokenRefreshResponseDto> refresh(
-            @org.springframework.web.bind.annotation.CookieValue(value = "refreshToken", required = false) String refreshToken) {
-        AuthTokenResult result = userService.refreshAccessToken(refreshToken);
+            @org.springframework.web.bind.annotation.CookieValue(value = "refreshToken", required = false) String refreshToken,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+            clientIp = request.getRemoteAddr();
+        } else {
+            clientIp = clientIp.split(",")[0].trim();
+        }
+
+        AuthTokenResult result = userService.refreshAccessToken(refreshToken, clientIp);
         TokenRefreshResponseDto body = TokenRefreshResponseDto.builder()
                 .accessToken(result.getAccessToken())
                 .msg(result.getMsg())

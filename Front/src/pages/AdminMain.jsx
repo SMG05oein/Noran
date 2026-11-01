@@ -23,6 +23,7 @@ const AdminMain = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dailySchedule, setDailySchedule] = useState([]);
   const [dailyLoading, setDailyLoading] = useState(false);
+  const [calendarCounts, setCalendarCounts] = useState({});
 
   const currentBranchObj = useMemo(() => {
     if (branches.length === 0) return null;
@@ -33,12 +34,19 @@ const AdminMain = () => {
   const selectedBranchName = currentBranchObj?.wpName || user?.branch || '지점';
 
   const dayHeadcount = useMemo(() => {
-    // 관리자 대시보드: 임시 저장(미확정) 배정도 출근/피크에 포함
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    let dayCount = calendarCounts[dateStr];
+    if (Array.isArray(calendarCounts)) {
+      dayCount = calendarCounts.find(c => c.date === dateStr || c.wsdDate === dateStr || c.dateStr === dateStr);
+    }
+    const calTotal = dayCount?.total != null ? Number(dayCount.total) : null;
+    const calPeak = dayCount?.peak != null ? Number(dayCount.peak) : null;
+
     return {
-      total: countTotal(dailySchedule, { requireConfirmed: false }),
-      peak: countPeak(dailySchedule, { requireConfirmed: false })
+      total: calTotal != null ? calTotal : countTotal(dailySchedule, { requireConfirmed: false }),
+      peak: calPeak != null ? calPeak : countPeak(dailySchedule, { requireConfirmed: false })
     };
-  }, [dailySchedule]);
+  }, [calendarCounts, selectedDate, dailySchedule]);
 
   const loadData = async () => {
     setLoading(true);
@@ -160,6 +168,7 @@ const AdminMain = () => {
                 selectedBranchIdx={selectedBranchIdx}
                 selectedDate={selectedDate}
                 onDateClick={(date) => setSelectedDate(date)}
+                onCountsChange={setCalendarCounts}
               />
             </div>
 

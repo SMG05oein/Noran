@@ -62,10 +62,11 @@ const AdminGNB = () => {
               <NavDropdown
                 title="기타"
                 id="admin-misc-nav-dropdown"
-                className={`gnb-dropdown-wrapper ${['/admin/workplaces', '/admin/user-types'].some(p => location.pathname.startsWith(p)) ? 'active-pill fw-bold text-primary' : ''}`}
+                className={`gnb-dropdown-wrapper ${['/admin/workplaces', '/admin/user-types', '/admin/board'].some(p => location.pathname.startsWith(p)) ? 'active-pill fw-bold text-primary' : ''}`}
               >
                 <NavDropdown.Item as={Link} to="/admin/workplaces" className={location.pathname.startsWith('/admin/workplaces') ? 'active fw-bold' : ''}>지점</NavDropdown.Item>
                 <NavDropdown.Item as={Link} to="/admin/user-types" className={location.pathname.startsWith('/admin/user-types') ? 'active fw-bold' : ''}>직급</NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/admin/board" className={location.pathname.startsWith('/admin/board') ? 'active fw-bold' : ''}>게시판</NavDropdown.Item>
               </NavDropdown>
               <Nav.Link as={Link} to="/admin/mypage" className={`gnb-link ${location.pathname.startsWith('/admin/mypage') ? 'active-pill' : ''}`}>내 정보</Nav.Link>
 

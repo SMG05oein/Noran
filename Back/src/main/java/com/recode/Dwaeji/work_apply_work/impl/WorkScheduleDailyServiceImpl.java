@@ -766,19 +766,17 @@ public class WorkScheduleDailyServiceImpl implements WorkScheduleDailyService {
         if (Boolean.TRUE.equals(s.getWsdIsOpen())) {
             return false;
         }
+        if (Boolean.TRUE.equals(s.getWsdIsClose())) {
+            return false;
+        }
         String t = s.getWsdStartTime();
-        if (t == null || t.isBlank()) {
-            return false;
+        if (t != null) {
+            String trimmed = t.trim();
+            if ("오픈".equals(trimmed) || "마감".equals(trimmed)) {
+                return false;
+            }
         }
-        if ("오픈".equals(t.trim())) {
-            return false;
-        }
-        try {
-            java.time.LocalTime lt = java.time.LocalTime.parse(t.trim());
-            return !lt.isBefore(java.time.LocalTime.of(16, 0)) && lt.isBefore(java.time.LocalTime.of(20, 0));
-        } catch (Exception e) {
-            return false;
-        }
+        return true;
     }
 
     @Override

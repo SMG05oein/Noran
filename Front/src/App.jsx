@@ -39,6 +39,8 @@ const RecordEdit = React.lazy(() => import('./pages/RecordEdit'));
 const MyPage = React.lazy(() => import('./pages/MyPage'));
 const DevLogin = React.lazy(() => import('./pages/DevLogin'));
 const DevMain = React.lazy(() => import('./pages/DevMain'));
+const PigGathering = React.lazy(() => import('./pages/PigGathering.jsx'));
+const AdminBoard = React.lazy(() => import('./pages/AdminBoard.jsx'));
 const HowToUse = React.lazy(() => import('./pages/HowToUse.jsx'));
 
 const PageFallback = (
@@ -147,6 +149,7 @@ function App() {
           <Route path="/consent" element={<ConsentPolicy />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<SystemUsagePolicy />} />
+          <Route path="/gathering" element={<PigGathering />} />
           <Route path="/howtouse" element={<HowToUse />} />
 
           <Route
@@ -176,6 +179,7 @@ function App() {
           <Route path="/admin/payroll" element={<AdminRoute><AdminPayroll /></AdminRoute>} />
           <Route path="/admin/workplaces" element={<AdminRoute><AdminWorkPlaces /></AdminRoute>} />
           <Route path="/admin/user-types" element={<AdminRoute><AdminUserTypes /></AdminRoute>} />
+          <Route path="/admin/board" element={<AdminRoute><AdminBoard /></AdminRoute>} />
           <Route path="/admin/mypage" element={<AdminRoute><MyPage /></AdminRoute>} />
 
           {/* 개발자 전용 라우트 */}

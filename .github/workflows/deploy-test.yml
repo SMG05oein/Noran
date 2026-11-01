@@ -1,10 +1,10 @@
-# Push to main → 테스트 서버 자동 배포
+# test 브랜치 push → 테스트 서버 자동 배포
 # Back 변경 → testapi / Front 변경 → testwww
 name: Deploy Test
 
 on:
   push:
-    branches: [main]
+    branches: [test]
     paths:
       - "Back/**"
       - "Front/**"

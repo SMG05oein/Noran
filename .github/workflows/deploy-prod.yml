@@ -1,7 +1,14 @@
-# 실서버 배포 — Actions 탭에서 수동 실행만 가능 (push로 자동 배포되지 않음)
+# main 브랜치 push → 실서버 자동 배포
+# Back 변경 → api / Front 변경 → www
+# (워크플로 파일만 바꾼 push는 실배포하지 않음)
 name: Deploy Prod
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "Back/**"
+      - "Front/**"
   workflow_dispatch:
     inputs:
       target:
@@ -16,8 +23,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'Back/**'
+            frontend:
+              - 'Front/**'
+
   backend:
-    if: inputs.target == 'all' || inputs.target == 'backend'
+    needs: changes
+    if: >
+      github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'backend')
+      || github.event_name == 'push' && needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,11 +84,13 @@ jobs:
             cp -f /home/opc/uploads/back-prod/Back/build/libs/Dwaeji.jar /home/opc/build/libs/Dwaeji.jar
             cp -f /home/opc/uploads/back-prod/Back/deploy.sh /home/opc/deploy.sh
             chmod +x /home/opc/deploy.sh
-            # CI가 deploy.sh를 직접 호출하므로 watch_deploy와 겹치면 이중 배포될 수 있음
             bash /home/opc/deploy.sh
 
   frontend:
-    if: inputs.target == 'all' || inputs.target == 'frontend'
+    needs: changes
+    if: >
+      github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'frontend')
+      || github.event_name == 'push' && needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

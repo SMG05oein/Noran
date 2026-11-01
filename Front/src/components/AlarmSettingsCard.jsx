@@ -222,7 +222,7 @@ const AlarmSettingsCard = () => {
                 <span className="alarm-bar__label">알림 설정</span>
               </button>
               <div className="alarm-bar__actions">
-                {alarmsOn && (
+                {alarmsOn && !subscribed && (
                   <Button
                     type="button"
                     size="sm"

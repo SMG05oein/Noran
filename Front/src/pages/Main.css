@@ -129,6 +129,80 @@
   overflow: hidden;
 }
 
+.worker-pay-nav {
+  padding-bottom: 0.25rem;
+}
+
+.worker-pay-picker-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.worker-pay-nav-btn {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--color-text-main) !important;
+  padding: 0.2rem !important;
+  min-width: 30px;
+  min-height: 30px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: all 0.15s ease;
+}
+
+.worker-pay-nav-btn:hover,
+.worker-pay-nav-btn:active {
+  background: var(--color-surface-hover) !important;
+  color: var(--color-primary) !important;
+}
+
+.worker-pay-label-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.2rem 0.5rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--color-text-main);
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+}
+
+.worker-pay-label-btn:hover {
+  color: var(--color-primary);
+}
+
+.worker-pay-today-btn {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-primary) !important;
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  padding: 0.25rem 0.65rem !important;
+  border-radius: var(--radius-pill) !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.worker-pay-today-btn:hover {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  border-color: var(--color-primary) !important;
+}
+
 .worker-pay-header {
   text-align: center;
   padding-bottom: 0.2rem;

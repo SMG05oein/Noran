@@ -1,19 +1,91 @@
 import React from 'react';
-import { RiCalendarCheckLine, RiTimeLine } from 'react-icons/ri';
+import {
+  RiCalendarCheckLine,
+  RiTimeLine,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
+  RiArrowDownSLine
+} from 'react-icons/ri';
+import { format, subMonths, isSameMonth } from 'date-fns';
 
 const WorkerPaySummaryCard = ({
   viewMonth,
   user,
   thisMonthHours,
-  thisMonthDays
+  thisMonthDays,
+  onPrevMonth,
+  onNextMonth,
+  onSelectMonth,
+  onResetMonth
 }) => {
   const monthNum = viewMonth.getMonth() + 1;
+  const isCurrentMonth = isSameMonth(viewMonth, new Date());
   const estimatedPay = user?.userHourlyWage != null
     ? Math.floor(user.userHourlyWage * thisMonthHours * 0.967)
     : null;
 
   return (
     <div className="worker-pay-card mb-4">
+      {/* 상단 월 네비게이터 */}
+      <div className="worker-pay-nav position-relative d-flex align-items-center justify-content-center mb-3">
+        <div className="worker-pay-picker-container">
+          <button
+            type="button"
+            className="worker-pay-nav-btn"
+            onClick={onPrevMonth}
+            aria-label="이전 달로 이동"
+          >
+            <RiArrowLeftSLine size={20} />
+          </button>
+
+          <div className="position-relative d-inline-flex align-items-center">
+            <button type="button" className="worker-pay-label-btn">
+              {format(viewMonth, 'yyyy년 M월')}
+              <RiArrowDownSLine size={16} className="ms-1 opacity-75" />
+            </button>
+            <select
+              value={format(viewMonth, 'yyyy-MM')}
+              onChange={(e) => {
+                if (onSelectMonth) {
+                  const [y, m] = e.target.value.split('-');
+                  onSelectMonth(new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1));
+                }
+              }}
+              className="position-absolute top-0 start-0 w-100 h-100 opacity-0"
+              style={{ cursor: 'pointer' }}
+              aria-label="조회할 월 선택"
+            >
+              {[...Array(24)].map((_, i) => {
+                const d = subMonths(new Date(), i);
+                const val = format(d, 'yyyy-MM');
+                return <option key={val} value={val}>{format(d, 'yyyy년 M월')}</option>;
+              })}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            className="worker-pay-nav-btn"
+            onClick={onNextMonth}
+            aria-label="다음 달로 이동"
+          >
+            <RiArrowRightSLine size={20} />
+          </button>
+        </div>
+
+        {!isCurrentMonth && onResetMonth && (
+          <div className="position-absolute end-0 d-flex justify-content-end">
+            <button
+              type="button"
+              className="worker-pay-today-btn"
+              onClick={onResetMonth}
+            >
+              이번달
+            </button>
+          </div>
+        )}
+      </div>
+
       {estimatedPay != null && (
         <>
           <div className="worker-pay-header">

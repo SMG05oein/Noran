@@ -97,6 +97,9 @@ const Records = () => {
       reqList.forEach(req => {
         if ((req.wsdStatus === '출근' || req.wsdStatus === '배정' || req.wsdStatus === '타지점근무') && req.wsdIsConfirmed === true) {
           const reqDate = parseDateStr(req.date || req.wsdDate);
+          if (format(reqDate, 'yyyy-MM') !== monthStr) {
+            return;
+          }
           if (isBefore(reqDate, today) || isSameDay(reqDate, today)) {
             const hasRecord = workRecs.some(wr => {
               const wrD = parseDateStr(wr.wrDate);

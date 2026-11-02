@@ -29,6 +29,8 @@ jobs:
           cache-dependency-path: Front/package-lock.json
 
       - name: Install & build (test)
+        env:
+          VITE_API_URL: https://testapi.dwaeji.kr
         run: |
           npm ci
           npm run build:test

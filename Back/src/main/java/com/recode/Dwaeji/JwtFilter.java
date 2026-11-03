@@ -1,6 +1,5 @@
 package com.recode.Dwaeji;
 
-import com.recode.Dwaeji.user.service.CustomUserDetailsService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -14,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -25,7 +25,6 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final CustomUserDetailsService customUserDetailsService;
 
     private String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
@@ -61,32 +60,21 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (token != null) {
             try {
-                // 1. 토큰에서 전체 클레임 추출
                 Claims claims = jwtUtil.extractToken(token);
-                String email = claims.getSubject();
-
-                // 2. 토큰 내의 'role' 값을 직접 가져옴 (민관님의 토큰 구조: "role": "ADMIN5")
+                String userId = claims.getSubject();
                 String role = claims.get("role", String.class);
 
-                // 3. 권한 객체 생성 (SimpleGrantedAuthority)
-                // 만약 토큰에 ADMIN5라고 되어 있으면 ADMIN5라는 권한을 생성합니다.
                 List<GrantedAuthority> authorities = Collections.emptyList();
                 if (role != null) {
                     authorities = Collections.singletonList(new SimpleGrantedAuthority(role));
                 }
 
-                // 4. UserDetails 로드 (인증된 사용자 객체 생성용)
-                UserDetails userDetails;
-                if ("ROLE_DEVELOPER".equals(role)) {
-                    userDetails = org.springframework.security.core.userdetails.User.withUsername(email)
-                            .password("")
-                            .authorities(authorities)
-                            .build();
-                } else {
-                    userDetails = customUserDetailsService.loadUserByUsername(email);
-                }
+                // 액세스 토큰 클레임만으로 인증 객체 구성 (요청마다 User DB 조회하지 않음)
+                UserDetails userDetails = User.withUsername(userId)
+                        .password("")
+                        .authorities(authorities)
+                        .build();
 
-                // 5. 토큰에서 추출한 실시간 권한(authorities)을 사용하여 인증 객체 생성
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, authorities
                 );

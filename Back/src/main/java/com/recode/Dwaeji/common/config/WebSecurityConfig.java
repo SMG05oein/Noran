@@ -2,7 +2,6 @@ package com.recode.Dwaeji.common.config;
 
 import com.recode.Dwaeji.JwtFilter;
 import com.recode.Dwaeji.JwtUtil;
-import com.recode.Dwaeji.user.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,7 +37,6 @@ import java.util.UUID;
 public class WebSecurityConfig {
 
     private final JwtUtil jwtUtil;
-    private final CustomUserDetailsService customUserDetailsService;
     private final CorsOriginsSupport corsOriginsSupport;
 
     @Value("${swagger.username:root}")
@@ -106,7 +104,7 @@ public class WebSecurityConfig {
                 );
 
         http.addFilterBefore(
-                new JwtFilter(jwtUtil, customUserDetailsService),
+                new JwtFilter(jwtUtil),
                 UsernamePasswordAuthenticationFilter.class
         );
         return http.build();

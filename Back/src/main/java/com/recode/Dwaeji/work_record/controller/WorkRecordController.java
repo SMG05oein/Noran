@@ -169,6 +169,16 @@ public class WorkRecordController {
         return ResponseEntity.ok(excelCompareService.checkStatus(userDetails.getUsername(), sessionId));
     }
 
+    @Operation(summary = "내 엑셀 대조 세션 목록", description = "본인 세션만. 서버 메모리·TTL 2시간·동시 최대 3건.")
+    @GetMapping("/excel-compare/sessions")
+    public ResponseEntity<List<ExcelCompareSessionSummaryDto>> listExcelCompareSessions(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(excelCompareService.listMySessions(userDetails.getUsername()));
+    }
+
     @Operation(summary = "엑셀 대조 단건 조회", description = "ID(wrIdx)를 통해 특정 근무 기록을 조회합니다.")
     @GetMapping("/{wrIdx}")
     public ResponseEntity<WorkRecordResponseDto> getWorkRecordById(

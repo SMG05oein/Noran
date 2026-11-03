@@ -403,6 +403,20 @@ export const getExcelCompareStatus = async (sessionId) => {
   }
 };
 
+/** 엑셀 대조 세션 목록 조회 (본인 세션 최대 3건) */
+export const listExcelCompareSessions = async () => {
+  try {
+    const response = await globalApiClient.get('/api/work-record/excel-compare/sessions');
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error('엑셀 대조 세션 목록 조회 실패:', error);
+    return parseExcelCompareError(error, '세션 목록을 불러오지 못했습니다.');
+  }
+};
+
 /** 엑셀 대조 결과 다운로드. options: { signal?: AbortSignal } */
 export const downloadExcelCompareResult = async (sessionId, year, month, options = {}) => {
   try {

@@ -1,11 +1,12 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Alert, Badge, Button, Container, Form, Spinner, Modal, ProgressBar } from 'react-bootstrap';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { Alert, Badge, Button, Container, Form, Spinner, Modal, ProgressBar, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   RiArrowLeftSLine,
   RiDownload2Line,
   RiFileExcel2Line,
+  RiRefreshLine,
   RiUpload2Line,
 } from 'react-icons/ri';
 import {
@@ -13,8 +14,10 @@ import {
   downloadExcelCompareTemplate,
   startExcelCompare,
   getExcelCompareStatus,
+  listExcelCompareSessions,
 } from '../api/workApi';
 import useSyncExcelDownloadProgress from '../hooks/useSyncExcelDownloadProgress';
+import { startSyncProgressTicker } from '../utils/syncApiProgress';
 import './AdminMain.css';
 
 /** 결과 상태 표시 순서·라벨 (Back statusCounts 키와 동일) */
@@ -38,6 +41,9 @@ const AdminExcelCompare = () => {
   const [statusCounts, setStatusCounts] = useState(null);
   const [totalCount, setTotalCount] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [sessions, setSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const tickerRef = useRef(null);
   const {
     busy: excelDlBusy,
     runDownload: runExcelDownload,
@@ -52,7 +58,29 @@ const AdminExcelCompare = () => {
     return { year: parseInt(y, 10), month: parseInt(m, 10) };
   }, [selectedMonth]);
 
+  const loadSessions = useCallback(async () => {
+    setLoadingSessions(true);
+    const res = await listExcelCompareSessions();
+    if (res.success) {
+      setSessions(res.data || []);
+    }
+    setLoadingSessions(false);
+  }, []);
+
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
+  useEffect(() => {
+    return () => {
+      tickerRef.current?.stop();
+      tickerRef.current = null;
+    };
+  }, []);
+
   const resetResult = () => {
+    tickerRef.current?.stop();
+    tickerRef.current = null;
     setPhase(null);
     setSessionId(null);
     setMessages([]);
@@ -69,7 +97,11 @@ const AdminExcelCompare = () => {
     setStatusCounts(res.statusCounts || null);
     setTotalCount(res.totalCount != null ? res.totalCount : null);
     const pct = res.progress != null ? Number(res.progress) : 0;
-    setProgress(nextPhase === 'DONE' ? Math.max(pct, 100) : pct);
+    if (nextPhase === 'DONE') {
+      setProgress(100);
+    } else if (pct > 0) {
+      setProgress((prev) => Math.max(prev, pct));
+    }
   };
 
   useEffect(() => {
@@ -78,19 +110,38 @@ const AdminExcelCompare = () => {
       intervalId = setInterval(async () => {
         const res = await getExcelCompareStatus(sessionId);
         if (res.success) {
-          applyPhaseResult(res);
-          if (res.phase !== 'PROCESSING') {
+          if (res.phase === 'DONE') {
             clearInterval(intervalId);
+            tickerRef.current?.stop();
+            tickerRef.current = null;
+            setProgress(100);
+            await new Promise((r) => setTimeout(r, 400));
+            applyPhaseResult(res);
+            loadSessions();
+          } else if (res.phase === 'PROCESSING') {
+            if (res.progress != null && res.progress > 0) {
+              tickerRef.current?.set(res.progress);
+              setProgress((prev) => Math.max(prev, res.progress));
+            }
+          } else {
+            clearInterval(intervalId);
+            tickerRef.current?.stop();
+            tickerRef.current = null;
+            applyPhaseResult(res);
+            loadSessions();
           }
         } else {
           clearInterval(intervalId);
+          tickerRef.current?.stop();
+          tickerRef.current = null;
           setPhase('ERROR');
           setMessages([res.error || '상태 확인 중 오류가 발생했습니다.']);
+          loadSessions();
         }
-      }, 1500);
+      }, 1000);
     }
     return () => clearInterval(intervalId);
-  }, [phase, sessionId]);
+  }, [phase, sessionId, loadSessions]);
 
   const handleTemplate = async () => {
     if (busy || excelDlBusy) return;
@@ -112,26 +163,49 @@ const AdminExcelCompare = () => {
     }
     setBusy(true);
     resetResult();
-    // POST 대기 중에도 대조와 동일 톤의 진행 모달(0%) 표시
+    // 시작 즉시 모달을 띄우고 10%부터 90%까지 점진적으로 차오르는 티커 가동
     setPhase('PROCESSING');
-    setProgress(0);
+    setProgress(10);
+    tickerRef.current?.stop();
+    tickerRef.current = startSyncProgressTicker({
+      from: 10,
+      toCap: 90,
+      onTick: (val) => setProgress((prev) => Math.max(prev, val)),
+      intervalMs: 350,
+    });
 
     const res = await startExcelCompare(file, yearMonth.year, yearMonth.month);
     setBusy(false);
 
     if (res.phase === 'COLUMN_ERROR') {
+      tickerRef.current?.stop();
+      tickerRef.current = null;
       applyPhaseResult(res);
+      await loadSessions();
       return;
     }
     if (!res.success) {
-      // 413/507 등: 세션 없이 BE msg 노출 (업로드 시작 단계)
+      tickerRef.current?.stop();
+      tickerRef.current = null;
+      // 413/507/429 등: 세션 없이 BE msg 노출 (업로드 시작 단계)
       setPhase('ERROR');
       setSessionId(null);
       setProgress(0);
       setMessages([res.error || '엑셀 대조에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.']);
+      await loadSessions();
+      return;
+    }
+    if (res.phase === 'DONE') {
+      tickerRef.current?.stop();
+      tickerRef.current = null;
+      setProgress(100);
+      await new Promise((r) => setTimeout(r, 400));
+      applyPhaseResult(res);
+      await loadSessions();
       return;
     }
     applyPhaseResult(res);
+    await loadSessions();
   };
 
   const handleDownloadResult = async () => {
@@ -140,7 +214,7 @@ const AdminExcelCompare = () => {
       alert('세션이 없습니다. 파일을 다시 업로드해 주세요.');
       return;
     }
-    await runExcelDownload(
+    const res = await runExcelDownload(
       ({ signal }) =>
         downloadExcelCompareResult(sessionId, yearMonth.year, yearMonth.month, { signal }),
       {
@@ -148,6 +222,80 @@ const AdminExcelCompare = () => {
         fallbackError: '결과 다운로드에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.',
       }
     );
+    if (!res?.success) {
+      await loadSessions();
+    }
+  };
+
+  const handleDownloadSessionResult = async (s) => {
+    if (busy || excelDlBusy) return;
+    if (!s?.sessionId) {
+      alert('세션 ID가 없습니다.');
+      return;
+    }
+    const res = await runExcelDownload(
+      ({ signal }) =>
+        downloadExcelCompareResult(s.sessionId, s.year, s.month, { signal }),
+      {
+        title: '대조 결과 다운로드 중...',
+        fallbackError: '결과 다운로드에 실패했습니다. 세션이 만료됐다면 다시 업로드해 주세요.',
+      }
+    );
+    if (!res?.success) {
+      await loadSessions();
+    }
+  };
+
+  const formatSessionTime = (isoString) => {
+    if (!isoString) return '-';
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return '-';
+      return format(d, 'yyyy-MM-dd HH:mm');
+    } catch {
+      return '-';
+    }
+  };
+
+  const renderPhaseBadge = (s) => {
+    switch (s.phase) {
+      case 'DONE':
+        return <Badge bg="success">대조 완료</Badge>;
+      case 'PROCESSING':
+        return (
+          <Badge bg="primary">
+            대조 중{s.progress != null ? ` (${Math.round(s.progress)}%)` : ''}
+          </Badge>
+        );
+      case 'COLUMN_ERROR':
+        return <Badge bg="danger">헤더 오류</Badge>;
+      case 'ERROR':
+        return <Badge bg="danger">오류</Badge>;
+      default:
+        return <Badge bg="secondary">{s.phase || '-'}</Badge>;
+    }
+  };
+
+  const renderSessionSummary = (s) => {
+    if (s.totalCount != null) {
+      const counts = s.statusCounts || {};
+      const matchCount = counts.MATCH || 0;
+      const issues = Object.entries(counts)
+        .filter(([k]) => k !== 'MATCH')
+        .reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
+
+      return (
+        <span className="small">
+          총 <strong>{s.totalCount}</strong>건
+          {matchCount > 0 && <span className="text-success ms-1">· 일치 {matchCount}</span>}
+          {issues > 0 && <span className="text-danger ms-1">· 불일치 {issues}</span>}
+        </span>
+      );
+    }
+    if (s.phase === 'COLUMN_ERROR') {
+      return <span className="small text-danger">엑셀 서식 불일치</span>;
+    }
+    return <span className="small text-muted">-</span>;
   };
 
   const statusRows = STATUS_META
@@ -316,17 +464,105 @@ const AdminExcelCompare = () => {
             비교·파싱은 서버에서만 수행합니다. 브라우저는 엑셀을 읽지 않습니다.
           </div>
         )}
+
+        {/* 최근 대조 세션 목록 (최대 3개) */}
+        <div className="admin-header-card mt-4">
+          <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+            <div>
+              <div className="d-flex align-items-center gap-2">
+                <h5 className="fw-bold mb-0">최근 대조 세션</h5>
+                <Badge bg="secondary" className="text-white">
+                  {sessions.length} / 최대 3건
+                </Badge>
+              </div>
+              <p className="text-muted small mb-0 mt-1">
+                세션은 서버 메모리에 약 2시간 동안 유지되며, 동시에 최대 3건까지 보관됩니다.
+              </p>
+            </div>
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              className="rounded-pill px-3 align-self-start align-self-sm-center"
+              onClick={loadSessions}
+              disabled={loadingSessions || busy}
+            >
+              {loadingSessions ? (
+                <Spinner size="sm" className="me-1" />
+              ) : (
+                <RiRefreshLine className="me-1" />
+              )}
+              새로고침
+            </Button>
+          </div>
+
+          {loadingSessions && sessions.length === 0 ? (
+            <div className="text-center py-4 text-muted">
+              <Spinner size="sm" className="me-2" />
+              세션 목록을 불러오는 중...
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="text-center py-4 text-muted small bg-light rounded-3">
+              최근 2시간 이내에 생성된 대조 세션이 없습니다.
+            </div>
+          ) : (
+            <Table responsive hover className="align-middle mb-0 custom-table">
+              <thead className="table-light">
+                <tr className="small text-muted text-nowrap">
+                  <th>대조 대상</th>
+                  <th>시작 시각</th>
+                  <th>상태</th>
+                  <th>대조 요약</th>
+                  <th className="text-end">결과 파일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s) => {
+                  const canDownload = s.hasResult || s.phase === 'DONE';
+                  return (
+                    <tr key={s.sessionId}>
+                      <td className="fw-bold text-nowrap">
+                        {s.year && s.month ? `${s.year}년 ${s.month}월` : '-'}
+                      </td>
+                      <td className="small text-muted text-nowrap">
+                        {formatSessionTime(s.createdAt)}
+                      </td>
+                      <td className="text-nowrap">{renderPhaseBadge(s)}</td>
+                      <td>{renderSessionSummary(s)}</td>
+                      <td className="text-end text-nowrap">
+                        <Button
+                          variant={canDownload ? 'outline-success' : 'outline-secondary'}
+                          size="sm"
+                          className="rounded-pill px-3 py-1 fw-bold"
+                          disabled={!canDownload || busy || excelDlBusy}
+                          onClick={() => handleDownloadSessionResult(s)}
+                        >
+                          <RiFileExcel2Line className="me-1" />
+                          결과 받기
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
+        </div>
       </Container>
 
       <Modal show={phase === 'PROCESSING'} backdrop="static" keyboard={false} centered>
         <Modal.Body className="text-center py-5">
           <h5 className="fw-bold mb-3">
-            {sessionId ? '엑셀 대조 중...' : '엑셀 업로드 중...'}
+            {progress >= 100
+              ? '대조 완료!'
+              : sessionId
+              ? '엑셀 대조 중...'
+              : '엑셀 업로드 중...'}
           </h5>
           <p className="text-muted small mb-4">대용량 파일의 경우 시간이 걸릴 수 있습니다.</p>
           <ProgressBar
-            animated
-            now={Math.max(0, Math.min(100, Math.round(progress || 0)))}
+            animated={progress < 100}
+            variant={progress >= 100 ? 'success' : 'primary'}
+            now={Math.max(5, Math.min(100, Math.round(progress || 0)))}
             label={`${Math.max(0, Math.min(100, Math.round(progress || 0)))}%`}
             style={{ height: '25px' }}
           />

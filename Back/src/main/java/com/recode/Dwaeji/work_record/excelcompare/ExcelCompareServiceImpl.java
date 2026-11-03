@@ -7,6 +7,7 @@ import com.recode.Dwaeji.user.repository.UserRepository;
 import com.recode.Dwaeji.user.repository.WorkPlaceRepository;
 import com.recode.Dwaeji.work_record.database.WorkRecord;
 import com.recode.Dwaeji.work_record.dto.ExcelCompareResolveRequestDto;
+import com.recode.Dwaeji.work_record.dto.ExcelCompareSessionSummaryDto;
 import com.recode.Dwaeji.work_record.dto.ExcelCompareUploadResponseDto;
 import com.recode.Dwaeji.work_record.repository.WorkRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -412,6 +413,25 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결과가 아직 준비되지 않았습니다.");
         }
         return session.getResultBytes();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExcelCompareSessionSummaryDto> listMySessions(String requesterId) {
+        User requester = requireAdmin(requesterId);
+        return sessionStore.listByRequester(requester.getUserId()).stream()
+                .map(s -> ExcelCompareSessionSummaryDto.builder()
+                        .sessionId(s.getSessionId())
+                        .phase(s.getPhase())
+                        .progress(s.getProgress())
+                        .year(s.getYear())
+                        .month(s.getMonth())
+                        .createdAt(s.getCreatedAt())
+                        .hasResult(s.getResultBytes() != null)
+                        .statusCounts(s.getStatusCounts())
+                        .totalCount(s.getTotalCount())
+                        .build())
+                .toList();
     }
 
     private User requireAdmin(String requesterId) {

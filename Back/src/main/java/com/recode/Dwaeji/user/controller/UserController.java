@@ -28,7 +28,8 @@ public class UserController {
                 .secure(true)
                 .path("/")
                 .maxAge(maxAgeSeconds)
-                .sameSite("None")
+                // *.dwaeji.kr same-site 이므로 None 불필요. Lax가 크로스 사이트 전송을 막음
+                .sameSite("Lax")
                 .build();
     }
 
@@ -38,7 +39,7 @@ public class UserController {
                 .secure(true)
                 .path("/")
                 .maxAge(0)
-                .sameSite("None")
+                .sameSite("Lax")
                 .build();
     }
 

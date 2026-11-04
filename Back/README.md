@@ -82,7 +82,7 @@ Windows:
 
 - `POST /api/user/login` body: `{ "userId", "userPw", "autoLogin" }`  
   - `autoLogin: true` → RT 30일, `false`/`null` → RT 7일  
-  - 성공 시 액세스 토큰은 body, 리프레시는 `Set-Cookie` (HttpOnly, Secure, SameSite=None)
+  - 성공 시 액세스 토큰은 body, 리프레시는 `Set-Cookie` (HttpOnly, Secure, SameSite=Lax)
   - `userIsActive`가 **1(재직) 또는 2(휴직)** 일 때만 로그인 가능
 - `POST /api/user/refresh`  
   - 쿠키의 RT로 검증 후 **액세스 + 리프레시 모두 재발급**(로테이션)  

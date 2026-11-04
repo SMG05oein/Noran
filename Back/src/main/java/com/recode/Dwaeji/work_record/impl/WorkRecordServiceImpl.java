@@ -57,6 +57,9 @@ public class WorkRecordServiceImpl implements WorkRecordService {
     private static final String ACTION_DELETE = "DELETE";
     private static final String ACTION_RESTORE = "RESTORE";
     private static final java.time.format.DateTimeFormatter HH_MM = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+    /** 엑셀 다운로드 날짜 출력: 2026. 10. 1 */
+    private static final java.time.format.DateTimeFormatter DATE_EXPORT_FMT =
+            java.time.format.DateTimeFormatter.ofPattern("u. M. d");
     private final WorkRecordRepository workRecordRepository;
     private final UserRepository userRepository;
     private final WorkRecordHistoryRepository workRecordHistoryRepository;
@@ -819,7 +822,7 @@ public class WorkRecordServiceImpl implements WorkRecordService {
             User user = record.getUser();
             Row row = sheet.createRow(rowNum);
             CellStyle rowStyle = (rowNum % 2 == 0) ? dark.bodyAlt() : dark.body();
-            String date = record.getWrDate() != null ? record.getWrDate().toString() : "";
+            String date = record.getWrDate() != null ? record.getWrDate().format(DATE_EXPORT_FMT) : "";
             String userName = user != null && user.getUserName() != null ? user.getUserName() : "";
             Long userIdx = user != null ? user.getUserIdx() : null;
             Long nameCount = userIdx != null ? nameCountByUserIdx.getOrDefault(userIdx, 1L) : 1L;

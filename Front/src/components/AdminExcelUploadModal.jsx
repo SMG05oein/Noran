@@ -430,8 +430,8 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     sampleSheets.forEach(sheetName => {
       const sampleData = [
         ['이름', '날짜', '출근', '퇴근', '휴게'],
-        ['김철수', '2026.09.21', '09:00', '18:00', '01:00'],
-        ['이영희', '2026.09.22', '22:00', '04:00', '00:30']
+        ['김철수', '2026. 9. 21', '09:00', '18:00', '01:00'],
+        ['이영희', '2026. 9. 22', '22:00', '04:00', '00:30']
       ];
       const ws = XLSX.utils.aoa_to_sheet(sampleData);
       XLSX.utils.book_append_sheet(wb, ws, sheetName);

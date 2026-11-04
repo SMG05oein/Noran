@@ -47,6 +47,8 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
     private long compareMaxFileBytes;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
+    /** 엑셀 다운로드 날짜 출력: 2026. 10. 1 */
+    private static final DateTimeFormatter DATE_EXPORT_FMT = DateTimeFormatter.ofPattern("u. M. d");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("H:mm");
     private static final DateTimeFormatter TIME_FMT_HH = DateTimeFormatter.ofPattern("HH:mm");
     private static final DataFormatter DATA_FORMATTER = new DataFormatter(Locale.KOREA);
@@ -266,13 +268,13 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
 
             if (places.isEmpty()) {
                 writeTemplateSheet(workbook, dark, cols, "근무지", usedSheetNames, new String[][]{
-                        {"2026-01-01", "홍길동", "근무지", "18:00", "23:00", "1:00"},
+                        {"2026. 10. 1", "홍길동", "근무지", "18:00", "23:00", "1:00"},
                 });
             } else {
                 for (WorkPlace wp : places) {
                     String wpName = wp.getWpName() != null && !wp.getWpName().isBlank() ? wp.getWpName() : "근무지";
                     writeTemplateSheet(workbook, dark, cols, wpName, usedSheetNames, new String[][]{
-                            {"2026-01-01", "홍길동", wpName, "18:00", "23:00", "1:00"},
+                            {"2026. 10. 1", "홍길동", wpName, "18:00", "23:00", "1:00"},
                     });
                 }
             }
@@ -834,7 +836,7 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
                     String[] cells = {
                             nullToEmpty(row.status),
                             nullToEmpty(row.message),
-                            row.wrDate != null ? row.wrDate.toString() : "",
+                            row.wrDate != null ? row.wrDate.format(DATE_EXPORT_FMT) : "",
                             nullToEmpty(row.userName),
                             nullToEmpty(row.wpName),
                             formatTime(row.start),

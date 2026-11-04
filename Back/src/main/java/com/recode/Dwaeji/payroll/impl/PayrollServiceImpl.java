@@ -51,6 +51,16 @@ public class PayrollServiceImpl implements PayrollService {
         return (int) Math.floor(hourlyWage * totalHours);
     }
 
+    /** 급여 화면과 동일: 숫자 + "시간" (예: 12.5시간, 12시간) */
+    static String formatTotalHours(Double totalHours) {
+        if (totalHours == null) return "-";
+        double v = totalHours;
+        if (v == Math.rint(v)) {
+            return ((long) v) + "시간";
+        }
+        return v + "시간";
+    }
+
     private static String toExcelSheetName(String name) {
         if (name == null || name.isBlank()) return "미소속";
         String cleaned = name.replaceAll("[\\\\/?*\\[\\]]", " ").trim();
@@ -233,7 +243,7 @@ public class PayrollServiceImpl implements PayrollService {
         }
 
         try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
-            String[] headers = {"이름", "세전", ""};
+            String[] headers = {"이름", "총근무시간", "세전", ""};
             var dark = ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
             for (Map.Entry<Long, List<WorkRecord>> entry : byWpIdx.entrySet()) {
@@ -291,9 +301,10 @@ public class PayrollServiceImpl implements PayrollService {
                 name = name.isEmpty() ? "#" + dto.getUserIdx() : name + " #" + dto.getUserIdx();
             }
             row.createCell(0).setCellValue(name);
+            row.createCell(1).setCellValue(formatTotalHours(dto.getTotalHours()));
             int preTax = dto.getPreTaxPay() != null ? dto.getPreTaxPay() : 0;
-            row.createCell(1).setCellValue(String.format(Locale.KOREA, "%,d원", preTax));
-            row.createCell(2).setCellValue("");
+            row.createCell(2).setCellValue(String.format(Locale.KOREA, "%,d원", preTax));
+            row.createCell(3).setCellValue("");
         }
         if (rowNum > 1) {
             sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(0, rowNum - 1, 0, headers.length - 1));

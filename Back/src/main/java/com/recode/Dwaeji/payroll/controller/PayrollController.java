@@ -43,7 +43,7 @@ public class PayrollController {
                 userDetails.getUsername(), year, month, workPlaceIdx, userName, page, size, sortBy, sortDir));
     }
 
-    @Operation(summary = "급여 엑셀 다운로드", description = "이름/세전/빈칸. workPlaceIdx 없으면 근무지별 Sheet. utCanExportExcel 필요.")
+    @Operation(summary = "급여 엑셀 다운로드", description = "이름/총근무시간/세전/빈칸. workPlaceIdx 없으면 근무지별 Sheet. utCanExportExcel 필요.")
     @GetMapping("/excel")
     public ResponseEntity<byte[]> downloadExcel(
             @AuthenticationPrincipal UserDetails userDetails,

@@ -33,6 +33,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import com.recode.Dwaeji.user.database.UserType;
 import com.recode.Dwaeji.user.database.WorkPlace;
 import com.recode.Dwaeji.work_record.database.WorkRecord;
@@ -63,6 +64,27 @@ public class UserServiceImpl implements UserService {
     private final GatheringPostRepository gatheringPostRepository;
     private final AlarmPurgeService alarmPurgeService;
 
+    /** 로그인·갱신은 정상(1)·휴직(2)만 허용. */
+    private static boolean isLoginAllowedActive(Integer userIsActive) {
+        return userIsActive != null && (userIsActive == 1 || userIsActive == 2);
+    }
+
+    private Optional<RefreshToken> findRefreshTokenRow(String rawRefreshToken) {
+        String hash = JwtUtil.sha256Hex(rawRefreshToken);
+        Optional<RefreshToken> byHash = refreshTokenRepository.findByRfToken(hash);
+        if (byHash.isPresent()) {
+            return byHash;
+        }
+        if (jwtUtil.isLegacyGraceActive()) {
+            return refreshTokenRepository.findByRfToken(rawRefreshToken);
+        }
+        return Optional.empty();
+    }
+
+    private void revokeAllRefreshTokens(Long userIdx) {
+        refreshTokenRepository.deleteByUser_UserIdx(userIdx);
+    }
+
     @Override
     @Transactional
     public AuthTokenResult login(LoginRequestDto loginRequestDto, String clientIp) {
@@ -91,8 +113,8 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "로그인이 허용되지 않는 사용자 입니다");
         }
 
-        // 비활성화(논리적 삭제) 계정 체크
-        if (user.getUserIsActive() == null || user.getUserIsActive() == 0) {
+        // 정상(1)·휴직(2)만 로그인 허용. 퇴사(0) 및 기타 값 차단
+        if (!isLoginAllowedActive(user.getUserIsActive())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정(또는 퇴사자)입니다. 관리자에게 문의하세요.");
         }
 
@@ -128,7 +150,7 @@ public class UserServiceImpl implements UserService {
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
-                .rfToken(refreshTokenStr)
+                .rfToken(JwtUtil.sha256Hex(refreshTokenStr))
                 .rfExpiryDate(now.plusDays(refreshTtlDays))
                 .build();
         refreshTokenRepository.save(refreshToken);
@@ -444,9 +466,10 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "사용자를 비활성화할 권한이 없습니다.");
         }
 
-        // 논리적 삭제
+        // 논리적 삭제 + 세션(RT) 전부 폐기
         targetUser.setUserIsActive(0);
         targetUser.setUserWithdrawnAt(LocalDateTime.now());
+        revokeAllRefreshTokens(targetUserIdx);
         alarmPurgeService.purgeAllForUser(targetUserIdx);
     }
 
@@ -456,9 +479,10 @@ public class UserServiceImpl implements UserService {
         User requester = userRepository.findByUserId(requesterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."));
 
-        // 논리적 삭제
+        // 논리적 삭제 + 세션(RT) 전부 폐기
         requester.setUserIsActive(0);
         requester.setUserWithdrawnAt(LocalDateTime.now());
+        revokeAllRefreshTokens(requester.getUserIdx());
         alarmPurgeService.purgeAllForUser(requester.getUserIdx());
     }
 
@@ -751,24 +775,27 @@ public class UserServiceImpl implements UserService {
         try {
             // 1. 토큰 검증 (만료되었거나 변조되었으면 Exception 발생)
             io.jsonwebtoken.Claims claims = jwtUtil.extractToken(refreshToken);
+            if (!jwtUtil.isRefreshTokenUsable(claims)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다.");
+            }
             int refreshTtlDays = jwtUtil.getRefreshTtlDays(claims);
 
-            // 2. DB에 존재하는 세션인지 확인 (만료 판단은 JWT exp만 사용, rf_expiry_date는 정리용)
-            RefreshToken storedToken = refreshTokenRepository.findByRfToken(refreshToken)
+            // 2. DB 세션 확인 (해시 우선, 유예 중 plaintext 폴백). 만료는 JWT exp만 사용
+            RefreshToken storedToken = findRefreshTokenRow(refreshToken)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다."));
 
             // 3. User 정보 조회 및 권한/근무지 획득
             User user = storedToken.getUser();
-            if (user.getUserIsActive() == null || user.getUserIsActive() == 0) {
+            if (!isLoginAllowedActive(user.getUserIsActive())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정(또는 퇴사자)입니다.");
             }
             String role = user.getUserType() != null ? user.getUserType().getUtName() : "알바생";
             String authType = user.getWorkPlace() != null ? user.getWorkPlace().getWpName() : "노란돼지";
 
-            // 4. 액세스·리프레시 재발급 (같은 세션 행 교체, 로그인 시 TTL 유지하며 슬라이딩)
+            // 4. 액세스·리프레시 재발급 (같은 세션 행 교체, 항상 신 클레임 + 해시 저장)
             String newAccessToken = jwtUtil.createAccessToken(user.getUserId(), role, authType);
             String newRefreshToken = jwtUtil.createRefreshToken(user.getUserId(), refreshTtlDays);
-            storedToken.setRfToken(newRefreshToken);
+            storedToken.setRfToken(JwtUtil.sha256Hex(newRefreshToken));
             storedToken.setRfExpiryDate(LocalDateTime.now().plusDays(refreshTtlDays));
             refreshTokenRepository.save(storedToken);
 
@@ -794,6 +821,15 @@ public class UserServiceImpl implements UserService {
             log.error("토큰 재발급 중 서버 오류 발생: {}", e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "토큰 재발급 중 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
         }
+    }
+
+    @Override
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            return;
+        }
+        findRefreshTokenRow(refreshToken).ifPresent(refreshTokenRepository::delete);
     }
 
     @Override
@@ -1022,11 +1058,12 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        // 새 비밀번호로 변경 후 임시 비번 상태 초기화
+        // 새 비밀번호로 변경 후 임시 비번 상태 초기화 + 전 기기 RT 폐기
         user.setUserPw(passwordEncoder.encode(dto.getNewPw()));
         user.setUserIsTempPw(0);
         user.setUserTempPw(null);
         userRepository.save(user);
+        revokeAllRefreshTokens(user.getUserIdx());
     }
 
     @Override

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { fetchMyInfo } from '../api/authApi';
+import { fetchMyInfo, authLogout } from '../api/authApi';
 import { mapConsentFlags } from '../utils/consentFlags';
 
 const useVerifyUser = () => {
@@ -43,8 +43,14 @@ const useVerifyUser = () => {
           const status = infoRes.status;
           if (status === 401 || status === 403) {
             // 리프레시 토큰 만료 등 명시적 인증 실패일 때만 강제 로그아웃
-            logout();
-            navigate('/login');
+            try {
+              await authLogout();
+            } catch (logoutErr) {
+              console.error("강제 세션 종료 중 서버 로그아웃 호출 실패 (로컬 정리는 계속 진행):", logoutErr);
+            } finally {
+              logout();
+              navigate('/login');
+            }
           } else {
             // 일시적 통신 장애(5xx, 네트워크 오류 등)나 요청 과다(429)일 때는 토큰을 유지하고 강제 로그아웃 차단
             console.warn("일시적 서버 통신 장애 또는 응답 지연으로 인해 내 정보 갱신을 건너뜁니다 (토큰 유지).", status);

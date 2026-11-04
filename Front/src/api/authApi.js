@@ -30,6 +30,18 @@ export const authSignup = async (userData) => {
   }
 };
 
+export const authLogout = async () => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}${addUrl}/logout`, {}, {
+      withCredentials: true,
+      headers: getClientPageHeader(),
+    });
+    return { success: true, data: response.data };
+  } catch {
+    return { success: false, error: '로그아웃 처리에 실패했습니다.' };
+  }
+};
+
 export const refreshAccessToken = async () => {
   try {
     const response = await axios.post(`${API_BASE_URL}${addUrl}/refresh`, {}, {

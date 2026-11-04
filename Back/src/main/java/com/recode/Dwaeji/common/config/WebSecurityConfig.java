@@ -88,6 +88,7 @@ public class WebSecurityConfig {
                                 "/api/user/login",
                                 "/api/user/signup",
                                 "/api/user/refresh",
+                                "/api/user/logout",
                                 "/api/work-place/all",
                                 "/api/banks",
                                 "/api/banks/**",

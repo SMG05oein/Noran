@@ -32,6 +32,16 @@ public class UserController {
                 .build();
     }
 
+    private ResponseCookie clearRefreshTokenCookie() {
+        return ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("None")
+                .build();
+    }
+
     @Operation(summary = "로그인", description = "아이디와 비밀번호로 로그인합니다. 성공 시 액세스 토큰을 반환하고, 리프레시 토큰은 HttpOnly 쿠키로 발급합니다.")
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto, jakarta.servlet.http.HttpServletRequest request) {
@@ -157,7 +167,9 @@ public class UserController {
         }
         String requesterId = userDetails.getUsername();
         userService.withdrawUser(requesterId);
-        return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                .body("회원 탈퇴가 완료되었습니다.");
     }
 
     @Operation(summary = "내 정보 조회", description = "현재 로그인된 사용자의 상세 정보를 조회합니다.")
@@ -216,6 +228,16 @@ public class UserController {
                 .header(HttpHeaders.SET_COOKIE,
                         refreshTokenCookie(result.getRefreshToken(), result.getRefreshCookieMaxAgeSeconds()).toString())
                 .body(body);
+    }
+
+    @Operation(summary = "로그아웃", description = "쿠키의 리프레시 토큰 세션을 DB에서 삭제하고 refreshToken 쿠키를 만료시킵니다. 인증 없이 호출 가능합니다.")
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(
+            @org.springframework.web.bind.annotation.CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        userService.logout(refreshToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                .body("로그아웃되었습니다.");
     }
 
     @Operation(summary = "직급(UserType) 목록 조회", description = "전체 직급(UserType) 목록을 조회합니다.")
@@ -292,7 +314,7 @@ public class UserController {
         return ResponseEntity.ok("임시 비밀번호가 설정되었습니다.");
     }
 
-    @Operation(summary = "비밀번호 변경", description = "현재 비밀번호(or 임시 비밀번호)를 확인 후 새 비밀번호로 변경합니다. 성공 시 임시 비밀번호 상태가 해제됩니다.")
+    @Operation(summary = "비밀번호 변경", description = "현재 비밀번호(or 임시 비밀번호)를 확인 후 새 비밀번호로 변경합니다. 성공 시 임시 비밀번호 상태가 해제되고 모든 리프레시 세션이 폐기됩니다. 재로그인이 필요합니다.")
     @PostMapping("/me/change-password")
     public ResponseEntity<String> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -303,7 +325,9 @@ public class UserController {
         }
         String requesterId = userDetails.getUsername();
         userService.changePassword(requesterId, changePasswordDto);
-        return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                .body("비밀번호가 성공적으로 변경되었습니다. 다시 로그인해 주세요.");
     }
 
     @Operation(summary = "내 계좌 원문 조회", description = "본인에 한해 마스킹되지 않은 계좌 원문을 조회합니다.")

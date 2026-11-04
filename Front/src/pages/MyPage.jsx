@@ -266,10 +266,13 @@ const MyPage = () => {
     const res = await changePassword(currentPw, newPw);
     setPwSaving(false);
     if (res.success) {
-      setPwSuccess('비밀번호가 성공적으로 변경되었습니다!');
-      setCurrentPw('');
-      setNewPw('');
-      setNewPwConfirm('');
+      alert('비밀번호가 성공적으로 변경되었습니다. 보안을 위해 다시 로그인해 주세요.');
+      try {
+        setShowPwModal(false);
+      } finally {
+        logout();
+        navigate('/login');
+      }
     } else {
       setPwError(res.error || '비밀번호 변경에 실패했습니다.');
     }
@@ -299,15 +302,24 @@ const MyPage = () => {
   const handleWithdraw = async () => {
     setWithdrawError('');
     setWithdrawSaving(true);
-    const res = await withdrawUser();
-    setWithdrawSaving(false);
+    try {
+      const res = await withdrawUser();
+      setWithdrawSaving(false);
 
-    if (res.success) {
-      alert('회원 탈퇴가 완료되었습니다.');
-      logout();
-      navigate('/login');
-    } else {
-      setWithdrawError(res.error || '회원 탈퇴에 실패했습니다.');
+      if (res.success) {
+        alert('회원 탈퇴가 완료되었습니다.');
+        try {
+          setShowWithdrawModal(false);
+        } finally {
+          logout();
+          navigate('/login');
+        }
+      } else {
+        setWithdrawError(res.error || '회원 탈퇴에 실패했습니다.');
+      }
+    } catch {
+      setWithdrawSaving(false);
+      setWithdrawError('회원 탈퇴 처리 중 오류가 발생했습니다.');
     }
   };
 

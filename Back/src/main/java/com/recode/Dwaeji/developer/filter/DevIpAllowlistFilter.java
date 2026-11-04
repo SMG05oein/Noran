@@ -1,6 +1,7 @@
 package com.recode.Dwaeji.developer.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recode.Dwaeji.common.util.ClientIpResolver;
 import com.recode.Dwaeji.developer.service.DevIpAccessService;
 import com.recode.Dwaeji.developer.service.DevIpOtpService;
 import jakarta.servlet.FilterChain;
@@ -19,9 +20,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Restricts developer dashboard APIs to an IP allowlist,
- * or a short-lived email-OTP session ({@link DevIpOtpService#HEADER}).
- * Login is excluded — IP is checked after credentials in {@code DeveloperAuthService}.
+ * 개발자 대시보드 API를 IP 허용 목록(또는 짧은 OTP 세션)으로 제한한다.
+ * 로그인은 제외 — 자격 증명 후 {@code DeveloperAuthService}에서 IP를 검사한다.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
@@ -30,31 +30,17 @@ public class DevIpAllowlistFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(DevIpAllowlistFilter.class);
 
     private final DevIpAccessService ipAccessService;
+    private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public DevIpAllowlistFilter(DevIpAccessService ipAccessService) {
+    public DevIpAllowlistFilter(DevIpAccessService ipAccessService, ClientIpResolver clientIpResolver) {
         this.ipAccessService = ipAccessService;
-    }
-
-    public static String resolveClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        String remote = request.getRemoteAddr();
-        if ("::1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote)) {
-            return "::1";
-        }
-        return remote != null ? remote : "";
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // CORS preflight must pass before IP check
+        // CORS preflight는 IP 검사 전에 통과
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
@@ -75,7 +61,7 @@ public class DevIpAllowlistFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String clientIp = resolveClientIp(request);
+        String clientIp = clientIpResolver.resolve(request);
         String token = request.getHeader(DevIpOtpService.HEADER);
         if (ipAccessService.isAccessGranted(clientIp, token)) {
             filterChain.doFilter(request, response);

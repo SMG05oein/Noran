@@ -1,6 +1,7 @@
 package com.recode.Dwaeji.developer.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recode.Dwaeji.common.util.ClientIpResolver;
 import com.recode.Dwaeji.developer.service.DevIpAccessService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -29,10 +30,12 @@ public class ServiceIpAllowlistFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(ServiceIpAllowlistFilter.class);
 
     private final DevIpAccessService ipAccessService;
+    private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ServiceIpAllowlistFilter(DevIpAccessService ipAccessService) {
+    public ServiceIpAllowlistFilter(DevIpAccessService ipAccessService, ClientIpResolver clientIpResolver) {
         this.ipAccessService = ipAccessService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Override
@@ -50,7 +53,7 @@ public class ServiceIpAllowlistFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String clientIp = DevIpAllowlistFilter.resolveClientIp(request);
+        String clientIp = clientIpResolver.resolve(request);
         if (ipAccessService.isServiceAccessAllowed(clientIp)) {
             chain.doFilter(request, response);
             return;

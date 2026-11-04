@@ -1,5 +1,6 @@
 package com.recode.Dwaeji.developer.controller;
 
+import com.recode.Dwaeji.common.util.ClientIpResolver;
 import com.recode.Dwaeji.developer.dto.DevAuthBodyDto;
 import com.recode.Dwaeji.developer.service.DevAuditService;
 import com.recode.Dwaeji.developer.service.DevExecutorAuth;
@@ -37,14 +38,7 @@ public class DeveloperDashboardController {
     private final DevAuditService auditService;
     private final ConfigurableApplicationContext applicationContext;
     private final RestClient.Builder restClientBuilder;
-
-    private static String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
+    private final ClientIpResolver clientIpResolver;
 
     @GetMapping("/system-info")
     @PreAuthorize("hasRole('DEVELOPER')")
@@ -85,7 +79,7 @@ public class DeveloperDashboardController {
             HttpServletRequest request) {
         executorAuth.require(body.getId(), body.getPw());
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         log.warn("[DEV] restart requested by {} from {}", actor, ip);
         auditService.record("dashboard", actor, "restart", true, "accepted", ip);
         scheduleExit(0);
@@ -103,7 +97,7 @@ public class DeveloperDashboardController {
             HttpServletRequest request) {
         executorAuth.require(body.getId(), body.getPw());
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         log.warn("[DEV] shutdown requested by {} from {}", actor, ip);
         auditService.record("dashboard", actor, "shutdown", true, "accepted", ip);
         scheduleExit(0);
@@ -124,7 +118,7 @@ public class DeveloperDashboardController {
             throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "BACKEND_DEPLOY_WEBHOOK_URL not configured");
         }
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         try {
             restClientBuilder.build()
                     .post()
@@ -153,7 +147,7 @@ public class DeveloperDashboardController {
             HttpServletRequest request) {
         executorAuth.require(body.getId(), body.getPw());
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         try {
             Map<String, Object> result = testServerControlService.start();
             auditService.record("dashboard", actor, "test-server-start", true, "ok", ip);
@@ -172,7 +166,7 @@ public class DeveloperDashboardController {
             HttpServletRequest request) {
         executorAuth.require(body.getId(), body.getPw());
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         try {
             Map<String, Object> result = testServerControlService.stop();
             auditService.record("dashboard", actor, "test-server-stop", true, "ok", ip);
@@ -191,7 +185,7 @@ public class DeveloperDashboardController {
             HttpServletRequest request) {
         executorAuth.require(body.getId(), body.getPw());
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         try {
             Map<String, Object> result = testServerControlService.restart();
             auditService.record("dashboard", actor, "test-server-restart", true, "ok", ip);
@@ -210,7 +204,7 @@ public class DeveloperDashboardController {
             HttpServletRequest request) {
         executorAuth.require(body.getId(), body.getPw());
         String actor = user != null ? user.getUsername() : "unknown";
-        String ip = clientIp(request);
+        String ip = clientIpResolver.resolve(request);
         try {
             Map<String, Object> result = testServerControlService.deploy();
             auditService.record("dashboard", actor, "test-server-deploy", true, "ok", ip);

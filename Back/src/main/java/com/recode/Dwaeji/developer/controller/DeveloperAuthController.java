@@ -4,7 +4,7 @@ import com.recode.Dwaeji.developer.dto.DevChangePwRequestDto;
 import com.recode.Dwaeji.developer.dto.DevIpOtpVerifyRequestDto;
 import com.recode.Dwaeji.developer.dto.DevLoginRequestDto;
 import com.recode.Dwaeji.developer.dto.DevLoginResponseDto;
-import com.recode.Dwaeji.developer.filter.DevIpAllowlistFilter;
+import com.recode.Dwaeji.common.util.ClientIpResolver;
 import com.recode.Dwaeji.developer.service.DevIpOtpService;
 import com.recode.Dwaeji.developer.service.DeveloperAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,12 +27,13 @@ public class DeveloperAuthController {
 
     private final DeveloperAuthService developerAuthService;
     private final DevIpOtpService devIpOtpService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/login")
     public ResponseEntity<DevLoginResponseDto> login(
             @RequestBody DevLoginRequestDto request,
             HttpServletRequest httpRequest) {
-        String clientIp = DevIpAllowlistFilter.resolveClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         String ipToken = httpRequest.getHeader(DevIpOtpService.HEADER);
         DevLoginResponseDto response = developerAuthService.login(request, clientIp, ipToken);
         return ResponseEntity.ok(response);
@@ -43,7 +44,7 @@ public class DeveloperAuthController {
      */
     @PostMapping("/ip-otp/request")
     public ResponseEntity<Map<String, Object>> requestIpOtp(HttpServletRequest request) {
-        String ip = DevIpAllowlistFilter.resolveClientIp(request);
+        String ip = clientIpResolver.resolve(request);
         return ResponseEntity.ok(devIpOtpService.requestOtp(ip));
     }
 
@@ -54,7 +55,7 @@ public class DeveloperAuthController {
     public ResponseEntity<Map<String, Object>> verifyIpOtp(
             @RequestBody DevIpOtpVerifyRequestDto body,
             HttpServletRequest request) {
-        String ip = DevIpAllowlistFilter.resolveClientIp(request);
+        String ip = clientIpResolver.resolve(request);
         return ResponseEntity.ok(devIpOtpService.verifyOtp(ip, body != null ? body.getCode() : null));
     }
 

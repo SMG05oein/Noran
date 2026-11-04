@@ -2,7 +2,7 @@ package com.recode.Dwaeji.developer.controller;
 
 import com.recode.Dwaeji.developer.database.AllowedIp;
 import com.recode.Dwaeji.developer.database.AllowedIpRepository;
-import com.recode.Dwaeji.developer.filter.DevIpAllowlistFilter;
+import com.recode.Dwaeji.common.util.ClientIpResolver;
 import com.recode.Dwaeji.developer.service.DevIpAccessService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +31,7 @@ public class DeveloperIpController {
 
     private final AllowedIpRepository repository;
     private final DevIpAccessService accessService;
+    private final ClientIpResolver clientIpResolver;
 
     public record AddRequest(String type, String ip, String memo, Boolean confirmEnable) {}
 
@@ -38,7 +39,7 @@ public class DeveloperIpController {
     @PreAuthorize("hasRole('DEVELOPER')")
     public ResponseEntity<Map<String, Object>> list(HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("myIp", DevIpAllowlistFilter.resolveClientIp(request));
+        body.put("myIp", clientIpResolver.resolve(request));
         body.put("devConfigIps", accessService.getConfigIps().stream().sorted().toList());
         body.put("devIps", repository.findByIpTypeOrderByIpIdxAsc(AllowedIp.Type.DEV).stream().map(this::toMap).toList());
         body.put("serviceIps", repository.findByIpTypeOrderByIpIdxAsc(AllowedIp.Type.SERVICE).stream().map(this::toMap).toList());
@@ -52,7 +53,7 @@ public class DeveloperIpController {
     public ResponseEntity<Map<String, Object>> add(@RequestBody AddRequest req, HttpServletRequest request) {
         AllowedIp.Type type = parseType(req.type());
         String ip = normalizeIp(req.ip());
-        String myIp = DevIpAllowlistFilter.resolveClientIp(request);
+        String myIp = clientIpResolver.resolve(request);
 
         if (repository.existsByIpTypeAndIpAddress(type, ip)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 등록된 IP입니다.");
@@ -83,7 +84,7 @@ public class DeveloperIpController {
     public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id, HttpServletRequest request) {
         AllowedIp target = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 항목입니다."));
-        String myIp = DevIpAllowlistFilter.resolveClientIp(request);
+        String myIp = clientIpResolver.resolve(request);
         if (target.getIpType() == AllowedIp.Type.DEV && target.getIpAddress().equals(myIp)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "현재 접속 중인 IP는 삭제할 수 없습니다.");
         }

@@ -45,9 +45,10 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        // 로그인, 회원가입, 공개 공지사항/점검모드 및 Swagger 경로는 JWT 필터를 거치지 않도록 설정
+        // 로그인, 회원가입, 로그아웃, 공개 공지사항/점검모드 및 Swagger 경로는 JWT 필터를 거치지 않도록 설정
         if (path.startsWith("/api/user/login") || path.startsWith("/api/user/signup")
-                || path.startsWith("/api/user/refresh") || path.startsWith("/api/dev/auth/login")
+                || path.startsWith("/api/user/refresh") || path.startsWith("/api/user/logout")
+                || path.startsWith("/api/dev/auth/login")
                 || path.startsWith("/api/dev/auth/ip-otp/")
                 || path.startsWith("/api/work-place/all") || path.startsWith("/api/banks")
                 || path.startsWith("/api/dev/announcements/public") || path.startsWith("/api/dev/announcements/maintenance-status")
@@ -61,6 +62,12 @@ public class JwtFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 Claims claims = jwtUtil.extractToken(token);
+                if (!jwtUtil.isAccessTokenUsable(claims)) {
+                    // refresh·유예 중 RT를 Bearer로 쓴 경우·유예 종료 후 구 토큰 → 인증하지 않음
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 String userId = claims.getSubject();
                 String role = claims.get("role", String.class);
 

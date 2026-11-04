@@ -38,6 +38,9 @@ public interface UserService {
 
     AuthTokenResult refreshAccessToken(String refreshToken, String clientIp);
 
+    /** 일치하는 RT 행이 있으면 삭제. 쿠키 만료는 컨트롤러에서 처리. */
+    void logout(String refreshToken);
+
     Page<UserInfoDto> searchWorkers(String requesterId, String userName, Long workPlaceIdx, int page, int size, Integer isActive, String sortBy, String sortDir);
 
     Page<UserInfoDto> getManagers(String requesterId, int page, int size, Integer isActive, String sortBy, String sortDir);

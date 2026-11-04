@@ -83,18 +83,24 @@ Windows:
 - `POST /api/user/login` body: `{ "userId", "userPw", "autoLogin" }`  
   - `autoLogin: true` → RT 30일, `false`/`null` → RT 7일  
   - 성공 시 액세스 토큰은 body, 리프레시는 `Set-Cookie` (HttpOnly, Secure, SameSite=None)
+  - `userIsActive`가 **1(재직) 또는 2(휴직)** 일 때만 로그인 가능
 - `POST /api/user/refresh`  
   - 쿠키의 RT로 검증 후 **액세스 + 리프레시 모두 재발급**(로테이션)  
   - 만료는 **JWT `exp`만** 판정. DB `rf_expiry_date`는 행 정리·슬롯 관리용  
   - RT JWT의 `ttlDays` 클레임으로 로그인 시 TTL(30/7)을 유지하며 슬라이딩 연장  
   - 새 RT는 다시 HttpOnly 쿠키로만 전달 (`withCredentials` 필요)
-- 계정당 활성 리프레시 세션(기기) **최대 3개**. 로그인 시 만료 행 정리 후, 초과하면 가장 오래된 세션부터 삭제  
+  - AT/RT에 `token_type`(`access`/`refresh`). DB에는 RT **SHA-256**만 저장
+- `POST /api/user/logout` — 쿠키 RT 세션 삭제 + 쿠키 만료 (`credentials` 필요, 인증 헤더 불필요)
+- 비밀번호 변경·논리삭제·본인 탈퇴 시 해당 유저 RT 전부 폐기
+- 계정당 활성 리프레시 세션(기기) **최대 3개**. 로그인 시 만료 행 정리 후, 초과하면 가장 오래된 세션부터 삭제
+- 레거시 토큰 유예: UX를 위해 토큰 정책이 변경됐지만 유예기간을 둠. `2026-11-03 00:00` ~ `2026-11-15 00:00` Asia/Seoul (`jwt.legacy-grace-*`). 종료 후 구 포맷은 재로그인.
 
 ### 인증 없이 호출 가능한 경로
 
 - `POST /api/user/login`
 - `POST /api/user/signup`
 - `POST /api/user/refresh`
+- `POST /api/user/logout`
 - `GET /api/work-place/all`
 - `GET /api/banks`
 - `POST /api/dev/auth/login`

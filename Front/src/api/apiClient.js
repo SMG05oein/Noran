@@ -154,8 +154,17 @@ globalApiClient.interceptors.response.use(
         // 오직 리프레시 요청의 응답이 명확하게 401 또는 403일 때만 최종 로그아웃 및 로그인 이동
         if (refreshStatus === 401 || refreshStatus === 403) {
           console.warn("리프레시 토큰이 만료되어 로그아웃 처리됩니다.");
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
+          try {
+            await axios.post(`${API_BASE_URL}/api/user/logout`, {}, {
+              withCredentials: true,
+              headers: getClientPageHeader(),
+            });
+          } catch (logoutErr) {
+            console.error("강제 세션 종료 중 서버 로그아웃 호출 실패 (로컬 정리는 계속 진행):", logoutErr);
+          } finally {
+            useAuthStore.getState().logout();
+            window.location.href = '/login';
+          }
         } else if (!refreshError.response || (refreshStatus >= 500 && refreshStatus <= 504)) {
           // 서버 재시작 중이거나 일시적 네트워크 통신 오류인 경우 로그아웃 차단 및 서버 다운 상태 표시
           console.error("서버 재시작 또는 일시적 통신 오류로 인해 토큰 갱신에 실패했습니다.");

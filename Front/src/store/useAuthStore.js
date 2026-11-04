@@ -26,7 +26,12 @@ const useAuthStore = create(
 
       login: (userData) => set({ isAuthenticated: true, user: userData }),
       logout: () => {
-        sessionStorage.clear();
+        try {
+          sessionStorage.clear();
+          localStorage.removeItem('auth-storage');
+        } catch (e) {
+          console.error('스토리지 초기화 실패:', e);
+        }
         set({ isAuthenticated: false, user: null });
       },
       signup: (userData) => set({ isAuthenticated: true, user: userData }),

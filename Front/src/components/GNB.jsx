@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Navbar, Nav, Container, Offcanvas } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
+import { authLogout } from '../api/authApi';
 import useThemeStore from '../store/useThemeStore';
 import { RiLogoutBoxRLine, RiSunLine, RiMoonLine, RiMenuLine } from 'react-icons/ri';
 import AppVersion from './AppVersion';
@@ -15,9 +16,15 @@ const GNB = () => {
 
   const [showMenu, setShowMenu] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await authLogout();
+    } catch (e) {
+      console.error('로그아웃 요청 실패:', e);
+    } finally {
+      logout();
+      navigate('/login');
+    }
   };
 
   const fullName = user?.branch || '노란돼지';

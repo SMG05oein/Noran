@@ -7,7 +7,7 @@ export const releaseHistory = [
     date: '2026-11-04',
     features: [
       '관리자 수정 사항 수정',
-      'JWT 정책 변경 유예기간(2026-11-03~15'
+      'JWT 정책 변경 유예기간(2026-11-03~15)'
     ],
     fixes: [
     ]

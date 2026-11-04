@@ -7,18 +7,26 @@ import java.util.Map;
 /**
  * 대조 엑셀 헤더 매핑.
  * <ul>
- *   <li>필수 개념: 날짜 / 이름 / 근무지 / 출근 / 퇴근 / 휴게</li>
+ *   <li>필수: 이름 / 날짜 / 출근 / 퇴근 / 휴게</li>
+ *   <li>선택: 근무지 (없으면 시트명으로 확정)</li>
  *   <li>헤더에 해당 문자열이 포함되면 매핑 (예: {@code 출근 시간} → 출근)</li>
  *   <li>그 외 컬럼(No, 총근무시간 등)은 무시</li>
- *   <li>순서는 무관</li>
+ *   <li>순서는 무관 (템플릿 권장 순서는 {@link #TEMPLATE_COLUMNS})</li>
  * </ul>
  */
 public final class ExcelCompareHeaders {
     /**
-     * 논리 컬럼 키 (매핑 결과·에러 메시지용)
+     * 필수 논리 컬럼 키
      */
     public static final List<String> REQUIRED = List.of(
-            "날짜", "이름", "근무지", "출근", "퇴근", "휴게"
+            "이름", "날짜", "출근", "퇴근", "휴게"
+    );
+
+    /**
+     * 템플릿 다운로드 헤더 순서 (시트명 = 근무지)
+     */
+    public static final List<String> TEMPLATE_COLUMNS = List.of(
+            "이름", "날짜", "출근", "퇴근", "휴게"
     );
 
     private ExcelCompareHeaders() {

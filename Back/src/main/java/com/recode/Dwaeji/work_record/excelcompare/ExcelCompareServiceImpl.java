@@ -260,21 +260,27 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
     @Transactional(readOnly = true)
     public byte[] buildTemplate() {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-            // 시트명 = 근무지, 시트 순서 = wpIdx 오름차순
-            List<WorkPlace> places = workPlaceRepository.findAll(Sort.by(Sort.Direction.ASC, "wpIdx"));
-            List<String> cols = ExcelCompareHeaders.REQUIRED;
+            // 시트명 = 활성 근무지, 시트 순서 = wpIdx 오름차순 (test 제외)
+            List<WorkPlace> places = workPlaceRepository.findAllActive().stream()
+                    .filter(wp -> {
+                        String n = wp.getWpName() != null ? wp.getWpName().trim() : "";
+                        return !n.equalsIgnoreCase("test");
+                    })
+                    .sorted(Comparator.comparing(WorkPlace::getWpIdx, Comparator.nullsLast(Long::compareTo)))
+                    .collect(Collectors.toList());
+            List<String> cols = ExcelCompareHeaders.TEMPLATE_COLUMNS;
             var dark = ExcelDarkTheme.create(workbook);
             Set<String> usedSheetNames = new HashSet<>();
 
             if (places.isEmpty()) {
                 writeTemplateSheet(workbook, dark, cols, "근무지", usedSheetNames, new String[][]{
-                        {"2026. 10. 1", "홍길동", "근무지", "18:00", "23:00", "1:00"},
+                        {"홍길동", "2026. 10. 1", "18:00", "23:00", "1:00"},
                 });
             } else {
                 for (WorkPlace wp : places) {
                     String wpName = wp.getWpName() != null && !wp.getWpName().isBlank() ? wp.getWpName() : "근무지";
                     writeTemplateSheet(workbook, dark, cols, wpName, usedSheetNames, new String[][]{
-                            {"2026. 10. 1", "홍길동", wpName, "18:00", "23:00", "1:00"},
+                            {"홍길동", "2026. 10. 1", "18:00", "23:00", "1:00"},
                     });
                 }
             }
@@ -495,8 +501,9 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
                     if (isRowEmpty(row, maxCol)) {
                         continue;
                     }
-                    String wpFromCell = cellString(row.getCell(col.get("근무지"))).trim();
-                    // 근무지 칸이 비면 시트명(근무지)으로 채움
+                    Integer wpCol = col.get("근무지");
+                    String wpFromCell = wpCol != null ? cellString(row.getCell(wpCol)).trim() : "";
+                    // 근무지 열 없거나 칸이 비면 시트명(근무지)으로 채움
                     String wpName = !wpFromCell.isEmpty() ? wpFromCell : sheetWpName;
                     ExcelCompareParsedRow parsed = ExcelCompareParsedRow.builder()
                             .rowIndex(dataIndex++)

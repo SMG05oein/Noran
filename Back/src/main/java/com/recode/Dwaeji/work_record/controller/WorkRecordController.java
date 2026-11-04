@@ -99,7 +99,7 @@ public class WorkRecordController {
                 .body(excelBytes);
     }
 
-    @Operation(summary = "엑셀 대조 전용 템플릿 다운로드", description = "헤더: 날짜,이름,근무지,출근,퇴근,휴게")
+    @Operation(summary = "엑셀 대조 전용 템플릿 다운로드", description = "헤더: 이름,날짜,출근,퇴근,휴게 (시트명=근무지)")
     @GetMapping("/excel-compare/template")
     public ResponseEntity<byte[]> downloadCompareTemplate(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {

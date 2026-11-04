@@ -923,12 +923,14 @@ public class ExcelCompareServiceImpl implements ExcelCompareService {
             return LocalDate.parse(raw, DATE_FMT);
         } catch (DateTimeParseException ignored) {
         }
+        // 2026.10.1 / 2026. 10. 1 / 2026/10/1 등 — 구분자 주변 공백 제거 후 파싱
+        String compact = raw.replaceAll("\\s*", "");
         try {
-            return LocalDate.parse(raw, DateTimeFormatter.ofPattern("yyyy.M.d"));
+            return LocalDate.parse(compact, DateTimeFormatter.ofPattern("yyyy.M.d"));
         } catch (DateTimeParseException ignored) {
         }
         try {
-            return LocalDate.parse(raw, DateTimeFormatter.ofPattern("yyyy/M/d"));
+            return LocalDate.parse(compact, DateTimeFormatter.ofPattern("yyyy/M/d"));
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "날짜 형식 오류: " + raw);
         }

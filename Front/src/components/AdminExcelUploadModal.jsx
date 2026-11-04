@@ -13,7 +13,7 @@ import {
 const normalizeHeader = (header) => {
   if (!header) return '';
   const cleaned = String(header).replace(/\s+/g, '').trim().toLowerCase();
-  
+
   // 날짜: 날짜, 일자
   if (['날짜', '일자', 'date', 'workdate'].includes(cleaned)) return 'workDate';
   // 이름: 이름, 성명
@@ -31,7 +31,7 @@ const normalizeHeader = (header) => {
 // 24시간제 HH:mm 변환 함수
 const formatToHHmm = (val) => {
   if (val == null || val === '') return '';
-  
+
   if (typeof val === 'number') {
     // 엑셀 시간 시리얼 넘버 (하루 1 = 24시간)
     if (val < 1) {
@@ -60,6 +60,12 @@ const formatToHHmm = (val) => {
 // 날짜 포맷 (YYYY-MM-DD)
 const formatDateVal = (val) => {
   if (!val) return '';
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   if (typeof val === 'number') {
     // 엑셀 날짜 시리얼 넘버 파싱
     const jsDate = new Date((val - (25567 + 2)) * 86400 * 1000);
@@ -68,8 +74,8 @@ const formatDateVal = (val) => {
     const d = String(jsDate.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
-  const str = String(val).trim().replace(/\./g, '-').replace(/\//g, '-');
-  const parts = str.split('-');
+  const str = String(val).trim().replace(/[./]/g, '-');
+  const parts = str.split('-').map(p => p.trim()).filter(Boolean);
   if (parts.length === 3) {
     const y = parts[0];
     const m = parts[1].padStart(2, '0');
@@ -152,7 +158,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
       try {
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        
+
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
           setErrorMsg('엑셀 파일에 시트가 존재하지 않습니다.');
           return;
@@ -167,7 +173,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
           const trimmedSheetName = sheetName.trim();
           const worksheet = workbook.Sheets[sheetName];
           const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-          
+
           if (!rows || rows.length < 2) continue; // 빈 시트는 건너뜀
 
           // 헤더 행 찾기
@@ -213,12 +219,16 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
             const endTime = formatToHHmm(rawEnd);
             const breakTime = formatToHHmm(rawBreak);
 
+            const rawDateStr = rawDate != null ? String(rawDate).trim() : '';
+            const displayDate = (typeof rawDate === 'number' || !rawDateStr) ? workDate : rawDateStr;
+
             // 엑셀 파일 상의 1-indexed 행 번호 (헤더 및 데이터 위치 반영)
             const excelRowNumber = i + 1;
 
             allRecords.push({
               row: excelRowNumber,
               workDate: workDate || '',
+              displayDate: displayDate || workDate || '',
               userName: userName || '',
               startTime: startTime || '',
               endTime: endTime || '',
@@ -238,7 +248,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
         }
 
         if (allRecords.length === 0) {
-          setErrorMsg('유효한 근무 기록 데이터를 찾을 수 없습니다. 시트별로 [날짜, 이름, 출근, 퇴근] 컬럼이 입력되어 있는지 확인해 주세요.');
+          setErrorMsg('유효한 근무 기록 데이터를 찾을 수 없습니다. 시트별로 [이름, 날짜, 출근, 퇴근] 컬럼이 입력되어 있는지 확인해 주세요.');
           return;
         }
 
@@ -282,7 +292,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
     const payload = {
       userNames: uniqueNames,
       workPlaceNames: detectedSheetNames,
-      records: parsedRecords
+      records: parsedRecords.map(({ displayDate, ...rest }) => rest)
     };
 
     const res = await validateExcelWorkRecords(payload, { signal: controller.signal });
@@ -385,7 +395,7 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
 
     const payload = {
       overwriteExisting,
-      records: parsedRecords
+      records: parsedRecords.map(({ displayDate, ...rest }) => rest)
     };
 
     const res = await uploadExcelWorkRecords(payload, { signal: controller.signal });
@@ -413,15 +423,15 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
   const handleDownloadSample = () => {
     const wb = XLSX.utils.book_new();
     const sheetNamesToCreate = branches.filter(b => b.wpName && b.wpIdx != null).map(b => b.wpName);
-    
+
     // 지점 목록이 없을 경우 기본값
     const sampleSheets = sheetNamesToCreate.length > 0 ? sheetNamesToCreate : ['노란돼지', '약산돼지', 'test'];
 
     sampleSheets.forEach(sheetName => {
       const sampleData = [
-        ['날짜', '이름', '출근', '퇴근', '휴게'],
-        ['2026-09-21', '김철수', '09:00', '18:00', '01:00'],
-        ['2026-09-22', '이영희', '22:00', '04:00', '00:30']
+        ['이름', '날짜', '출근', '퇴근', '휴게'],
+        ['김철수', '2026.09.21', '09:00', '18:00', '01:00'],
+        ['이영희', '2026.09.22', '22:00', '04:00', '00:30']
       ];
       const ws = XLSX.utils.aoa_to_sheet(sampleData);
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -479,7 +489,8 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
                 <div className="fw-bold small text-dark mb-1">엑셀 파일 규격 안내</div>
                 <div className="text-muted" style={{ fontSize: '0.84rem' }}>
                   • <strong>시트명 = 근무지명</strong><br />
-                  • 컬럼 순서: <strong>날짜, 이름, 출근, 퇴근, 휴게</strong><br />
+                  • 컬럼 순서: <strong>이름, 날짜, 출근, 퇴근, 휴게</strong><br />
+                  • 날짜: 2026-10-01 / 2026.10.1 / 2026. 10. 1<br />
                   • 시간은 24시간제(09:00, 18:30)
                 </div>
               </div>
@@ -560,8 +571,8 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
                     <thead className="table-light">
                       <tr>
                         <th>근무지(시트)</th>
-                        <th>날짜</th>
                         <th>이름</th>
+                        <th>날짜</th>
                         <th>출근</th>
                         <th>퇴근</th>
                         <th>휴게</th>
@@ -571,8 +582,8 @@ const AdminExcelUploadModal = ({ show, onHide, branches = [], onSuccess }) => {
                       {parsedRecords.slice(0, 5).map((rec, i) => (
                         <tr key={i}>
                           <td className="fw-bold text-secondary">{rec.workPlaceName}</td>
-                          <td>{rec.workDate}</td>
                           <td className="fw-bold">{rec.userName}</td>
+                          <td>{rec.displayDate || rec.workDate}</td>
                           <td>{rec.startTime}</td>
                           <td>{rec.endTime}</td>
                           <td>{rec.breakTime || '-'}</td>
